@@ -4,67 +4,185 @@ import Permission from "../models/Permission.js";
 import { getPermissionsForRole } from "../constants/rbac.js";
 import generateToken from "../utils/generateToken.js";
 
-const validRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
+const validRoles = [
+  "SuperAdmin",
+  "Partner",
+  "Manager",
+  "Employee",
+  "Client",
+];
 
+// Blocked public email providers
+const blockedDomains = [
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+];
+
+// Internal organization roles
+const internalRoles = [
+  "SuperAdmin",
+  "Partner",
+  "Manager",
+  "Employee",
+];
+
+// Validate official company email
+const isOfficialCompanyEmail = (email) => {
+  const domain = email.split("@")[1];
+
+  if (!domain) return false;
+
+  return !blockedDomains.includes(
+    domain.toLowerCase()
+  );
+};
+
+// Resolve permissions dynamically
 const resolveRolePermissions = async (role) => {
-  const record = await Permission.findOne({ role }).lean();
-  if (record && Array.isArray(record.permissions) && record.permissions.length > 0) {
+  const record = await Permission.findOne({
+    role,
+  }).lean();
+
+  if (
+    record &&
+    Array.isArray(record.permissions) &&
+    record.permissions.length > 0
+  ) {
     return record.permissions;
   }
+
   return getPermissionsForRole(role);
 };
 
-export const register = async (req, res, next) => {
+// REGISTER
+export const register = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { name, email, password, role = "Client" } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role = "Client",
+    } = req.body;
 
+    // Validate role
     if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: "Invalid role provided" });
+      return res.status(400).json({
+        message: "Invalid role provided",
+      });
     }
 
-    const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: "User already exists" });
+    // Validate official email for internal roles
+    if (
+      internalRoles.includes(role) &&
+      !isOfficialCompanyEmail(email)
+    ) {
+      return res.status(400).json({
+        message:
+          "Internal users must use official company email addresses.",
+      });
+    }
 
+    // Check existing user
+    const userExists = await User.findOne({
+      email,
+    });
+
+    if (userExists) {
+      return res.status(400).json({
+        message: "User already exists",
+      });
+    }
+
+    // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = await User.create({ name, email, password: hashedPassword, role });
+    const hashedPassword =
+      await bcrypt.hash(password, salt);
+
+    // Create user
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    // Generate permissions
+    const permissions =
+      await resolveRolePermissions(user.role);
+
+    // Response
     res.status(201).json({
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      token: generateToken(user),
+      permissions,
     });
   } catch (error) {
     next(error);
   }
 };
 
-export const login = async (req, res, next) => {
+// LOGIN
+export const login = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-      console.error("[LOGIN] User not found:", email);
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      console.error("[LOGIN] Password mismatch for:", email);
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = generateToken(user._id);
-    const permissions = await resolveRolePermissions(user.role);
-    console.log("[LOGIN] Success", {
-      userId: user._id,
-      role: user.role,
-      email: user.email,
-      permissions: permissions.length,
+    // Find user
+    const user = await User.findOne({
+      email,
     });
 
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    // Official email validation for internal roles
+    if (
+      internalRoles.includes(user.role) &&
+      !isOfficialCompanyEmail(user.email)
+    ) {
+      return res.status(403).json({
+        message:
+          "Access denied. Please use your official company email.",
+      });
+    }
+
+    // Compare password
+    const passwordMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    // Permissions
+    const permissions =
+      await resolveRolePermissions(user.role);
+
+    // Generate token
+    const token = generateToken(user);
+
+    // Success response
     res.json({
       id: user._id,
       name: user.name,
@@ -78,13 +196,24 @@ export const login = async (req, res, next) => {
   }
 };
 
-export const getProfile = async (req, res, next) => {
+// PROFILE
+export const getProfile = async (
+  req,
+  res,
+  next
+) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: "Not authorized" });
+      return res.status(401).json({
+        message: "Not authorized",
+      });
     }
 
-    const permissions = await resolveRolePermissions(req.user.role);
+    const permissions =
+      await resolveRolePermissions(
+        req.user.role
+      );
+
     res.json({
       id: req.user._id,
       name: req.user.name,
@@ -97,11 +226,15 @@ export const getProfile = async (req, res, next) => {
   }
 };
 
-export const getSuperAdminDashboard = async (req, res, next) => {
-  try {
-    res.json({ message: "Welcome SuperAdmin. This route is role protected." });
-  } catch (error) {
-    next(error);
-  }
-};
-
+// SUPER ADMIN TEST ROUTE
+export const getSuperAdminDashboard =
+  async (req, res, next) => {
+    try {
+      res.json({
+        message:
+          "Welcome SuperAdmin. This route is role protected.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };

@@ -41,6 +41,21 @@ select {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.8px solid #94a3b8;
+  background: #ffffff;
+  accent-color: #2563eb;
+  cursor: pointer;
+  appearance: auto;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -76,6 +91,205 @@ select:focus {
 
 .login-card h1 {
   margin-bottom: 8px;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 24px;
+  background: linear-gradient(180deg, #eef3fb 0%, #f8fafc 100%);
+}
+
+.login-grid {
+  width: min(1120px, 100%);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+@media (min-width: 900px) {
+  .login-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: stretch;
+  }
+}
+
+.login-info {
+  display: grid;
+  gap: 28px;
+  padding: 36px 32px;
+  background: #ffffff;
+  border-radius: 28px;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.login-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-size: 0.92rem;
+  margin-bottom: 8px;
+}
+
+.login-info h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.03;
+  color: #0f172a;
+}
+
+.login-info p {
+  margin: 20px 0 0;
+  color: #475569;
+  line-height: 1.8;
+  max-width: 520px;
+}
+
+.login-highlights {
+  display: grid;
+  gap: 18px;
+}
+
+.login-highlight {
+  padding: 22px 20px;
+  border-radius: 22px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
+}
+
+.login-highlight strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.login-highlight span {
+  color: #475569;
+  line-height: 1.75;
+}
+
+.login-card {
+  padding: 36px 32px;
+  border-radius: 28px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.login-card-header h1 {
+  margin: 0;
+  font-size: 2.15rem;
+  color: #0f172a;
+}
+
+.login-card-header p {
+  margin: 14px 0 0;
+  color: #475569;
+  line-height: 1.75;
+}
+
+.password-row {
+  position: relative;
+}
+
+.password-row input {
+  width: 100%;
+  padding-right: 96px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: -8px;
+}
+
+.remember-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.remember-checkbox-input {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.8px solid #94a3b8;
+  background: #ffffff;
+  accent-color: #2563eb;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  accent-color: #2563eb;
+  border: 1.8px solid #94a3b8;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.text-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.login-footer {
+  margin-top: 28px;
+  color: #64748b;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.button.full {
+  width: 100%;
 }
 
 .form-stack {
@@ -143,6 +357,184 @@ select:focus {
 .button.small {
   padding: 10px 14px;
   font-size: 0.9rem;
+}
+
+.landing-shell {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(59, 130, 246, 0.16), transparent 28%),
+    linear-gradient(180deg, #07172f 0%, #0b1321 44%, #0f172a 100%);
+  color: #f8fafc;
+}
+
+.landing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px clamp(20px, 4vw, 60px);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.landing-brand h1 {
+  margin: 0;
+  font-size: 2.1rem;
+  letter-spacing: 0.1em;
+  color: #60a5fa;
+}
+
+.landing-brand p {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.landing-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: center;
+  padding: 0 clamp(20px, 4vw, 60px) 48px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+  .landing-hero {
+    grid-template-columns: 1.2fr 0.8fr;
+  }
+}
+
+.landing-hero-copy {
+  max-width: 640px;
+}
+
+.landing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.16);
+  color: #bfdbfe;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.landing-hero-copy h1 {
+  margin: 24px 0 0;
+  font-size: clamp(2.8rem, 5vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.landing-hero-copy h1 span {
+  color: #60a5fa;
+}
+
+.landing-hero-copy p {
+  margin: 24px 0 0;
+  color: #cbd5e1;
+  line-height: 1.75;
+  font-size: 1.05rem;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.landing-hero-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.landing-panel-card {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 24px;
+  padding: 32px;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 32px 90px rgba(15, 23, 42, 0.24);
+  min-height: 320px;
+}
+
+.landing-panel-card h2 {
+  margin: 0 0 16px;
+  color: #ffffff;
+  font-size: 1.4rem;
+}
+
+.landing-panel-card p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.75;
+}
+
+.landing-features {
+  padding: 0 clamp(20px, 4vw, 60px) 60px;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 700px) {
+  .landing-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .landing-features {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.feature-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 24px;
+  padding: 28px;
+  color: #e2e8f0;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.14);
+}
+
+.feature-card h3 {
+  margin: 0 0 12px;
+  color: #60a5fa;
+  font-size: 1.2rem;
+}
+
+.feature-card p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.75;
+}
+
+.landing-footer {
+  text-align: center;
+  padding: 24px 20px;
+  color: #94a3b8;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.landing-shell .button.secondary {
+  background: rgba(148, 163, 184, 0.12);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.landing-shell .button.secondary:hover {
+  background: rgba(148, 163, 184, 0.22);
 }
 
 .dashboard-shell {
@@ -1165,4 +1557,12 @@ select:focus {
   .wide-card {
     grid-column: auto;
   }
+}
+
+.remember-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  flex-shrink: 0;
 }
