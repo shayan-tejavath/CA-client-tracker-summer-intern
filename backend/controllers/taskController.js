@@ -196,3 +196,37 @@ export const deleteTask = async (req, res, next) => {
   }
 };
 
+export const addComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (!text || String(text).trim() === "") {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const task = await Task.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Employees may only comment on tasks assigned to them
+    if (req.user?.role === ROLES.Employee && task.assignedTo?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const comment = { author: req.user._id, text: String(text).trim() };
+    task.comments.push(comment);
+    await task.save();
+
+    const populated = await taskPopulate(Task.findById(task._id));
+    res.status(201).json(populated);
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -12,6 +12,10 @@ import AddClient from "./pages/clients/AddClient.jsx";
 import EditClient from "./pages/clients/EditClient.jsx";
 import ClientDetails from "./pages/clients/ClientDetails.jsx";
 
+import ServicesList from "./pages/services/ServicesList.jsx";
+import AddService from "./pages/services/AddService.jsx";
+import EditService from "./pages/services/EditService.jsx";
+
 import TasksList from "./pages/tasks/TasksList.jsx";
 import CreateTask from "./pages/tasks/CreateTask.jsx";
 import TaskDetails from "./pages/tasks/TaskDetails.jsx";
@@ -92,6 +96,36 @@ function App() {
                 allowedRoles={["SuperAdmin", "Partner", "Manager"]}
               >
                 <ClientDetails />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Services */}
+          <Route
+            path="/dashboard/services"
+            element={
+              <ProtectedRoute
+                allowedRoles={["SuperAdmin", "Partner", "Manager", "Employee"]}
+              >
+                <ServicesList />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/services/add"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <AddService />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/services/edit/:id"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <EditService />
               </ProtectedRoute>
             }
           />

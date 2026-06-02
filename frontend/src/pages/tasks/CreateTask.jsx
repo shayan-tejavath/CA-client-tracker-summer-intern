@@ -8,6 +8,7 @@ import { getEmployees } from "../../services/employeeService.js";
 import { getServices } from "../../services/serviceService.js";
 
 const statusOptions = ["Pending", "In Progress", "Completed", "Overdue"];
+const priorityOptions = ["Low", "Medium", "High", "Critical"];
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const CreateTask = () => {
     service: "",
     assignedTo: "",
     status: "Pending",
+    priority: "Medium",
     dueDate: "",
     description: "",
   });
@@ -121,6 +123,14 @@ const CreateTask = () => {
               <select name="status" value={task.status} onChange={handleChange}>
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Priority
+              <select name="priority" value={task.priority} onChange={handleChange}>
+                {priorityOptions.map((priority) => (
+                  <option key={priority} value={priority}>{priority}</option>
                 ))}
               </select>
             </label>

@@ -5,6 +5,7 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  addComment,
 } from "../controllers/taskController.js";
 import protect from "../middleware/authMiddleware.js";
 import authorizeRoles, { ROLES } from "../middleware/roleMiddleware.js";
@@ -18,6 +19,7 @@ router.get("/", authorizeRoles(...taskViewRoles), getTasks);
 router.post("/", authorizeRoles(...taskManageRoles), createTask);
 router.get("/:id", authorizeRoles(...taskViewRoles), getTaskById);
 router.put("/:id", authorizeRoles(...taskViewRoles), updateTask);
+router.post("/:id/comments", authorizeRoles(...taskViewRoles), addComment);
 router.delete("/:id", authorizeRoles(...taskManageRoles), deleteTask);
 export default router;
 

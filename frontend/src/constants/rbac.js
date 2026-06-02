@@ -232,6 +232,13 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.CLIENT_LIST,
   },
   {
+    name: "Services",
+    path: "/dashboard/services",
+    icon: "services",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE],
+    requiredPermission: PERMISSIONS.SERVICE_LIST,
+  },
+  {
     name: "Tasks",
     path: "/dashboard/tasks",
     icon: "tasks",

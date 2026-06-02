@@ -24,3 +24,8 @@ export const deleteTask = async (taskId) => {
   const response = await api.delete(`/tasks/${taskId}`);
   return response.data;
 };
+
+export const postTaskComment = async (taskId, commentData) => {
+  const response = await api.post(`/tasks/${taskId}/comments`, commentData);
+  return response.data;
+};

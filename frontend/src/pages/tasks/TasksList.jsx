@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
+import {
+  HiOutlineClipboardList,
+  HiOutlineClock,
+  HiOutlineRefresh,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+} from "react-icons/hi";
 import { deleteTask, getTasks } from "../../services/taskService.js";
 import { getClients } from "../../services/clientService.js";
 import { getEmployees } from "../../services/employeeService.js";
@@ -22,6 +29,54 @@ const TasksList = () => {
   const [clientFilter, setClientFilter] = useState("");
   const canCreateTask = ["SuperAdmin", "Partner", "Manager"].includes(user?.role);
   const canManageTasks = canCreateTask;
+
+  const taskStats = useMemo(() => {
+    const counts = {
+      total: tasks.length,
+      pending: tasks.filter((task) => task.status === "Pending").length,
+      inProgress: tasks.filter((task) => task.status === "In Progress").length,
+      completed: tasks.filter((task) => task.status === "Completed").length,
+      overdue: tasks.filter((task) => task.status === "Overdue").length,
+    };
+
+    return [
+      {
+        key: "total",
+        label: "Total Tasks",
+        value: counts.total,
+        icon: <HiOutlineClipboardList />, 
+        accent: "#38bdf8",
+      },
+      {
+        key: "pending",
+        label: "Pending Tasks",
+        value: counts.pending,
+        icon: <HiOutlineClock />, 
+        accent: "#fbbf24",
+      },
+      {
+        key: "inProgress",
+        label: "In Progress Tasks",
+        value: counts.inProgress,
+        icon: <HiOutlineRefresh />, 
+        accent: "#93c5fd",
+      },
+      {
+        key: "completed",
+        label: "Completed Tasks",
+        value: counts.completed,
+        icon: <HiOutlineCheckCircle />, 
+        accent: "#34d399",
+      },
+      {
+        key: "overdue",
+        label: "Overdue Tasks",
+        value: counts.overdue,
+        icon: <HiOutlineExclamationCircle />, 
+        accent: "#fb7185",
+      },
+    ];
+  }, [tasks]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -105,6 +160,18 @@ const TasksList = () => {
           )}
         </div>
 
+        <div className="stats-grid">
+          {taskStats.map((item) => (
+            <div key={item.key} className="stats-card">
+              <div className="stats-card-icon" style={{ backgroundColor: item.accent + "20", color: item.accent }}>
+                {item.icon}
+              </div>
+              <p className="stats-card-label">{item.label}</p>
+              <h2 className="stats-card-value">{item.value}</h2>
+            </div>
+          ))}
+        </div>
+
         <div className="task-filters">
           <div className="filter-item">
             <label>
@@ -161,6 +228,7 @@ const TasksList = () => {
                   <th>Service</th>
                   <th>Assigned to</th>
                   <th>Status</th>
+                  <th>Priority</th>
                   <th>Due date</th>
                   <th className="actions-cell">Actions</th>
                 </tr>
@@ -168,7 +236,7 @@ const TasksList = () => {
               <tbody>
                 {filteredTasks.length === 0 ? (
                   <tr>
-                    <td colSpan="7">No tasks match the current filters.</td>
+                    <td colSpan="8">No tasks match the current filters.</td>
                   </tr>
                 ) : (
                   filteredTasks.map((task) => (
@@ -182,6 +250,11 @@ const TasksList = () => {
                       <td>{task.service ? `${task.service.serviceCategory} — ${task.service.subService}` : "—"}</td>
                       <td>{task.assignedTo?.name || "—"}</td>
                       <td>{task.status}</td>
+                      <td>
+                        <span className={`priority-badge ${task.priority ? "priority-" + task.priority.toLowerCase() : ""}`}>
+                          {task.priority || "—"}
+                        </span>
+                      </td>
                       <td>{task.dueDate ? formatDate(task.dueDate) : "—"}</td>
                       <td className="actions-cell">
                         <Link className="button secondary small" to={`/dashboard/tasks/${task._id}`}>View</Link>
