@@ -40,7 +40,7 @@ function LandingPage() {
       <header className="landing-header">
         <div className="landing-brand">
           <h1>QwikCA</h1>
-          <p>Practice management built for CA firms.</p>
+          <p>Practice management built for modern CA firms.</p>
         </div>
 
         <nav className="landing-nav">
@@ -57,7 +57,7 @@ function LandingPage() {
         <div className="landing-hero-copy">
           <span className="landing-eyebrow">Trusted by CA teams nationwide</span>
           <h1>
-            Modern practice management software for <span>CA firms</span>
+            Modern practice workflow software for <span>CA firms</span>
           </h1>
           <p>
             Automate compliance workflows, manage clients, track filings,
@@ -76,7 +76,7 @@ function LandingPage() {
 
         <div className="landing-hero-panel">
           <div className="landing-panel-card">
-            <h2>Ready to simplify your practice?</h2>
+            <h2>Ready to simplify your workflow?</h2>
             <p>
               QwikCA brings compliance, clients, documents, and team workflows
               into a single, polished dashboard.
