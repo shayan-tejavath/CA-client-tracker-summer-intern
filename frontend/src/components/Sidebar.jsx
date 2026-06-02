@@ -60,6 +60,7 @@ const Sidebar = () => {
       <div className="sidebar-footer">
         <p className="footer-title">Pro SaaS Admin</p>
         <span className="footer-subtitle">Live analytics, team workflow, and client operations.</span>
+        <button type="button" className="button secondary upgrade-button">Upgrade Now</button>
       </div>
     </aside>
   );
