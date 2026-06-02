@@ -2,46 +2,190 @@
 import Client from "../models/Client.js";
 
 const validateClientData = (data) => {
-  const requiredFields = ["clientName", "pan", "gstin", "mobile", "email"];
-  const missingFields = requiredFields.filter((field) => !data[field] || String(data[field]).trim() === "");
+  const requiredFields = [
+    "clientName",
+    "pan",
+    "gstin",
+    "mobile",
+    "email",
+  ];
+
+  const missingFields = requiredFields.filter(
+    (field) =>
+      !data[field] ||
+      String(data[field]).trim() === ""
+  );
+
   if (missingFields.length) {
-    return `Missing required fields: ${missingFields.join(", ")}`;
+    return `Missing required fields: ${missingFields.join(
+      ", "
+    )}`;
   }
-  if (data.assignedServices && !Array.isArray(data.assignedServices)) {
+
+  if (
+    data.assignedServices &&
+    !Array.isArray(data.assignedServices)
+  ) {
     return "assignedServices must be an array of strings";
   }
+
   return null;
 };
 
-export const getClients = async (req, res, next) => {
+
+
+// GET CLIENTS
+
+export const getClients = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const search = req.query.search?.trim();
+    // QUERY PARAMS
+
+    const search =
+      req.query.search?.trim() || "";
+
+    const status =
+      req.query.status || "All";
+
+    const type =
+      req.query.type || "All";
+
+    const includeArchived =
+      req.query.includeArchived === "true";
+
+    const page =
+      Number(req.query.page) || 1;
+
+    const limit =
+      Number(req.query.limit) || 10;
+
+    const skip = (page - 1) * limit;
+
+    // QUERY OBJECT
+
     const query = {};
+
+    // ARCHIVE FILTER
+
+    if (!includeArchived) {
+      query.isArchived = false;
+    }
+
+    // SEARCH
 
     if (search) {
       query.$or = [
-        { clientName: new RegExp(search, "i") },
-        { gstin: new RegExp(search, "i") },
+        {
+          clientName: new RegExp(
+            search,
+            "i"
+          ),
+        },
+        {
+          email: new RegExp(
+            search,
+            "i"
+          ),
+        },
+        {
+          pan: new RegExp(
+            search,
+            "i"
+          ),
+        },
+        {
+          gstin: new RegExp(
+            search,
+            "i"
+          ),
+        },
       ];
     }
 
-    const clients = await Client.find(query).sort({ createdAt: -1 });
-    res.json(clients);
+    // STATUS FILTER
+
+    if (status !== "All") {
+      query.status = status;
+    }
+
+    // TYPE FILTER
+
+    if (type !== "All") {
+      query.clientType = type;
+    }
+
+    // TOTAL COUNT
+
+    const totalClients =
+      await Client.countDocuments(
+        query
+      );
+
+    // FETCH CLIENTS
+
+    const clients = await Client.find(
+      query
+    )
+      .sort({
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit);
+
+    // RESPONSE
+
+    res.json({
+      clients,
+
+      pagination: {
+        totalClients,
+
+        currentPage: page,
+
+        totalPages: Math.ceil(
+          totalClients / limit
+        ),
+
+        limit,
+      },
+    });
   } catch (error) {
     next(error);
   }
 };
 
-export const getClientById = async (req, res, next) => {
+
+// GET CLIENT BY ID
+
+export const getClientById = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid client ID" });
+
+    if (
+      !mongoose.Types.ObjectId.isValid(id)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: "Invalid client ID",
+        });
     }
 
     const client = await Client.findById(id);
+
     if (!client) {
-      return res.status(404).json({ message: "Client not found" });
+      return res
+        .status(404)
+        .json({
+          message: "Client not found",
+        });
     }
 
     res.json(client);
@@ -50,69 +194,170 @@ export const getClientById = async (req, res, next) => {
   }
 };
 
-export const createClient = async (req, res, next) => {
+
+
+// CREATE CLIENT
+
+export const createClient = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const validationError = validateClientData(req.body);
+    const validationError =
+      validateClientData(req.body);
+
     if (validationError) {
-      return res.status(400).json({ message: validationError });
+      return res
+        .status(400)
+        .json({
+          message: validationError,
+        });
     }
 
-    const existingClient = await Client.findOne({ $or: [{ pan: req.body.pan.toUpperCase() }, { gstin: req.body.gstin.toUpperCase() }] });
+    const existingClient =
+      await Client.findOne({
+        $or: [
+          {
+            pan: req.body.pan.toUpperCase(),
+          },
+          {
+            gstin:
+              req.body.gstin.toUpperCase(),
+          },
+        ],
+      });
+
     if (existingClient) {
-      return res.status(409).json({ message: "Client with same PAN or GSTIN already exists" });
+      return res
+        .status(409)
+        .json({
+          message:
+            "Client with same PAN or GSTIN already exists",
+        });
     }
 
     const client = await Client.create({
       ...req.body,
+
       pan: req.body.pan.toUpperCase(),
-      gstin: req.body.gstin.toUpperCase(),
+
+      gstin:
+        req.body.gstin.toUpperCase(),
+
       tan: req.body.tan?.toUpperCase(),
     });
+
     res.status(201).json(client);
   } catch (error) {
     next(error);
   }
 };
 
-export const updateClient = async (req, res, next) => {
+
+
+// UPDATE CLIENT
+
+export const updateClient = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid client ID" });
+
+    if (
+      !mongoose.Types.ObjectId.isValid(id)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: "Invalid client ID",
+        });
     }
 
     const client = await Client.findById(id);
+
     if (!client) {
-      return res.status(404).json({ message: "Client not found" });
+      return res
+        .status(404)
+        .json({
+          message: "Client not found",
+        });
     }
 
-    const validationError = validateClientData({ ...client.toObject(), ...req.body });
-    if (validationError) {
-      return res.status(400).json({ message: validationError });
-    }
-
-    if (req.body.pan || req.body.gstin) {
-      const normalizedPan = req.body.pan?.toUpperCase() || client.pan;
-      const normalizedGstin = req.body.gstin?.toUpperCase() || client.gstin;
-      const duplicateClient = await Client.findOne({
-        _id: { $ne: id },
-        $or: [{ pan: normalizedPan }, { gstin: normalizedGstin }],
+    const validationError =
+      validateClientData({
+        ...client.toObject(),
+        ...req.body,
       });
+
+    if (validationError) {
+      return res
+        .status(400)
+        .json({
+          message: validationError,
+        });
+    }
+
+    if (
+      req.body.pan ||
+      req.body.gstin
+    ) {
+      const normalizedPan =
+        req.body.pan?.toUpperCase() ||
+        client.pan;
+
+      const normalizedGstin =
+        req.body.gstin?.toUpperCase() ||
+        client.gstin;
+
+      const duplicateClient =
+        await Client.findOne({
+          _id: { $ne: id },
+
+          $or: [
+            { pan: normalizedPan },
+
+            {
+              gstin: normalizedGstin,
+            },
+          ],
+        });
+
       if (duplicateClient) {
-        return res.status(409).json({ message: "Another client with the same PAN or GSTIN exists" });
+        return res
+          .status(409)
+          .json({
+            message:
+              "Another client with same PAN or GSTIN exists",
+          });
       }
     }
 
-    const updatedClient = await Client.findByIdAndUpdate(
-      id,
-      {
-        ...req.body,
-        pan: req.body.pan?.toUpperCase() ?? client.pan,
-        gstin: req.body.gstin?.toUpperCase() ?? client.gstin,
-        tan: req.body.tan?.toUpperCase() ?? client.tan,
-      },
-      { new: true, runValidators: true }
-    );
+    const updatedClient =
+      await Client.findByIdAndUpdate(
+        id,
+        {
+          ...req.body,
+
+          pan:
+            req.body.pan?.toUpperCase() ??
+            client.pan,
+
+          gstin:
+            req.body.gstin?.toUpperCase() ??
+            client.gstin,
+
+          tan:
+            req.body.tan?.toUpperCase() ??
+            client.tan,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
     res.json(updatedClient);
   } catch (error) {
@@ -120,22 +365,96 @@ export const updateClient = async (req, res, next) => {
   }
 };
 
-export const deleteClient = async (req, res, next) => {
+
+
+// ARCHIVE CLIENT
+
+export const archiveClient = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid client ID" });
+
+    if (
+      !mongoose.Types.ObjectId.isValid(id)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: "Invalid client ID",
+        });
     }
 
     const client = await Client.findById(id);
+
     if (!client) {
-      return res.status(404).json({ message: "Client not found" });
+      return res
+        .status(404)
+        .json({
+          message: "Client not found",
+        });
     }
 
-    await client.deleteOne();
-    res.json({ message: "Client deleted successfully" });
+    client.isArchived = true;
+
+    client.status = "Archived";
+
+    await client.save();
+
+    res.json({
+      message:
+        "Client archived successfully",
+    });
   } catch (error) {
     next(error);
   }
 };
 
+
+
+// RESTORE CLIENT
+
+export const restoreClient = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { id } = req.params;
+
+    if (
+      !mongoose.Types.ObjectId.isValid(id)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: "Invalid client ID",
+        });
+    }
+
+    const client = await Client.findById(id);
+
+    if (!client) {
+      return res
+        .status(404)
+        .json({
+          message: "Client not found",
+        });
+    }
+
+    client.isArchived = false;
+
+    client.status = "Active";
+
+    await client.save();
+
+    res.json({
+      message:
+        "Client restored successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
