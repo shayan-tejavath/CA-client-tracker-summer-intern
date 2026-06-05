@@ -4,37 +4,103 @@ const documentSchema = new mongoose.Schema(
   {
     fileName: {
       type: String,
-      required: [true, "File name is required"],
+      required: true,
       trim: true,
     },
+
+    originalFileName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     filePath: {
       type: String,
-      required: [true, "File path is required"],
+      required: true,
       trim: true,
     },
+
+    fileType: {
+      type: String,
+      default: "",
+    },
+
+    fileSize: {
+      type: Number,
+      default: 0,
+    },
+
+    category: {
+      type: String,
+      enum: [
+        "GST",
+        "Income Tax",
+        "TDS",
+        "Invoice",
+        "Bank Statement",
+        "Audit",
+        "Payroll",
+        "ROC",
+        "Legal",
+        "Other",
+      ],
+      default: "Other",
+    },
+
+    status: {
+      type: String,
+      enum: [
+        "Active",
+        "Pending Review",
+        "Approved",
+        "Rejected",
+        "Archived",
+      ],
+      default: "Active",
+    },
+
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "UploadedBy is required"],
+      required: true,
     },
+
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
-      required: [true, "Client is required"],
+      required: true,
     },
+
     task: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Task",
-      required: [true, "Task is required"],
+      default: null,
     },
-    fileType: {
-      type: String,
-      trim: true,
-    },
+
     description: {
       type: String,
-      trim: true,
       default: "",
+      trim: true,
+    },
+
+    tags: {
+      type: [String],
+      default: [],
+    },
+
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+
+    isConfidential: {
+      type: Boolean,
+      default: false,
+    },
+
+    expiryDate: {
+      type: Date,
+      default: null,
     },
   },
   {
@@ -42,6 +108,9 @@ const documentSchema = new mongoose.Schema(
   }
 );
 
-const Document = mongoose.model("Document", documentSchema);
-export default Document;
+const Document = mongoose.model(
+  "Document",
+  documentSchema
+);
 
+export default Document;
