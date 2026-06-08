@@ -211,17 +211,6 @@ const UploadDocument = () => {
 
 
 
-    if (!formData.task) {
-
-      setError(
-        "Please select a task."
-      );
-
-      return;
-    }
-
-
-
     setLoading(true);
 
 
@@ -412,17 +401,16 @@ const UploadDocument = () => {
 
             <label>
 
-              Related Task
+              Related Task (optional)
 
               <select
                 name="task"
                 value={formData.task}
                 onChange={handleChange}
-                required
               >
 
                 <option value="">
-                  Select Task
+                  No task selected
                 </option>
 
                 {tasks.map((task) => (

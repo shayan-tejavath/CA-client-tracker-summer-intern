@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { getPermissions, savePermissions } from "../../services/permissionService.js";
+import { PERMISSIONS } from "../../constants/rbac.js";
 
 const roles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
 const permissions = [
-  { key: "clients.view", label: "View clients" },
-  { key: "clients.create", label: "Create clients" },
-  { key: "clients.edit", label: "Edit clients" },
-  { key: "clients.delete", label: "Delete clients" },
-  { key: "tasks.assign", label: "Assign tasks" },
-  { key: "tasks.complete", label: "Complete tasks" },
-  { key: "reports.view", label: "View reports" },
-  { key: "users.manage", label: "Manage users" },
+  { key: PERMISSIONS.CLIENT_LIST, label: "View clients" },
+  { key: PERMISSIONS.CLIENT_CREATE, label: "Create clients" },
+  { key: PERMISSIONS.CLIENT_UPDATE, label: "Edit clients" },
+  { key: PERMISSIONS.CLIENT_DELETE, label: "Delete clients" },
+  { key: PERMISSIONS.TASK_ASSIGN, label: "Assign tasks" },
+  { key: PERMISSIONS.TASK_UPDATE, label: "Update tasks" },
+  { key: PERMISSIONS.REPORTS_VIEW, label: "View reports" },
+  { key: PERMISSIONS.USER_LIST, label: "View users" },
 ];
 
 const PermissionMatrix = () => {

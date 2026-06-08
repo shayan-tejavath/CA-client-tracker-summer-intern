@@ -1,5 +1,6 @@
 ﻿import mongoose from "mongoose";
 import Client from "../models/Client.js";
+import { ROLES } from "../middleware/roleMiddleware.js";
 
 const validateClientData = (data) => {
   const requiredFields = [
@@ -67,6 +68,22 @@ export const getClients = async (
     // QUERY OBJECT
 
     const query = {};
+
+    if (req.user?.role === ROLES.Client) {
+      const client = await Client.findOne({ email: req.user.email });
+      if (!client) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      return res.json({
+        clients: [client],
+        pagination: {
+          totalClients: 1,
+          currentPage: 1,
+          totalPages: 1,
+          limit,
+        },
+      });
+    }
 
     // ARCHIVE FILTER
 
@@ -186,6 +203,13 @@ export const getClientById = async (
         .json({
           message: "Client not found",
         });
+    }
+
+    if (req.user?.role === ROLES.Client) {
+      const currentClient = await Client.findOne({ email: req.user.email });
+      if (!currentClient || currentClient._id.toString() !== client._id.toString()) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
     }
 
     res.json(client);
@@ -453,6 +477,47 @@ export const restoreClient = async (
     res.json({
       message:
         "Client restored successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE CLIENT
+
+export const deleteClient = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { id } = req.params;
+
+    if (
+      !mongoose.Types.ObjectId.isValid(id)
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: "Invalid client ID",
+        });
+    }
+
+    const client = await Client.findById(id);
+
+    if (!client) {
+      return res
+        .status(404)
+        .json({
+          message: "Client not found",
+        });
+    }
+
+    await client.deleteOne();
+
+    res.json({
+      message:
+        "Client deleted successfully",
     });
   } catch (error) {
     next(error);

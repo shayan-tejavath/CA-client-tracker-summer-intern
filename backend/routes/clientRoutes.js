@@ -7,6 +7,7 @@ import {
   updateClient,
   archiveClient,
   restoreClient,
+  deleteClient,
 } from "../controllers/clientController.js";
 
 import protect from "../middleware/authMiddleware.js";
@@ -28,7 +29,8 @@ router.get(
   authorizeRoles(
     ROLES.SuperAdmin,
     ROLES.Partner,
-    ROLES.Manager
+    ROLES.Manager,
+    ROLES.Client
   ),
   getClients
 );
@@ -55,7 +57,8 @@ router.get(
   authorizeRoles(
     ROLES.SuperAdmin,
     ROLES.Partner,
-    ROLES.Manager
+    ROLES.Manager,
+    ROLES.Client
   ),
   getClientById
 );
@@ -97,6 +100,17 @@ router.patch(
     ROLES.Partner
   ),
   restoreClient
+);
+
+// DELETE CLIENT
+
+router.delete(
+  "/:id",
+  authorizeRoles(
+    ROLES.SuperAdmin,
+    ROLES.Partner
+  ),
+  deleteClient
 );
 
 export default router;

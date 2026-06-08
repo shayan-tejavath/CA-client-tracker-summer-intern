@@ -42,6 +42,15 @@ api.interceptors.response.use(
     }
     if (error.response?.status === 403) {
       console.error("[API] 403 Forbidden:", error.response.data);
+      if (
+        typeof error.response.data?.message === "string" &&
+        error.response.data.message
+          .toLowerCase()
+          .includes("archived")
+      ) {
+        window.localStorage.removeItem("ca_user");
+        window.location.assign("/login");
+      }
     }
     return Promise.reject(error);
   }

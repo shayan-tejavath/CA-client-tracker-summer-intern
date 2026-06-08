@@ -11,7 +11,7 @@ export const getClients = async ({
   includeArchived = false,
   page = 1,
   limit = 10,
-}) => {
+} = {}) => {
   const response = await api.get(
     `/clients`,
     {

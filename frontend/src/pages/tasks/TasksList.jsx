@@ -86,11 +86,13 @@ const TasksList = () => {
           getClients(),
           getEmployees(),
         ]);
-        setTasks(taskData);
-        setClients(clientData);
-        setEmployees(employeeData);
+
+        setTasks(Array.isArray(taskData) ? taskData : []);
+        setClients(Array.isArray(clientData) ? clientData : clientData?.clients || []);
+        setEmployees(Array.isArray(employeeData) ? employeeData : []);
       } catch (err) {
-        setError(err.response?.data?.message || "Unable to load tasks.");
+        console.error("[TasksList] loadData failed", err);
+        setError(err.response?.data?.message || err.message || "Unable to load tasks.");
       } finally {
         setLoading(false);
       }

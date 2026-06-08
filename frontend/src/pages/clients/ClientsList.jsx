@@ -50,9 +50,6 @@ const ClientsList = () => {
   const [typeFilter, setTypeFilter] =
     useState("All");
 
-  const [showArchived, setShowArchived] =
-    useState(false);
-
   // PAGINATION
 
   const [page, setPage] = useState(1);
@@ -79,8 +76,6 @@ const ClientsList = () => {
           search,
           status: statusFilter,
           type: typeFilter,
-          includeArchived:
-            showArchived,
           page,
           limit,
         });
@@ -103,7 +98,6 @@ const ClientsList = () => {
     search,
     statusFilter,
     typeFilter,
-    showArchived,
     page,
     limit,
   ]);
@@ -127,11 +121,6 @@ const ClientsList = () => {
     (client) =>
       client.status === "Inactive"
   ).length;
-
-  const archivedClients =
-    clients.filter(
-      (client) => client.isArchived
-    ).length;
 
   // ARCHIVE
 
@@ -311,12 +300,6 @@ const ClientsList = () => {
 
             <p>Inactive</p>
           </div>
-
-          <div className="client-stat-card archived">
-            <h2>{archivedClients}</h2>
-
-            <p>Archived</p>
-          </div>
         </div>
 
         {/* FILTERS */}
@@ -423,29 +406,6 @@ const ClientsList = () => {
           </select>
         </div>
 
-        {/* ARCHIVE TOGGLE */}
-
-        <div className="archive-toggle-row">
-          <label className="archive-toggle">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={() => {
-                setShowArchived(
-                  (current) =>
-                    !current
-                );
-
-                setPage(1);
-              }}
-            />
-
-            <span>
-              Show Archived Clients
-            </span>
-          </label>
-        </div>
-
         {/* TABLE */}
 
         {loading ? (
@@ -473,8 +433,6 @@ const ClientsList = () => {
                     <th>Mobile</th>
 
                     <th>Services</th>
-
-                    <th>Archive</th>
 
                     <th>
                       Actions
@@ -576,18 +534,6 @@ const ClientsList = () => {
                                 )
                               )}
                             </div>
-                          </td>
-
-                          <td>
-                            {client.isArchived ? (
-                              <span className="archived-badge">
-                                Archived
-                              </span>
-                            ) : (
-                              <span className="active-badge">
-                                Active
-                              </span>
-                            )}
                           </td>
 
                           <td className="actions-cell">

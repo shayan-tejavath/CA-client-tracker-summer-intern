@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
+import { usePermission } from "../../hooks/usePermission.js";
 import { getClientById } from "../../services/clientService.js";
 
 const ClientDetails = () => {
@@ -9,6 +10,7 @@ const ClientDetails = () => {
 
   const navigate = useNavigate();
 
+  const { hasRole } = usePermission();
   const [client, setClient] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -91,12 +93,14 @@ const ClientDetails = () => {
           </div>
 
           <div className="page-tools">
-            <Link
-              className="button primary"
-              to={`/dashboard/clients/${clientId}/edit`}
-            >
-              Edit Client
-            </Link>
+            {hasRole(["SuperAdmin", "Partner"]) && (
+              <Link
+                className="button primary"
+                to={`/dashboard/clients/${clientId}/edit`}
+              >
+                Edit Client
+              </Link>
+            )}
 
             <button
               type="button"
