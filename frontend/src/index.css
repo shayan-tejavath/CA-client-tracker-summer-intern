@@ -2680,3 +2680,66 @@ textarea::placeholder {
     flex-direction: column;
   }
 }
+html {
+  scroll-behavior: smooth;
+}
+
+.page-content {
+  overflow-x: hidden;
+}
+
+.chart-svg {
+  overflow: visible;
+}
+
+.btn,
+.button {
+  transition: all 0.2s ease;
+}
+
+.btn:hover,
+.button:hover {
+  transform: translateY(-2px);
+}
+
+.overview-card,
+.chart-card,
+.page-card {
+  transition: all 0.25s ease;
+}
+
+.overview-card:hover,
+.chart-card:hover {
+  transform: translateY(-4px);
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.data-table td,
+.data-table th {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .dashboard-intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .intro-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .intro-actions button {
+    flex: 1;
+  }
+
+  .status-donut {
+    width: 180px;
+    height: 180px;
+  }
+}
+

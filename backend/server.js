@@ -14,6 +14,7 @@ import documentRoutes from "./routes/documentRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import { initializeTaskReminderScheduler } from "./services/taskReminderScheduler.js";
 
 dotenv.config();
@@ -32,7 +33,7 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/admin", adminRoutes);
-
+app.use("/api/reports", reportRoutes);
 app.use(errorMiddleware);
 
 initializeTaskReminderScheduler();

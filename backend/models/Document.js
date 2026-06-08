@@ -10,8 +10,8 @@ const documentSchema = new mongoose.Schema(
 
     originalFileName: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
     },
 
     filePath: {
@@ -22,6 +22,7 @@ const documentSchema = new mongoose.Schema(
 
     fileType: {
       type: String,
+      trim: true,
       default: "",
     },
 
@@ -33,15 +34,14 @@ const documentSchema = new mongoose.Schema(
     category: {
       type: String,
       enum: [
+        "PAN",
         "GST",
-        "Income Tax",
-        "TDS",
         "Invoice",
-        "Bank Statement",
+        "Agreement",
+        "Tax Filing",
         "Audit",
-        "Payroll",
-        "ROC",
-        "Legal",
+        "Compliance",
+        "Bank Statement",
         "Other",
       ],
       default: "Other",
@@ -79,8 +79,8 @@ const documentSchema = new mongoose.Schema(
 
     description: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
     },
 
     tags: {
@@ -91,16 +91,6 @@ const documentSchema = new mongoose.Schema(
     isArchived: {
       type: Boolean,
       default: false,
-    },
-
-    isConfidential: {
-      type: Boolean,
-      default: false,
-    },
-
-    expiryDate: {
-      type: Date,
-      default: null,
     },
   },
   {
