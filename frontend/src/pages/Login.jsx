@@ -80,7 +80,13 @@ const Login = () => {
         );
       }
 
-      navigate(from, { replace: true });
+      const redirectPath =
+        userData.role === "Client" &&
+        (from === "/dashboard" || from === "/")
+          ? "/dashboard"
+          : from;
+
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       const errorMessage =
         err.response?.data?.message ||

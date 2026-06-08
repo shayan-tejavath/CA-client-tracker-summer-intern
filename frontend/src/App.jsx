@@ -4,6 +4,7 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate,
 } from "react-router-dom";
 
 import {
@@ -12,6 +13,7 @@ import {
 
 import {
   AuthProvider,
+  useAuth,
 } from "./context/AuthContext.jsx";
 
 
@@ -27,6 +29,7 @@ import Login from "./pages/Login.jsx";
 // DASHBOARD
 
 import Dashboard from "./pages/Dashboard.jsx";
+import ClientDashboard from "./pages/dashboard/ClientDashboard.jsx";
 
 
 
@@ -94,6 +97,16 @@ import "react-toastify/dist/ReactToastify.css";
 
 
 
+const DashboardRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (user?.role === "Client") {
+    return <ClientDashboard />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -132,9 +145,12 @@ function App() {
                   "Partner",
                   "Manager",
                   "Employee",
+                  "Client",
                 ]}
               >
-                <Dashboard />
+                <DashboardRoute>
+                  <Dashboard />
+                </DashboardRoute>
               </ProtectedRoute>
             }
           />
@@ -220,6 +236,7 @@ function App() {
                   "Partner",
                   "Manager",
                   "Employee",
+                  "Client",
                 ]}
               >
                 <ServicesList />
