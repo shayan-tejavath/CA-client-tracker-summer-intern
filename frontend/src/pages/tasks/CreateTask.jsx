@@ -37,10 +37,12 @@ const CreateTask = () => {
           getEmployees(),
           getServices(),
         ]);
-        setClients(clientData);
-        setEmployees(employeeData);
-        setServices(serviceData);
+        console.log("[CreateTask] Loaded data:", { clientData, employeeData, serviceData });
+        setClients(clientData || []);
+        setEmployees(employeeData || []);
+        setServices(serviceData || []);
       } catch (err) {
+        console.error("[CreateTask] Error loading resources:", err);
         setError(err.response?.data?.message || "Unable to load resources.");
       } finally {
         setLoading(false);

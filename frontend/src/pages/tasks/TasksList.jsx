@@ -10,7 +10,6 @@ import {
   HiOutlineExclamationCircle,
 } from "react-icons/hi";
 import { deleteTask, getTasks } from "../../services/taskService.js";
-import { getClients } from "../../services/clientService.js";
 import { getEmployees } from "../../services/employeeService.js";
 
 const statusOptions = ["Pending", "In Progress", "Completed", "Overdue"];
@@ -81,14 +80,23 @@ const TasksList = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [taskData, clientData, employeeData] = await Promise.all([
+        const [taskData, employeeData] = await Promise.all([
           getTasks(),
-          getClients(),
           getEmployees(),
         ]);
         setTasks(taskData);
-        setClients(clientData);
         setEmployees(employeeData);
+        
+        // Extract unique clients from tasks
+        const clientsMap = new Map();
+        taskData.forEach((task) => {
+          if (task.client && task.client._id) {
+            if (!clientsMap.has(task.client._id)) {
+              clientsMap.set(task.client._id, task.client);
+            }
+          }
+        });
+        setClients(Array.from(clientsMap.values()));
       } catch (err) {
         setError(err.response?.data?.message || "Unable to load tasks.");
       } finally {
