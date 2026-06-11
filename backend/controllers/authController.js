@@ -77,6 +77,16 @@ export const register = async (
       });
     }
 
+    if (
+      internalRoles.includes(role) &&
+      req.get("x-internal-registration-secret") !==
+        process.env.INTERNAL_REGISTRATION_SECRET
+    ) {
+      return res.status(403).json({
+        message: "Internal user registration is not allowed.",
+      });
+    }
+
     // Validate official email for internal roles
     if (
       internalRoles.includes(role) &&

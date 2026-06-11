@@ -17,9 +17,37 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const originVerifySecret = process.env.ORIGIN_VERIFY_SECRET;
+
+if (originVerifySecret) {
+  app.use((req, res, next) => {
+    if (req.get("x-origin-verify") !== originVerifySecret) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    return next();
+  });
+}
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Origin is not allowed by CORS"));
+    },
+  })
+);
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/clients", clientRoutes);

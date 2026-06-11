@@ -25,3 +25,4 @@ uploads/*
 !uploads/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
+deploy/backend-secrets.json

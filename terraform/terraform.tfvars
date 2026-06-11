@@ -1,0 +1,15 @@
+aws_region = "us-east-1"
+project_name = "ca-client-tracker"
+environment = "prod"
+vpc_cidr = "10.0.0.0/16"
+public_subnet_cidrs = ["10.0.1.0/24","10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.11.0/24","10.0.12.0/24"]
+db_name = "ca_db"
+db_username = "ca_admin"
+db_password = "de7ffef06e0546e3af95b811"
+backend_image = "413790912954.dkr.ecr.us-east-1.amazonaws.com/ca-backend:latest"
+frontend_build = false
+allowed_cidrs = ["0.0.0.0/0"]
+alert_email = ""
+terraform_state_bucket = ""
+terraform_lock_table = ""
