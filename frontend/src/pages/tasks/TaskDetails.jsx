@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
-import { getTaskById } from "../../services/taskService.js";
+import { getTaskById, postTaskComment } from "../../services/taskService.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const TaskDetails = () => {
   const { taskId } = useParams();
@@ -9,6 +10,9 @@ const TaskDetails = () => {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadTask = async () => {
@@ -24,6 +28,23 @@ const TaskDetails = () => {
 
     loadTask();
   }, [taskId]);
+
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    setSubmitting(true);
+    try {
+      await postTaskComment(taskId, { text: commentText.trim() });
+      const refreshed = await getTaskById(taskId);
+      setTask(refreshed);
+      setCommentText("");
+    } catch (err) {
+      // keep it simple: set error
+      setError(err.response?.data?.message || "Unable to post comment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -52,6 +73,7 @@ const TaskDetails = () => {
         ) : error ? (
           <div className="alert danger">{error}</div>
         ) : (
+          <>
           <div className="client-details-grid">
             <div className="detail-card wide-card">
               <p className="detail-label">Title</p>
@@ -82,6 +104,31 @@ const TaskDetails = () => {
               <p>{task.description || "No additional description provided."}</p>
             </div>
           </div>
+          <div className="detail-card wide-card">
+            <p className="detail-label">Comments</p>
+            <div className="comments-list">
+              {task.comments && task.comments.length === 0 && <p>No comments yet.</p>}
+              {task.comments && task.comments.map((c) => (
+                <div key={c._id} className="comment-item">
+                  <p className="comment-meta"><strong>{c.author?.name || c.author?.email || 'User'}</strong> — <span className="muted">{new Date(c.createdAt).toLocaleString()}</span></p>
+                  <p className="comment-text">{c.text}</p>
+                </div>
+              ))}
+
+              <form onSubmit={handleCommentSubmit} className="form-stack">
+                <label>
+                  Add comment
+                  <textarea name="comment" rows="3" value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Write a comment" />
+                </label>
+                <div className="form-actions">
+                  <button type="submit" className="button primary" disabled={submitting || !commentText.trim()}>
+                    {submitting ? 'Posting...' : 'Post comment'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+          </>
         )}
 
         {!loading && !error && (

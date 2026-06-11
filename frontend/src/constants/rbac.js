@@ -221,7 +221,7 @@ export const SIDEBAR_MENU = [
     name: "Dashboard",
     path: "/dashboard",
     icon: "dashboard",
-    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE],
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CLIENT],
     requiredPermission: PERMISSIONS.DASHBOARD_VIEW,
   },
   {
@@ -230,6 +230,13 @@ export const SIDEBAR_MENU = [
     icon: "clients",
     requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER],
     requiredPermission: PERMISSIONS.CLIENT_LIST,
+  },
+  {
+    name: "Services",
+    path: "/dashboard/services",
+    icon: "services",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CLIENT],
+    requiredPermission: PERMISSIONS.SERVICE_LIST,
   },
   {
     name: "Tasks",

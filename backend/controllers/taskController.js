@@ -1,5 +1,6 @@
 ﻿import mongoose from "mongoose";
 import Task from "../models/Task.js";
+import Client from "../models/Client.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
 
 const allowedStatuses = ["Pending", "In Progress", "Completed", "Overdue"];
@@ -73,6 +74,14 @@ export const getTasks = async (req, res, next) => {
       query.assignedTo = req.user._id;
     }
 
+    if (req.user?.role === ROLES.Client) {
+      const client = await Client.findOne({ email: req.user.email });
+      if (!client) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      query.client = client._id;
+    }
+
     const tasks = await taskPopulate(Task.find(query).sort({ dueDate: 1, priority: -1 }));
     res.json(tasks);
   } catch (error) {
@@ -94,6 +103,13 @@ export const getTaskById = async (req, res, next) => {
 
     if (req.user?.role === ROLES.Employee && task.assignedTo?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (req.user?.role === ROLES.Client) {
+      const client = await Client.findOne({ email: req.user.email });
+      if (!client || task.client?.toString() !== client._id.toString()) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
     }
 
     res.json(task);
@@ -138,6 +154,10 @@ export const updateTask = async (req, res, next) => {
     const task = await Task.findById(id);
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (req.user?.role === ROLES.Client) {
+      return res.status(403).json({ message: "Forbidden" });
     }
 
     if (req.user?.role === ROLES.Employee) {
@@ -191,6 +211,46 @@ export const deleteTask = async (req, res, next) => {
 
     await task.deleteOne();
     res.json({ message: "Task deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (!text || String(text).trim() === "") {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const task = await Task.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (req.user?.role === ROLES.Employee && task.assignedTo?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (req.user?.role === ROLES.Client) {
+      const client = await Client.findOne({ email: req.user.email });
+      if (!client || task.client?.toString() !== client._id.toString()) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
+
+    const comment = { author: req.user._id, text: String(text).trim() };
+    task.comments.push(comment);
+    await task.save();
+
+    const populated = await taskPopulate(Task.findById(task._id));
+    res.status(201).json(populated);
   } catch (error) {
     next(error);
   }

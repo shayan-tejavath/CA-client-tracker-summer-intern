@@ -6,6 +6,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Permission from "../models/Permission.js";
+import { ROLES } from "../constants/rbac.js";
 
 const getTokenFromHeader = (req) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
