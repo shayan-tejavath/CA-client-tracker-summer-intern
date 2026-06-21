@@ -32,7 +32,7 @@ import {
   deleteAdminUser,
 } from "../../services/adminService.js";
 
-import "../../styles/adminPanel.css";
+import "../../styles/adminpanel.css";
 
 const roles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
 
