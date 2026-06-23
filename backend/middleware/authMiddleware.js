@@ -1,5 +1,7 @@
 ﻿import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Client from "../models/Client.js";
+import { ROLES } from "./roleMiddleware.js";
 
 const protect = async (req, res, next) => {
   let token;
@@ -26,6 +28,13 @@ const protect = async (req, res, next) => {
     if (!user) {
       console.error("[AUTH] User not found for ID:", decoded.id);
       return res.status(401).json({ message: "Not authorized - user not found" });
+    }
+
+    if (user.role === ROLES.Client) {
+      const client = await Client.findOne({ email: user.email });
+      if (!client || client.isArchived) {
+        return res.status(403).json({ message: "Client access denied. Client account is archived." });
+      }
     }
 
     req.user = user;

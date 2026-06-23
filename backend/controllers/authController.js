@@ -1,5 +1,6 @@
 ﻿import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+import Client from "../models/Client.js";
 import Permission from "../models/Permission.js";
 import { getPermissionsForRole } from "../constants/rbac.js";
 import generateToken from "../utils/generateToken.js";
@@ -74,6 +75,16 @@ export const register = async (
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         message: "Invalid role provided",
+      });
+    }
+
+    if (
+      internalRoles.includes(role) &&
+      req.get("x-internal-registration-secret") !==
+        process.env.INTERNAL_REGISTRATION_SECRET
+    ) {
+      return res.status(403).json({
+        message: "Internal user registration is not allowed.",
       });
     }
 
@@ -162,6 +173,16 @@ export const login = async (
       });
     }
 
+    // Block archived clients from signing in
+    if (user.role === "Client") {
+      const client = await Client.findOne({ email: user.email });
+      if (!client || client.isArchived) {
+        return res.status(403).json({
+          message: "Client access denied. Client account is archived.",
+        });
+      }
+    }
+
     // Compare password
     const passwordMatch =
       await bcrypt.compare(
@@ -207,6 +228,15 @@ export const getProfile = async (
       return res.status(401).json({
         message: "Not authorized",
       });
+    }
+
+    if (req.user.role === "Client") {
+      const client = await Client.findOne({ email: req.user.email });
+      if (!client || client.isArchived) {
+        return res.status(403).json({
+          message: "Client access denied. Client account is archived.",
+        });
+      }
     }
 
     const permissions =

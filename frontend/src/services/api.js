@@ -1,10 +1,10 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL:
+    import.meta.env.DEV
+      ? "/api"
+      : import.meta.env.VITE_API_BASE_URL || "/api",
 });
 
 api.interceptors.request.use((config) => {
@@ -42,6 +42,15 @@ api.interceptors.response.use(
     }
     if (error.response?.status === 403) {
       console.error("[API] 403 Forbidden:", error.response.data);
+      if (
+        typeof error.response.data?.message === "string" &&
+        error.response.data.message
+          .toLowerCase()
+          .includes("archived")
+      ) {
+        window.localStorage.removeItem("ca_user");
+        window.location.assign("/login");
+      }
     }
     return Promise.reject(error);
   }

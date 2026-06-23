@@ -1,0 +1,158 @@
+name: CI/CD - Build, Push, Terraform
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      auto_apply:
+        description: 'Set to true to automatically apply Terraform after plan'
+        required: false
+        default: 'false'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      backend_image: ${{ steps.set_outputs.outputs.backend_image }}
+      frontend_image: ${{ steps.set_outputs.outputs.frontend_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get AWS Account ID
+        id: account
+        run: echo "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
+
+      - name: ECR Login
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      - name: Create ECR repos (safe)
+        run: |
+          aws ecr create-repository --repository-name ca-backend || true
+          aws ecr create-repository --repository-name ca-frontend || true
+
+      - name: Build and push backend image
+        id: backend_build
+        run: |
+          BACKEND_IMAGE=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/ca-backend:${GITHUB_SHA::8}
+          docker build -t ca-backend ./backend
+          docker tag ca-backend:latest $BACKEND_IMAGE
+          docker push $BACKEND_IMAGE
+          echo "backend_image=$BACKEND_IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Build and push frontend image (optional)
+        id: frontend_build
+        run: |
+          FRONTEND_IMAGE=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/ca-frontend:${GITHUB_SHA::8}
+          if [ -f frontend/Dockerfile ]; then
+            docker build -t ca-frontend ./frontend
+            docker tag ca-frontend:latest $FRONTEND_IMAGE
+            docker push $FRONTEND_IMAGE
+            echo "frontend_image=$FRONTEND_IMAGE" >> $GITHUB_OUTPUT
+          else
+            echo "frontend_image=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: set_outputs
+        id: set_outputs
+        run: |
+          echo "backend_image=${{ steps.backend_build.outputs.backend_image }}" >> $GITHUB_OUTPUT || true
+          echo "frontend_image=${{ steps.frontend_build.outputs.frontend_image }}" >> $GITHUB_OUTPUT || true
+
+  terraform:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.5.0'
+
+      - name: Set TF vars from build
+        run: |
+          echo "TF_VAR_backend_image=${{ needs.build-and-push.outputs.backend_image }}" >> $GITHUB_ENV
+          echo "TF_VAR_frontend_image=${{ needs.build-and-push.outputs.frontend_image }}" >> $GITHUB_ENV
+          echo "TF_VAR_db_password=${{ secrets.DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "TF_VAR_alert_email=${{ secrets.ALERT_EMAIL }}" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -out=tfplan -input=false
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan
+
+      - name: Terraform Apply (manual / optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.auto_apply == 'true' }}
+        working-directory: terraform
+        run: terraform apply -input=false -auto-approve tfplan
+
+  terraform-apply:
+    needs: terraform
+    runs-on: ubuntu-latest
+    # This job will be gated by GitHub Environment protection (approvals)
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.5.0'
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ./
+
+      - name: Locate plan file
+        id: findplan
+        run: |
+          PLANFILE=$(find . -name tfplan -print -quit)
+          if [ -z "$PLANFILE" ]; then echo "Plan file not found"; exit 1; fi
+          echo "PLANFILE=$PLANFILE" >> $GITHUB_ENV
+
+      - name: Terraform Apply (requires environment approval)
+        working-directory: terraform
+        run: terraform apply -input=false -auto-approve ${{ env.PLANFILE }}

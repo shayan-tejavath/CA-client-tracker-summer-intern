@@ -2,10 +2,17 @@
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const mongoUri = process.env.MONGODB_URI;
+    console.log("URI:", mongoUri);
+
+    if (!mongoUri) {
+      throw new Error(
+        "Missing required environment variable MONGODB_URI. Create backend/.env from backend/.env.example and restart."
+      );
+    }
+
+    const conn = await mongoose.connect(mongoUri);
+
     console.log(`MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(error);
@@ -14,4 +21,3 @@ const connectDB = async () => {
 };
 
 export default connectDB;
-

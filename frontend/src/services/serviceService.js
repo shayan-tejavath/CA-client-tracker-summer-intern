@@ -4,8 +4,6 @@ export const getServices = async () => {
   const response = await api.get("/services");
   return response.data;
 };
-<<<<<<< Updated upstream
-=======
 
 export const getServiceById = async (serviceId) => {
   const response = await api.get(`/services/${serviceId}`);
@@ -75,4 +73,3 @@ export const bulkRemoveClientsFromService = async (serviceId, assignmentIds) => 
   });
   return response.data;
 };
->>>>>>> Stashed changes
