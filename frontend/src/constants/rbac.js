@@ -267,6 +267,20 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.ADMIN_PANEL_ACCESS,
   },
   {
+    name: "Users",
+    path: "/dashboard/users",
+    icon: "users",
+    requiredRoles: [ROLES.SUPER_ADMIN],
+    requiredPermission: PERMISSIONS.USER_LIST,
+  },
+  {
+    name: "User Roles",
+    path: "/dashboard/user-roles",
+    icon: "userRoles",
+    requiredRoles: [ROLES.SUPER_ADMIN],
+    requiredPermission: PERMISSIONS.ADMIN_SETTINGS,
+  },
+  {
     name: "Permissions",
     path: "/dashboard/permissions",
     icon: "admin",

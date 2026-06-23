@@ -162,6 +162,12 @@ export const login = async (
       });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({
+        message: "Your account is inactive. Please contact the administrator.",
+      });
+    }
+
     // Official email validation for internal roles
     if (
       internalRoles.includes(user.role) &&
@@ -227,6 +233,12 @@ export const getProfile = async (
     if (!req.user) {
       return res.status(401).json({
         message: "Not authorized",
+      });
+    }
+
+    if (req.user.isActive === false) {
+      return res.status(403).json({
+        message: "Your account is inactive. Please contact the administrator.",
       });
     }
 
