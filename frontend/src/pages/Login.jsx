@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { 
-  ShieldCheck, 
-  Briefcase, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2 
+import {
+  ShieldCheck,
+  Briefcase,
+  CheckCircle2,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import "../styles/login.css";
 
@@ -184,7 +184,7 @@ const Login = () => {
             )}
 
             <form onSubmit={handleSubmit} className="login-form" noValidate>
-              
+
               {/* Email Input */}
               <div className="login-group">
                 <label htmlFor="email" className="login-label">
@@ -249,9 +249,9 @@ const Login = () => {
               </div>
 
               {/* Submit Button */}
-              <button 
-                type="submit" 
-                className="login-button mt-1 flex items-center justify-center gap-2 w-100" 
+              <button
+                type="submit"
+                className="login-button mt-1 flex items-center justify-center gap-2 w-100"
                 disabled={loading}
               >
                 {loading ? (

@@ -33,9 +33,139 @@ const clientSchema = new mongoose.Schema(
       ],
     },
 
+    profileImage: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    clientCode: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    alternateMobile: {
+      type: String,
+      trim: true,
+      match: [
+        /^[0-9]{10,15}$/,
+        "Alternate mobile must contain 10 to 15 digits",
+      ],
+      default: "",
+    },
+
+    alternateEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      match: [/.+@.+\..+/, "Alternate email must be a valid address"],
+      default: "",
+    },
+
     address: {
       type: String,
       trim: true,
+    },
+
+    addressLine1: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    addressLine2: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    city: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    state: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    pincode: {
+      type: String,
+      trim: true,
+      default: "",
+      match: [/[0-9]{4,10}/, "Pincode must contain 4 to 10 digits"],
+    },
+
+    country: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    contactPerson: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    designation: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    contactPersonEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      match: [/.+@.+\..+/, "Contact person email must be a valid address"],
+      default: "",
+    },
+
+    contactPersonMobile: {
+      type: String,
+      trim: true,
+      match: [/[0-9]{10,15}/, "Contact person mobile must contain 10 to 15 digits"],
+      default: "",
+    },
+
+    dob: {
+      type: Date,
+      default: null,
+    },
+
+    cin: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "",
+    },
+
+    msme: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "",
+    },
+
+    industryType: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    annualTurnover: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    businessStartDate: {
+      type: Date,
+      default: null,
     },
 
     // BUSINESS IDENTIFIERS
@@ -102,6 +232,36 @@ const clientSchema = new mongoose.Schema(
     assignedServices: {
       type: [String],
       default: [],
+    },
+
+    services: {
+      type: [String],
+      default: [],
+    },
+
+    tags: {
+      type: [String],
+      default: [],
+    },
+
+    allowLogin: {
+      type: Boolean,
+      default: false,
+    },
+
+    notificationPreferences: {
+      email: {
+        type: Boolean,
+        default: true,
+      },
+      sms: {
+        type: Boolean,
+        default: false,
+      },
+      push: {
+        type: Boolean,
+        default: false,
+      },
     },
 
     // TEMPORARY STRING APPROACH

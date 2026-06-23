@@ -43,6 +43,8 @@ import EditClient from "./pages/clients/EditClient.jsx";
 
 import ClientDetails from "./pages/clients/ClientDetails.jsx";
 
+import ClientDocuments from "./pages/clients/ClientDocuments.jsx";
+
 
 
 // SERVICES
@@ -52,6 +54,7 @@ import ServicesList from "./pages/services/ServicesList.jsx";
 import AddService from "./pages/services/AddService.jsx";
 
 import EditService from "./pages/services/EditService.jsx";
+import ServiceDetails from "./pages/services/ServiceDetails.jsx";
 
 
 
@@ -231,6 +234,23 @@ function App() {
             }
           />
 
+          <Route
+            path="/dashboard/clients/:clientId/documents"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                  "Client",
+                ]}
+              >
+                <ClientDocuments />
+              </ProtectedRoute>
+            }
+          />
+
 
 
           {/* SERVICES */}
@@ -280,6 +300,22 @@ function App() {
                 ]}
               >
                 <EditService />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/services/:id"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+              >
+                <ServiceDetails />
               </ProtectedRoute>
             }
           />

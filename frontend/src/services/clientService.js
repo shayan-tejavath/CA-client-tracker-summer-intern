@@ -46,12 +46,20 @@ export const getClientById = async (
 
 // CREATE CLIENT
 
+const isFormData = (data) =>
+  data && typeof data.append === "function";
+
 export const createClient = async (
   clientData
 ) => {
+  const config = isFormData(clientData)
+    ? undefined
+    : { headers: { "Content-Type": "application/json" } };
+
   const response = await api.post(
     "/clients",
-    clientData
+    clientData,
+    config
   );
 
   return response.data;
@@ -65,9 +73,29 @@ export const updateClient = async (
   clientId,
   clientData
 ) => {
+  const config = isFormData(clientData)
+    ? undefined
+    : { headers: { "Content-Type": "application/json" } };
+
   const response = await api.put(
     `/clients/${clientId}`,
-    clientData
+    clientData,
+    config
+  );
+
+  return response.data;
+};
+
+export const updateClientPhoto = async (
+  clientId,
+  profileImageFile
+) => {
+  const formData = new FormData();
+  formData.append("profileImage", profileImageFile, profileImageFile.name);
+
+  const response = await api.post(
+    `/clients/${clientId}/photo`,
+    formData
   );
 
   return response.data;

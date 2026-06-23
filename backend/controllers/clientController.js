@@ -263,12 +263,12 @@ export const createClient = async (
 
     const client = await Client.create({
       ...req.body,
-
+      profileImage: req.file
+        ? `/uploads/${req.file.filename}`
+        : req.body.profileImage || "",
       pan: req.body.pan.toUpperCase(),
-
       gstin:
         req.body.gstin.toUpperCase(),
-
       tan: req.body.tan?.toUpperCase(),
     });
 
@@ -364,15 +364,15 @@ export const updateClient = async (
         id,
         {
           ...req.body,
-
+          profileImage: req.file
+            ? `/uploads/${req.file.filename}`
+            : req.body.profileImage || client.profileImage,
           pan:
             req.body.pan?.toUpperCase() ??
             client.pan,
-
           gstin:
             req.body.gstin?.toUpperCase() ??
             client.gstin,
-
           tan:
             req.body.tan?.toUpperCase() ??
             client.tan,
@@ -384,6 +384,45 @@ export const updateClient = async (
       );
 
     res.json(updatedClient);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// UPDATE CLIENT PROFILE IMAGE
+
+export const updateClientProfileImage = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
+    }
+
+    const client = await Client.findById(id);
+
+    if (!client) {
+      return res.status(404).json({
+        message: "Client not found",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Profile image file is required",
+      });
+    }
+
+    client.profileImage = `/uploads/${req.file.filename}`;
+    await client.save();
+
+    res.json(client);
   } catch (error) {
     next(error);
   }

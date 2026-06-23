@@ -2,9 +2,16 @@
 
 const connectDB = async () => {
   try {
-    console.log("URI:", process.env.MONGODB_URI);
+    const mongoUri = process.env.MONGODB_URI;
+    console.log("URI:", mongoUri);
 
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    if (!mongoUri) {
+      throw new Error(
+        "Missing required environment variable MONGODB_URI. Create backend/.env from backend/.env.example and restart."
+      );
+    }
+
+    const conn = await mongoose.connect(mongoUri);
 
     console.log(`MongoDB connected: ${conn.connection.host}`);
   } catch (error) {

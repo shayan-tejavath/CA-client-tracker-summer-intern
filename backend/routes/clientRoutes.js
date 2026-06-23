@@ -5,12 +5,14 @@ import {
   getClientById,
   createClient,
   updateClient,
+  updateClientProfileImage,
   archiveClient,
   restoreClient,
   deleteClient,
 } from "../controllers/clientController.js";
 
 import protect from "../middleware/authMiddleware.js";
+import upload from "../middleware/uploadMiddleware.js";
 
 import authorizeRoles, {
   ROLES,
@@ -45,6 +47,7 @@ router.post(
     ROLES.SuperAdmin,
     ROLES.Partner
   ),
+  upload.single("profileImage"),
   createClient
 );
 
@@ -73,7 +76,20 @@ router.put(
     ROLES.SuperAdmin,
     ROLES.Partner
   ),
+  upload.single("profileImage"),
   updateClient
+);
+
+// UPDATE CLIENT PROFILE IMAGE
+
+router.post(
+  "/:id/photo",
+  authorizeRoles(
+    ROLES.SuperAdmin,
+    ROLES.Partner
+  ),
+  upload.single("profileImage"),
+  updateClientProfileImage
 );
 
 

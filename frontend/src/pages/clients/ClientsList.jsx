@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { toast } from "react-toastify";
 
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -14,33 +17,56 @@ import {
   archiveClient,
   restoreClient,
 } from "../../services/clientService.js";
-
 import "../../styles/clients-list.css";
 
 const ClientsList = () => {
   const navigate = useNavigate();
+
   const { user } = useAuth();
 
-  const canCreateClient = ["SuperAdmin", "Partner"].includes(user?.role);
+  const canCreateClient = [
+    "SuperAdmin",
+    "Partner",
+  ].includes(user?.role);
+
   const canEditClient = canCreateClient;
 
+  // DATA
+
   const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  const [loading, setLoading] =
+    useState(true);
+
   const [error, setError] = useState("");
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [typeFilter, setTypeFilter] = useState("All");
+  // FILTERS
+
+  const [search, setSearch] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("All");
+
+  const [typeFilter, setTypeFilter] =
+    useState("All");
+
+  // PAGINATION
 
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
 
-  const [pagination, setPagination] = useState({
-    totalClients: 0,
-    currentPage: 1,
-    totalPages: 1,
-    limit: 10,
-  });
+  const [limit, setLimit] =
+    useState(10);
+
+  const [pagination, setPagination] =
+    useState({
+      totalClients: 0,
+      currentPage: 1,
+      totalPages: 1,
+      limit: 10,
+    });
+
+  // LOAD CLIENTS
 
   useEffect(() => {
     const loadClients = async () => {
@@ -56,93 +82,197 @@ const ClientsList = () => {
         });
 
         setClients(data.clients);
+
         setPagination(data.pagination);
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to load clients.");
+        setError(
+          err.response?.data?.message ||
+            "Failed to load clients."
+        );
       } finally {
         setLoading(false);
       }
     };
 
     loadClients();
-  }, [search, statusFilter, typeFilter, page, limit]);
+  }, [
+    search,
+    statusFilter,
+    typeFilter,
+    page,
+    limit,
+  ]);
 
-  const totalClients = pagination.totalClients;
+  // STATS
 
-  const activeClients = clients.filter((client) => client.status === "Active").length;
-  const pendingClients = clients.filter((client) => client.status === "Pending").length;
-  const inactiveClients = clients.filter((client) => client.status === "Inactive").length;
+  const totalClients =
+    pagination.totalClients;
 
-  const handleArchive = async (clientId) => {
-    const confirmed = window.confirm("Archive this client?");
+  const activeClients = clients.filter(
+    (client) =>
+      client.status === "Active"
+  ).length;
+
+  const pendingClients = clients.filter(
+    (client) =>
+      client.status === "Pending"
+  ).length;
+
+  const inactiveClients = clients.filter(
+    (client) =>
+      client.status === "Inactive"
+  ).length;
+
+  // ARCHIVE
+
+  const handleArchive = async (
+    clientId
+  ) => {
+    const confirmed = window.confirm(
+      "Archive this client?"
+    );
+
     if (!confirmed) return;
 
     try {
       await archiveClient(clientId);
-      toast.success("Client archived successfully.");
+
+      toast.success(
+        "Client archived successfully."
+      );
 
       setClients((current) =>
-        current.filter((client) => client._id !== clientId)
+        current.filter(
+          (client) =>
+            client._id !== clientId
+        )
       );
     } catch (err) {
-      toast.error(err.response?.data?.message || "Unable to archive client.");
+      toast.error(
+        err.response?.data?.message ||
+          "Unable to archive client."
+      );
     }
   };
 
-  const handleRestore = async (clientId) => {
+  // RESTORE
+
+  const handleRestore = async (
+    clientId
+  ) => {
     try {
       await restoreClient(clientId);
-      toast.success("Client restored successfully.");
+
+      toast.success(
+        "Client restored successfully."
+      );
 
       setClients((current) =>
         current.map((client) =>
           client._id === clientId
-            ? { ...client, isArchived: false }
+            ? {
+                ...client,
+                isArchived: false,
+              }
             : client
         )
       );
     } catch (err) {
-      toast.error(err.response?.data?.message || "Unable to restore client.");
+      toast.error(
+        err.response?.data?.message ||
+          "Unable to restore client."
+      );
     }
   };
 
-  const handleDelete = async (clientId) => {
-    const confirmed = window.confirm("Permanently delete this client?");
+  // DELETE
+
+  const handleDelete = async (
+    clientId
+  ) => {
+    const confirmed = window.confirm(
+      "Permanently delete this client?"
+    );
+
     if (!confirmed) return;
 
     try {
       await deleteClient(clientId);
-      toast.success("Client deleted permanently.");
+
+      toast.success(
+        "Client deleted permanently."
+      );
 
       setClients((current) =>
-        current.filter((client) => client._id !== clientId)
+        current.filter(
+          (client) =>
+            client._id !== clientId
+        )
       );
     } catch (err) {
-      toast.error(err.response?.data?.message || "Unable to delete client.");
+      toast.error(
+        err.response?.data?.message ||
+          "Unable to delete client."
+      );
     }
   };
 
-  const getStatusBadgeClass = (status) => {
+  // HELPERS
+
+  const getStatusBadgeClass = (
+    status
+  ) => {
     switch (status) {
       case "Active":
         return "status-badge active";
+
       case "Pending":
         return "status-badge pending";
+
       case "Inactive":
         return "status-badge inactive";
+
       default:
         return "status-badge";
     }
   };
 
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getPendingTaskCount = (client) =>
+    client.pendingTaskCount ?? client.pendingTasks ?? 0;
+
+  const getDocumentCount = (client) =>
+    client.documentCount ?? client.documents?.length ?? 0;
+
   return (
     <DashboardLayout>
-      <div className="page-content clients-page">
-        <section className="page-header clients-page__header">
-          <div className="clients-page__header-copy">
-            <span className="eyebrow">Clients</span>
-            <h1>Client Management</h1>
-            <p>Manage onboarding, compliance, and services.</p>
+      <section className="page-card">
+        {/* HEADER */}
+
+        <div className="page-header">
+          <div>
+            <p className="eyebrow">
+              Clients
+            </p>
+
+            <h1>
+              Client Management
+            </h1>
+
+            <p>
+              Manage onboarding,
+              compliance, and services.
+            </p>
           </div>
 
           {canCreateClient && (
@@ -150,48 +280,58 @@ const ClientsList = () => {
               <button
                 type="button"
                 className="button primary"
-                onClick={() => navigate("/dashboard/clients/add")}
+                onClick={() =>
+                  navigate(
+                    "/dashboard/clients/add"
+                  )
+                }
               >
                 Add Client
               </button>
             </div>
           )}
-        </section>
+        </div>
 
-        <section className="clients-stats-grid">
-          <article className="stat-card">
-            <span className="stat-card__label">Total Clients</span>
-            <strong className="stat-card__value">{totalClients}</strong>
-            <span className="stat-card__meta">All clients in the system</span>
-          </article>
+        {/* STATS */}
 
-          <article className="stat-card stat-card--active">
-            <span className="stat-card__label">Active</span>
-            <strong className="stat-card__value">{activeClients}</strong>
-            <span className="stat-card__meta">Currently engaged clients</span>
-          </article>
+        <div className="client-stats-grid">
+          <div className="client-stat-card">
+            <h2>{totalClients}</h2>
+            <p>Total Clients</p>
+          </div>
 
-          <article className="stat-card stat-card--pending">
-            <span className="stat-card__label">Pending</span>
-            <strong className="stat-card__value">{pendingClients}</strong>
-            <span className="stat-card__meta">Awaiting completion</span>
-          </article>
+          <div className="client-stat-card active">
+            <h2>{activeClients}</h2>
+            <p>Active</p>
+          </div>
 
-          <article className="stat-card stat-card--inactive">
-            <span className="stat-card__label">Inactive</span>
-            <strong className="stat-card__value">{inactiveClients}</strong>
-            <span className="stat-card__meta">Paused or dormant accounts</span>
-          </article>
-        </section>
+          <div className="client-stat-card pending">
+            <h2>{pendingClients}</h2>
+            <p>Pending</p>
+          </div>
 
-        <section className="page-card clients-filters-card">
-          <div className="clients-filters">
-            <div className="field field--search">
-              <label htmlFor="clientSearch">Search</label>
+          <div className="client-stat-card inactive">
+            <h2>{inactiveClients}</h2>
+            <p>Inactive</p>
+          </div>
+        </div>
+
+        <div className="client-overview-panel">
+          <div>
+            <p className="panel-label">New client</p>
+            <h2>Onboard a client in one step</h2>
+            <p>
+              Start client setup with contact details, type, and service assignment from one place.
+            </p>
+          </div>
+        </div>
+
+        <div className="client-filters">
+          <div className="client-filter-panel">
+            <div className="search-panel">
               <input
-                id="clientSearch"
                 type="text"
-                placeholder="Search clients..."
+                placeholder="Search clients by name, email, or code"
                 value={search}
                 onChange={(event) => {
                   setSearch(event.target.value);
@@ -200,10 +340,8 @@ const ClientsList = () => {
               />
             </div>
 
-            <div className="field">
-              <label htmlFor="statusFilter">Status</label>
+            <div className="client-filter-row">
               <select
-                id="statusFilter"
                 value={statusFilter}
                 onChange={(event) => {
                   setStatusFilter(event.target.value);
@@ -215,12 +353,8 @@ const ClientsList = () => {
                 <option value="Pending">Pending</option>
                 <option value="Inactive">Inactive</option>
               </select>
-            </div>
 
-            <div className="field">
-              <label htmlFor="typeFilter">Type</label>
               <select
-                id="typeFilter"
                 value={typeFilter}
                 onChange={(event) => {
                   setTypeFilter(event.target.value);
@@ -233,12 +367,8 @@ const ClientsList = () => {
                 <option value="LLP">LLP</option>
                 <option value="Private Limited">Private Limited</option>
               </select>
-            </div>
 
-            <div className="field">
-              <label htmlFor="pageSize">Page size</label>
               <select
-                id="pageSize"
                 value={limit}
                 onChange={(event) => {
                   setLimit(Number(event.target.value));
@@ -252,35 +382,35 @@ const ClientsList = () => {
               </select>
             </div>
           </div>
-        </section>
+        </div>
+
+        {/* TABLE */}
 
         {loading ? (
-          <div className="page-card clients-state">
-            <div className="clients-spinner" />
-            <h3>Loading clients...</h3>
-            <p>Fetching your latest client records and filters.</p>
+          <div className="alert">
+            Loading clients...
           </div>
         ) : error ? (
-          <div className="alert danger clients-alert">{error}</div>
+          <div className="alert danger">
+            {error}
+          </div>
         ) : (
-          <section className="page-card clients-table-card">
-            <div className="clients-table-top">
-              <div>
-                <h2>Clients</h2>
-                <p>Browse, filter, and manage client accounts.</p>
-              </div>
-            </div>
-
-            <div className="table-responsive clients-table-wrap">
-              <table className="data-table clients-table">
+          <>
+            <div className="table-responsive">
+              <table className="data-table">
                 <thead>
                   <tr>
+                    <th className="client-photo-header">Photo</th>
                     <th>Client</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Manager</th>
+                    <th>Code</th>
                     <th>Mobile</th>
-                    <th>Services</th>
+                    <th>Type</th>
+                    <th>Manager</th>
+                    <th>Tags</th>
+                    <th>Status</th>
+                    <th>Pending Tasks</th>
+                    <th>Documents</th>
+                    <th>Updated</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -288,135 +418,217 @@ const ClientsList = () => {
                 <tbody>
                   {clients.length === 0 ? (
                     <tr>
-                      <td colSpan="7">
-                        <div className="empty-inline">No clients found.</div>
+                      <td colSpan="12">
+                        No clients found.
                       </td>
                     </tr>
                   ) : (
-                    clients.map((client) => (
-                      <tr
-                        key={client._id}
-                        className={client.isArchived ? "archived-row" : ""}
-                      >
-                        <td>
-                          <div className="client-name-cell">
-                            <button
-                              type="button"
-                              className="link-button"
-                              onClick={() =>
-                                navigate(`/dashboard/clients/${client._id}`)
-                              }
-                            >
-                              {client.clientName}
-                            </button>
-                            <span>{client.email}</span>
-                          </div>
-                        </td>
-
-                        <td>{client.clientType || "—"}</td>
-
-                        <td>
-                          <span className={getStatusBadgeClass(client.status)}>
-                            {client.status}
-                          </span>
-                        </td>
-
-                        <td>{client.assignedManager || "—"}</td>
-
-                        <td>{client.mobile || "—"}</td>
-
-                        <td>
-                          <div className="service-tags service-tags--compact">
-                            {client.assignedServices?.slice(0, 2).map((service) => (
-                              <span key={service} className="service-tag">
-                                {service}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td className="actions-cell">
-                          <Link
-                            className="button secondary small"
-                            to={`/dashboard/clients/${client._id}`}
-                          >
-                            View
-                          </Link>
-
-                          {canEditClient && (
-                            <>
-                              {!client.isArchived ? (
-                                <>
-                                  <Link
-                                    className="button secondary small"
-                                    to={`/dashboard/clients/${client._id}/edit`}
-                                  >
-                                    Edit
-                                  </Link>
-
-                                  <button
-                                    type="button"
-                                    className="button warning small"
-                                    onClick={() => handleArchive(client._id)}
-                                  >
-                                    Archive
-                                  </button>
-                                </>
+                    clients.map(
+                      (client) => (
+                        <tr
+                          key={
+                            client._id
+                          }
+                          className={
+                            client.isArchived
+                              ? "archived-row"
+                              : ""
+                          }
+                        >
+                          <td className="client-photo-cell">
+                            <div className="client-avatar">
+                              {client.profileImage ? (
+                                <img
+                                  src={client.profileImage}
+                                  alt={client.clientName}
+                                />
                               ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="button success small"
-                                    onClick={() => handleRestore(client._id)}
-                                  >
-                                    Restore
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="button danger small"
-                                    onClick={() => handleDelete(client._id)}
-                                  >
-                                    Delete
-                                  </button>
-                                </>
+                                <span>
+                                  {client.clientName?.charAt(0) || "C"}
+                                </span>
                               )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="client-name-cell">
+                              <button
+                                type="button"
+                                className="link-button"
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/clients/${client._id}`
+                                  )
+                                }
+                              >
+                                {client.clientName || "—"}
+                              </button>
+                              <p className="client-subtitle">
+                                {client.email || "—"}
+                              </p>
+                            </div>
+                          </td>
+
+                          <td>
+                            {client.clientCode || "—"}
+                          </td>
+
+                          <td>
+                            {client.mobile || "—"}
+                          </td>
+
+                          <td>
+                            {client.clientType || "—"}
+                          </td>
+
+                          <td>
+                            {client.assignedManager || "—"}
+                          </td>
+
+                          <td>
+                            <div className="tag-list">
+                              {client.tags?.slice(0, 3).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="tag-badge"
+                                >
+                                  {tag}
+                                </span>
+                              )) || "—"}
+                            </div>
+                          </td>
+
+                          <td>
+                            <span
+                              className={getStatusBadgeClass(
+                                client.status
+                              )}
+                            >
+                              {client.status || "—"}
+                            </span>
+                          </td>
+
+                          <td>
+                            {getPendingTaskCount(client)}
+                          </td>
+
+                          <td>
+                            {getDocumentCount(client)}
+                          </td>
+
+                          <td>
+                            {formatDate(client.updatedAt)}
+                          </td>
+
+                          <td className="actions-cell">
+                            <Link
+                              className="button secondary small"
+                              to={`/dashboard/clients/${client._id}`}
+                            >
+                              View
+                            </Link>
+
+                            {canEditClient && (
+                              <>
+                                {!client.isArchived ? (
+                                  <>
+                                    <Link
+                                      className="button secondary small"
+                                      to={`/dashboard/clients/${client._id}/edit`}
+                                    >
+                                      Edit
+                                    </Link>
+
+                                    <button
+                                      type="button"
+                                      className="button warning small"
+                                      onClick={() =>
+                                        handleArchive(
+                                          client._id
+                                        )
+                                      }
+                                    >
+                                      Archive
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="button success small"
+                                      onClick={() =>
+                                        handleRestore(
+                                          client._id
+                                        )
+                                      }
+                                    >
+                                      Restore
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className="button danger small"
+                                      onClick={() =>
+                                        handleDelete(
+                                          client._id
+                                        )
+                                      }
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    )
                   )}
                 </tbody>
               </table>
             </div>
 
+            {/* PAGINATION */}
+
             <div className="pagination-bar">
               <button
-                type="button"
                 className="button secondary"
                 disabled={page === 1}
-                onClick={() => setPage((current) => current - 1)}
+                onClick={() =>
+                  setPage(
+                    (current) =>
+                      current - 1
+                  )
+                }
               >
                 Previous
               </button>
 
               <div className="pagination-info">
-                Page {pagination.currentPage} of {pagination.totalPages}
+                Page {pagination.currentPage} of{" "}
+                {pagination.totalPages}
               </div>
 
               <button
-                type="button"
                 className="button secondary"
-                disabled={page === pagination.totalPages}
-                onClick={() => setPage((current) => current + 1)}
+                disabled={
+                  page ===
+                  pagination.totalPages
+                }
+                onClick={() =>
+                  setPage(
+                    (current) =>
+                      current + 1
+                  )
+                }
               >
                 Next
               </button>
             </div>
-          </section>
+          </>
         )}
-      </div>
+      </section>
     </DashboardLayout>
   );
 };
