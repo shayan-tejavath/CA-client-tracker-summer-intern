@@ -29,7 +29,7 @@ import Login from "./pages/Login.jsx";
 // DASHBOARD
 
 import Dashboard from "./pages/Dashboard.jsx";
-import ClientDashboard from "./pages/dashboard/ClientDashboard.jsx";
+import ClientDashboard from "./pages/dashboard/Clients.jsx";
 
 
 
