@@ -457,8 +457,8 @@ const AddClient = () => {
 
   return (
     <DashboardLayout>
-      <section className="page-card">
-        <div className="page-header">
+      <section className="page-card add-client-page">
+        <div className="page-header add-client-page__header">
           <div>
             <p className="eyebrow">
               Clients
@@ -476,596 +476,598 @@ const AddClient = () => {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-10"
+          className="add-client-form"
         >
-          <div className="space-y-8">
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-4 border-b border-slate-800 pb-5 mb-6 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold text-white">Basic Details</h2>
-                    <p className="text-slate-400">Enter the core profile details for the client.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAutoFillCredentials}
-                      className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-500"
-                    >
-                      Auto-fill credentials
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleGstinAutoFill}
-                      className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-500"
-                    >
-                      Autofill from GSTIN
-                    </button>
-                  </div>
-                </div>
-                <div className="grid gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(220px,1fr)]">
-                  <div>
-                    <div className="mb-6 rounded-[24px] border border-slate-700 bg-slate-900 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-medium text-slate-400">Photo</p>
-                          <p className="mt-2 text-sm text-slate-300">Upload or edit the client photo used in profiles.</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => profileImageInputRef.current?.click()}
-                          className="rounded-full border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-500"
-                        >
-                          Change
-                        </button>
-                      </div>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => profileImageInputRef.current?.click()}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            profileImageInputRef.current?.click();
-                          }
-                        }}
-                        className="mt-4 mx-auto flex h-20 w-20 cursor-pointer items-center justify-center rounded-[20px] border border-dashed border-slate-700 bg-slate-950 text-slate-500 transition hover:border-slate-500"
-                      >
-                        {client.profileImagePreview || client.profileImage ? (
-                          <img
-                            src={client.profileImagePreview || client.profileImage}
-                            alt="Client"
-                            className="h-full w-full rounded-[20px] object-cover"
-                          />
-                        ) : (
-                          <span className="text-xl">📷</span>
-                        )}
-                      </div>
-                      <p className="mt-2 text-center text-xs uppercase tracking-[0.15em] text-slate-500">
-                        Click image to update photo
-                      </p>
-                      <input
-                        id="profileImageInput"
-                        ref={profileImageInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-6">
-                  <label className="block text-slate-300">
-                    Client Name
-                    <input
-                      name="clientName"
-                      value={client.clientName}
-                      onChange={handleChange}
-                      placeholder="Client name"
-                      required
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Client Type
-                    <select
-                      name="clientType"
-                      value={client.clientType}
-                      onChange={handleChange}
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    >
-                      <option value="Individual">Individual</option>
-                      <option value="Business">Business</option>
-                      <option value="Partnership">Partnership</option>
-                      <option value="LLP">LLP</option>
-                      <option value="Private Limited">Private Limited</option>
-                    </select>
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Status
-                    <select
-                      name="status"
-                      value={client.status}
-                      onChange={handleChange}
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Inactive">Inactive</option>
-                      <option value="Archived">Archived</option>
-                    </select>
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Relationship Manager
-                    <input
-                      name="relationshipManager"
-                      value={client.relationshipManager}
-                      onChange={handleChange}
-                      placeholder="Relationship manager"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
+          <section className="form-section">
+            <div className="section-head section-head--with-actions">
+              <div>
+                <h2>Basic Details</h2>
+                <p>Enter the core profile details for the client.</p>
               </div>
-              </section>
+              <div className="section-head-actions">
+                <button
+                  type="button"
+                  onClick={handleAutoFillCredentials}
+                  className="button secondary"
+                >
+                  Auto-fill credentials
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGstinAutoFill}
+                  className="button secondary"
+                >
+                  Autofill from GSTIN
+                </button>
+              </div>
+            </div>
 
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Tax Details</h2>
-                  <p className="text-slate-400">Add PAN, GSTIN and other fiscal identifiers.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="block text-slate-300">
-                    PAN
-                    <input
-                      name="pan"
-                      value={client.pan}
-                      onChange={handleChange}
-                      placeholder="ABCDE1234F"
-                      required
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    GSTIN
-                    <input
-                      name="gstin"
-                      value={client.gstin}
-                      onChange={(event) => {
-                        const value = event.target.value.toUpperCase();
-                        setClient((current) => ({
-                          ...current,
-                          gstin: value,
-                        }));
-                      }}
-                      placeholder="22ABCDE1234F2Z5"
-                      required
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    TAN
-                    <input
-                      name="tan"
-                      value={client.tan}
-                      onChange={handleChange}
-                      placeholder="ABCD12345E"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    CIN
-                    <input
-                      name="cin"
-                      value={client.cin}
-                      onChange={handleChange}
-                      placeholder="U12345MH2024PTC000000"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300 md:col-span-2">
-                    MSME Number
-                    <input
-                      name="msmeNumber"
-                      value={client.msmeNumber}
-                      onChange={handleChange}
-                      placeholder="MSME123456789"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Contact Details</h2>
-                  <p className="text-slate-400">Add phone, email and website details.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="block text-slate-300">
-                    Primary Mobile
-                    <input
-                      name="mobile"
-                      value={client.mobile}
-                      onChange={handleChange}
-                      placeholder="Primary mobile"
-                      required
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Secondary Mobile
-                    <input
-                      name="alternateMobile"
-                      value={client.alternateMobile}
-                      onChange={handleChange}
-                      placeholder="Secondary mobile"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Email
-                    <input
-                      name="email"
-                      type="email"
-                      value={client.email}
-                      onChange={handleChange}
-                      placeholder="client@example.com"
-                      required
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Alternate Email
-                    <input
-                      name="alternateEmail"
-                      type="email"
-                      value={client.alternateEmail}
-                      onChange={handleChange}
-                      placeholder="alternate@example.com"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300 md:col-span-2">
-                    Website
-                    <input
-                      name="website"
-                      value={client.website}
-                      onChange={handleChange}
-                      placeholder="https://example.com"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Address Details</h2>
-                  <p className="text-slate-400">Fill in the client's registered address information.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="block text-slate-300 md:col-span-2">
-                    Address Line 1
-                    <input
-                      name="addressLine1"
-                      value={client.addressLine1}
-                      onChange={handleChange}
-                      placeholder="Address Line 1"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300 md:col-span-2">
-                    Address Line 2
-                    <input
-                      name="addressLine2"
-                      value={client.addressLine2}
-                      onChange={handleChange}
-                      placeholder="Address Line 2"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    City
-                    <input
-                      name="city"
-                      value={client.city}
-                      onChange={handleChange}
-                      placeholder="City"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    State
-                    <input
-                      name="state"
-                      value={client.state}
-                      onChange={handleChange}
-                      placeholder="State"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Pincode
-                    <input
-                      name="pincode"
-                      value={client.pincode}
-                      onChange={handleChange}
-                      placeholder="Pincode"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Country
-                    <input
-                      name="country"
-                      value={client.country}
-                      onChange={handleChange}
-                      placeholder="Country"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Contact Person</h2>
-                  <p className="text-slate-400">Add the primary contact for this client.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="block text-slate-300">
-                    Contact Person Name
-                    <input
-                      name="contactPersonName"
-                      value={client.contactPersonName}
-                      onChange={handleChange}
-                      placeholder="Name"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Designation
-                    <input
-                      name="contactPersonDesignation"
-                      value={client.contactPersonDesignation}
-                      onChange={handleChange}
-                      placeholder="Designation"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Mobile
-                    <input
-                      name="contactPersonMobile"
-                      value={client.contactPersonMobile}
-                      onChange={handleChange}
-                      placeholder="Contact mobile"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Email
-                    <input
-                      name="contactPersonEmail"
-                      type="email"
-                      value={client.contactPersonEmail}
-                      onChange={handleChange}
-                      placeholder="Contact email"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300 md:col-span-2">
-                    Date Of Birth
-                    <input
-                      name="contactPersonDob"
-                      type="date"
-                      value={client.contactPersonDob}
-                      onChange={handleChange}
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Business Information</h2>
-                  <p className="text-slate-400">Capture company details and financial metadata.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="block text-slate-300">
-                    Business Start Date
-                    <input
-                      name="businessStartDate"
-                      type="date"
-                      value={client.businessStartDate}
-                      onChange={handleChange}
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Industry Type
-                    <input
-                      name="industryType"
-                      value={client.industryType}
-                      onChange={handleChange}
-                      placeholder="Industry type"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300 md:col-span-2">
-                    Annual Turnover
-                    <input
-                      name="annualTurnover"
-                      value={client.annualTurnover}
-                      onChange={handleChange}
-                      placeholder="Annual turnover"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Service Assignment</h2>
-                  <p className="text-slate-400">Choose the services this client will receive.</p>
-                </div>
-                <div className="grid gap-6">
-                  <label className="block text-slate-300">
-                    Selected Services
-                    <input
-                      name="services"
-                      value={client.services}
-                      onChange={handleChange}
-                      placeholder="GST Filing, Audit"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {serviceOptions.map((service) => (
-                      <label key={service} className="flex items-center gap-3 rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-4 text-slate-200 transition hover:border-slate-500">
-                        <input
-                          type="checkbox"
-                          checked={client.assignedServices.includes(service)}
-                          onChange={() => handleServiceToggle(service)}
-                          className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-indigo-500"
-                        />
-                        <span>{service}</span>
-                      </label>
-                    ))}
+            <div className="basic-details-layout">
+              <div className="profile-upload">
+                <div className="profile-upload__head">
+                  <div>
+                    <p className="profile-upload__label">Photo</p>
+                    <p className="profile-upload__hint">Upload or edit the client photo used in profiles.</p>
                   </div>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Team Assignment</h2>
-                  <p className="text-slate-400">Assign employees and managers for this client.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="block text-slate-300">
-                    Assigned Employees
-                    <input
-                      name="assignedEmployees"
-                      value={client.assignedEmployees}
-                      onChange={handleChange}
-                      placeholder="Employee IDs or names"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-
-                  <label className="block text-slate-300">
-                    Assigned Manager
-                    <input
-                      name="assignedManager"
-                      value={client.assignedManager}
-                      onChange={handleChange}
-                      placeholder="Manager name"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Client Portal Settings</h2>
-                  <p className="text-slate-400">Control client access and portal credentials.</p>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <label className="flex cursor-pointer items-center gap-3 rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-4 text-slate-300 transition hover:border-slate-500">
-                    <input
-                      name="allowLogin"
-                      type="checkbox"
-                      checked={client.allowLogin}
-                      onChange={(e) =>
-                        setClient((current) => ({
-                          ...current,
-                          allowLogin: e.target.checked,
-                        }))
-                      }
-                      className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-indigo-500"
-                    />
-                    <span>Allow Login Access</span>
-                  </label>
-
-                  <label className="block text-slate-300 md:col-span-2">
-                    Generate Temporary Password
-                    <input
-                      name="temporaryPassword"
-                      value={client.temporaryPassword}
-                      onChange={handleChange}
-                      placeholder="Temporary password"
-                      className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                    />
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950 p-8 shadow-2xl">
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Notes & Submit</h2>
-                  <p className="text-slate-400">Add internal comments and save the client profile.</p>
-                </div>
-                <label className="block text-slate-300">
-                  Internal Notes
-                  <textarea
-                    name="notes"
-                    value={client.notes}
-                    onChange={handleChange}
-                    placeholder="Internal notes about this client"
-                    rows="4"
-                    className="mt-3 w-full rounded-[24px] border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-slate-500"
-                  />
-                </label>
-
-                {error && (
-                  <div className="rounded-[24px] border border-rose-500 bg-rose-950 px-4 py-3 text-rose-200 mt-4">
-                    {error}
-                  </div>
-                )}
-
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                   <button
                     type="button"
-                    className="rounded-[24px] border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
-                    onClick={() => navigate("/dashboard/clients")}
+                    onClick={() => profileImageInputRef.current?.click()}
+                    className="button secondary button--sm"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded-[24px] bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-50"
-                    disabled={loading}
-                  >
-                    {loading ? "Saving..." : "Save client"}
+                    Change
                   </button>
                 </div>
-              </section>
-          </div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => profileImageInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      profileImageInputRef.current?.click();
+                    }
+                  }}
+                  className="profile-upload__dropzone"
+                >
+                  {client.profileImagePreview || client.profileImage ? (
+                    <img
+                      src={client.profileImagePreview || client.profileImage}
+                      alt="Client"
+                      className="profile-upload__image"
+                    />
+                  ) : (
+                    <span className="profile-upload__placeholder">📷</span>
+                  )}
+                </div>
+                <p className="profile-upload__caption">
+                  Click image to update photo
+                </p>
+                <input
+                  id="profileImageInput"
+                  ref={profileImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="visually-hidden"
+                />
+              </div>
+
+              <div className="form-grid">
+                <div className="field field--full">
+                  <label htmlFor="clientName">Client Name</label>
+                  <input
+                    id="clientName"
+                    name="clientName"
+                    value={client.clientName}
+                    onChange={handleChange}
+                    placeholder="Client name"
+                    required
+                  />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="clientType">Client Type</label>
+                  <select
+                    id="clientType"
+                    name="clientType"
+                    value={client.clientType}
+                    onChange={handleChange}
+                  >
+                    <option value="Individual">Individual</option>
+                    <option value="Business">Business</option>
+                    <option value="Partnership">Partnership</option>
+                    <option value="LLP">LLP</option>
+                    <option value="Private Limited">Private Limited</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="status">Status</label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={client.status}
+                    onChange={handleChange}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Archived">Archived</option>
+                  </select>
+                </div>
+
+                <div className="field field--full">
+                  <label htmlFor="relationshipManager">Relationship Manager</label>
+                  <input
+                    id="relationshipManager"
+                    name="relationshipManager"
+                    value={client.relationshipManager}
+                    onChange={handleChange}
+                    placeholder="Relationship manager"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Tax Details</h2>
+              <p>Add PAN, GSTIN and other fiscal identifiers.</p>
+            </div>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="pan">PAN</label>
+                <input
+                  id="pan"
+                  name="pan"
+                  value={client.pan}
+                  onChange={handleChange}
+                  placeholder="ABCDE1234F"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="gstin">GSTIN</label>
+                <input
+                  id="gstin"
+                  name="gstin"
+                  value={client.gstin}
+                  onChange={(event) => {
+                    const value = event.target.value.toUpperCase();
+                    setClient((current) => ({
+                      ...current,
+                      gstin: value,
+                    }));
+                  }}
+                  placeholder="22ABCDE1234F2Z5"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="tan">TAN</label>
+                <input
+                  id="tan"
+                  name="tan"
+                  value={client.tan}
+                  onChange={handleChange}
+                  placeholder="ABCD12345E"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="cin">CIN</label>
+                <input
+                  id="cin"
+                  name="cin"
+                  value={client.cin}
+                  onChange={handleChange}
+                  placeholder="U12345MH2024PTC000000"
+                />
+              </div>
+
+              <div className="field field--full">
+                <label htmlFor="msmeNumber">MSME Number</label>
+                <input
+                  id="msmeNumber"
+                  name="msmeNumber"
+                  value={client.msmeNumber}
+                  onChange={handleChange}
+                  placeholder="MSME123456789"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Contact Details</h2>
+              <p>Add phone, email and website details.</p>
+            </div>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="mobile">Primary Mobile</label>
+                <input
+                  id="mobile"
+                  name="mobile"
+                  value={client.mobile}
+                  onChange={handleChange}
+                  placeholder="Primary mobile"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="alternateMobile">Secondary Mobile</label>
+                <input
+                  id="alternateMobile"
+                  name="alternateMobile"
+                  value={client.alternateMobile}
+                  onChange={handleChange}
+                  placeholder="Secondary mobile"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="email">Email</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={client.email}
+                  onChange={handleChange}
+                  placeholder="client@example.com"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="alternateEmail">Alternate Email</label>
+                <input
+                  id="alternateEmail"
+                  name="alternateEmail"
+                  type="email"
+                  value={client.alternateEmail}
+                  onChange={handleChange}
+                  placeholder="alternate@example.com"
+                />
+              </div>
+
+              <div className="field field--full">
+                <label htmlFor="website">Website</label>
+                <input
+                  id="website"
+                  name="website"
+                  value={client.website}
+                  onChange={handleChange}
+                  placeholder="https://example.com"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Address Details</h2>
+              <p>Fill in the client&apos;s registered address information.</p>
+            </div>
+            <div className="form-grid">
+              <div className="field field--full">
+                <label htmlFor="addressLine1">Address Line 1</label>
+                <input
+                  id="addressLine1"
+                  name="addressLine1"
+                  value={client.addressLine1}
+                  onChange={handleChange}
+                  placeholder="Address Line 1"
+                />
+              </div>
+
+              <div className="field field--full">
+                <label htmlFor="addressLine2">Address Line 2</label>
+                <input
+                  id="addressLine2"
+                  name="addressLine2"
+                  value={client.addressLine2}
+                  onChange={handleChange}
+                  placeholder="Address Line 2"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="city">City</label>
+                <input
+                  id="city"
+                  name="city"
+                  value={client.city}
+                  onChange={handleChange}
+                  placeholder="City"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="state">State</label>
+                <input
+                  id="state"
+                  name="state"
+                  value={client.state}
+                  onChange={handleChange}
+                  placeholder="State"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="pincode">Pincode</label>
+                <input
+                  id="pincode"
+                  name="pincode"
+                  value={client.pincode}
+                  onChange={handleChange}
+                  placeholder="Pincode"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="country">Country</label>
+                <input
+                  id="country"
+                  name="country"
+                  value={client.country}
+                  onChange={handleChange}
+                  placeholder="Country"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Contact Person</h2>
+              <p>Add the primary contact for this client.</p>
+            </div>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="contactPersonName">Contact Person Name</label>
+                <input
+                  id="contactPersonName"
+                  name="contactPersonName"
+                  value={client.contactPersonName}
+                  onChange={handleChange}
+                  placeholder="Name"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="contactPersonDesignation">Designation</label>
+                <input
+                  id="contactPersonDesignation"
+                  name="contactPersonDesignation"
+                  value={client.contactPersonDesignation}
+                  onChange={handleChange}
+                  placeholder="Designation"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="contactPersonMobile">Mobile</label>
+                <input
+                  id="contactPersonMobile"
+                  name="contactPersonMobile"
+                  value={client.contactPersonMobile}
+                  onChange={handleChange}
+                  placeholder="Contact mobile"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="contactPersonEmail">Email</label>
+                <input
+                  id="contactPersonEmail"
+                  name="contactPersonEmail"
+                  type="email"
+                  value={client.contactPersonEmail}
+                  onChange={handleChange}
+                  placeholder="Contact email"
+                />
+              </div>
+
+              <div className="field field--full">
+                <label htmlFor="contactPersonDob">Date Of Birth</label>
+                <input
+                  id="contactPersonDob"
+                  name="contactPersonDob"
+                  type="date"
+                  value={client.contactPersonDob}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Business Information</h2>
+              <p>Capture company details and financial metadata.</p>
+            </div>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="businessStartDate">Business Start Date</label>
+                <input
+                  id="businessStartDate"
+                  name="businessStartDate"
+                  type="date"
+                  value={client.businessStartDate}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="industryType">Industry Type</label>
+                <input
+                  id="industryType"
+                  name="industryType"
+                  value={client.industryType}
+                  onChange={handleChange}
+                  placeholder="Industry type"
+                />
+              </div>
+
+              <div className="field field--full">
+                <label htmlFor="annualTurnover">Annual Turnover</label>
+                <input
+                  id="annualTurnover"
+                  name="annualTurnover"
+                  value={client.annualTurnover}
+                  onChange={handleChange}
+                  placeholder="Annual turnover"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Service Assignment</h2>
+              <p>Choose the services this client will receive.</p>
+            </div>
+
+            <div className="field field--full field--spaced">
+              <label htmlFor="services">Selected Services</label>
+              <input
+                id="services"
+                name="services"
+                value={client.services}
+                onChange={handleChange}
+                placeholder="GST Filing, Audit"
+              />
+            </div>
+
+            <div className="services-grid field--spaced">
+              {serviceOptions.map((service) => {
+                const isActive = client.assignedServices.includes(service);
+                return (
+                  <label
+                    key={service}
+                    className={`service-checkbox${isActive ? " service-checkbox--active" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={() => handleServiceToggle(service)}
+                    />
+                    <span>{service}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Team Assignment</h2>
+              <p>Assign employees and managers for this client.</p>
+            </div>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="assignedEmployees">Assigned Employees</label>
+                <input
+                  id="assignedEmployees"
+                  name="assignedEmployees"
+                  value={client.assignedEmployees}
+                  onChange={handleChange}
+                  placeholder="Employee IDs or names"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="assignedManager">Assigned Manager</label>
+                <input
+                  id="assignedManager"
+                  name="assignedManager"
+                  value={client.assignedManager}
+                  onChange={handleChange}
+                  placeholder="Manager name"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Client Portal Settings</h2>
+              <p>Control client access and portal credentials.</p>
+            </div>
+            <div className="form-grid">
+              <label className="service-checkbox field--full">
+                <input
+                  name="allowLogin"
+                  type="checkbox"
+                  checked={client.allowLogin}
+                  onChange={(e) =>
+                    setClient((current) => ({
+                      ...current,
+                      allowLogin: e.target.checked,
+                    }))
+                  }
+                />
+                <span>Allow Login Access</span>
+              </label>
+
+              <div className="field field--full">
+                <label htmlFor="temporaryPassword">Generate Temporary Password</label>
+                <input
+                  id="temporaryPassword"
+                  name="temporaryPassword"
+                  value={client.temporaryPassword}
+                  onChange={handleChange}
+                  placeholder="Temporary password"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <div className="section-head">
+              <h2>Notes &amp; Submit</h2>
+              <p>Add internal comments and save the client profile.</p>
+            </div>
+
+            <div className="field">
+              <label htmlFor="notes">Internal Notes</label>
+              <textarea
+                id="notes"
+                name="notes"
+                value={client.notes}
+                onChange={handleChange}
+                placeholder="Internal notes about this client"
+                rows="4"
+              />
+            </div>
+
+            {error && (
+              <div className="form-alert form-alert--error">
+                {error}
+              </div>
+            )}
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => navigate("/dashboard/clients")}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="button primary"
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save client"}
+              </button>
+            </div>
+          </section>
         </form>
       </section>
     </DashboardLayout>

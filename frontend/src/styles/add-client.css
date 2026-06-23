@@ -32,6 +32,26 @@
   margin-bottom: 18px;
 }
 
+.section-head--with-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 768px) {
+  .section-head--with-actions {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.section-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .section-head h2 {
   margin: 0;
   color: var(--text);
@@ -45,6 +65,104 @@
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* Basic details layout: profile upload card + field grid */
+
+.basic-details-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .basic-details-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.profile-upload {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.profile-upload__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-upload__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.profile-upload__hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.profile-upload__dropzone {
+  margin: 16px auto 0;
+  width: 84px;
+  height: 84px;
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+  overflow: hidden;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.profile-upload__dropzone:hover {
+  border-color: #93c5fd;
+  background: var(--hover);
+}
+
+.profile-upload__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.profile-upload__placeholder {
+  font-size: 22px;
+}
+
+.profile-upload__caption {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .form-grid {
@@ -168,6 +286,17 @@
   margin-top: 20px;
 }
 
+.form-alert--error {
+  border-radius: 14px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -197,6 +326,13 @@
     color 0.2s ease,
     border-color 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.button--sm {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  border-radius: 10px;
 }
 
 .button:hover {
