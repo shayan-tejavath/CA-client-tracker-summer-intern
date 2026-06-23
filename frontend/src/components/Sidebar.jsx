@@ -8,6 +8,7 @@ import {
   FolderOpen,
   BarChart3,
   Shield,
+  UserCog,
   Sparkles,
   Menu,
   X,
@@ -27,6 +28,8 @@ const ICON_MAP = {
   documents: FolderOpen,
   reports: BarChart3,
   admin: Shield,
+  users: Users,
+  userRoles: UserCog,
 };
 
 const Sidebar = () => {

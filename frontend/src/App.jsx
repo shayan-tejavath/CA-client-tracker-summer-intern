@@ -85,6 +85,14 @@ import AdminPanel from "./pages/dashboard/AdminPanel.jsx";
 
 import PermissionMatrix from "./pages/dashboard/PermissionMatrix.jsx";
 
+import UsersList from "./pages/users/UsersList.jsx";
+
+import CreateUser from "./pages/users/CreateUser.jsx";
+
+import UserRolesList from "./pages/users/UserRolesList.jsx";
+
+import UserRoleForm from "./pages/users/UserRoleForm.jsx";
+
 
 
 // ROUTE PROTECTION
@@ -420,6 +428,60 @@ function App() {
                 ]}
               >
                 <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* USERS */}
+
+          <Route
+            path="/dashboard/users"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                ]}
+              >
+                <UsersList />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/users/new"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                ]}
+              >
+                <CreateUser />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/user-roles"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                ]}
+              >
+                <UserRolesList />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/user-roles/:roleId"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                ]}
+              >
+                <UserRoleForm />
               </ProtectedRoute>
             }
           />

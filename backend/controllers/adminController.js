@@ -1,12 +1,117 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import User from "../models/User.js";
+import UserRole from "../models/UserRole.js";
 import Client from "../models/Client.js";
 import Task from "../models/Task.js";
 import Document from "../models/Document.js";
 import Permission from "../models/Permission.js";
 
-const validRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
+const systemRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
+
+const permissionKeyMap = {
+  client: {
+    create: "client:create",
+    edit: "client:update",
+    view: "client:read",
+    delete: "client:delete",
+    ledger: "client:ledger",
+    managePackages: "client-packages:manage",
+    viewPackages: "client-packages:view",
+  },
+  task: {
+    create: "task:create",
+    edit: "task:update",
+    view: "task:read",
+    delete: "task:delete",
+    checklist: "task:checklist",
+    verify: "task:verify",
+    assign: "task:assign",
+    timeLog: "task:time-log",
+    deleteNote: "task:note:delete",
+  },
+  invoice: {
+    create: "invoice:create",
+    edit: "invoice:update",
+    view: "invoice:read",
+    delete: "invoice:delete",
+  },
+  expense: {
+    create: "expense:create",
+    edit: "expense:update",
+    view: "expense:read",
+    delete: "expense:delete",
+  },
+  documents: {
+    create: "document:upload",
+    edit: "document:update",
+    view: "document:read",
+    delete: "document:delete",
+  },
+  attendance: {
+    mark: "attendance:mark",
+    markPastFuture: "attendance:mark-past-future",
+  },
+  todo: {
+    assign: "todo:assign",
+  },
+  settings: {
+    masters: "system:settings",
+  },
+  reports: {
+    view: "reports:view",
+  },
+  others: {
+    dashboard: "dashboard:view",
+  },
+};
+
+const ensureSystemRoles = async () => {
+  await Promise.all(
+    systemRoles.map((name) =>
+      UserRole.findOneAndUpdate(
+        { name },
+        { $setOnInsert: { name, permissions: {}, isSystem: true } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      )
+    )
+  );
+};
+
+const getRoleNames = async () => {
+  await ensureSystemRoles();
+  const roles = await UserRole.find().select("name").lean();
+  return roles.map((role) => role.name);
+};
+
+const toBoolean = (value, fallback = true) => {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return fallback;
+};
+
+const buildPermissionKeys = (permissions = {}) => {
+  const keys = new Set();
+
+  Object.entries(permissionKeyMap).forEach(([section, actions]) => {
+    Object.entries(actions).forEach(([action, permissionKey]) => {
+      if (permissions?.[section]?.[action]?.enabled) {
+        keys.add(permissionKey);
+      }
+    });
+  });
+
+  return Array.from(keys);
+};
+
+const syncRolePermissions = async (roleName, permissions = {}) => {
+  await Permission.findOneAndUpdate(
+    { role: roleName },
+    { $set: { permissions: buildPermissionKeys(permissions) } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+};
 
 export const getAdminOverview = async (req, res, next) => {
   try {
@@ -15,12 +120,11 @@ export const getAdminOverview = async (req, res, next) => {
       Client.countDocuments(),
       Task.countDocuments(),
       Document.countDocuments(),
-      User.aggregate([
-        { $group: { _id: "$role", count: { $sum: 1 } } },
-      ]),
+      User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
     ]);
 
-    const roleCounts = validRoles.reduce((acc, role) => {
+    const roleNames = await getRoleNames();
+    const roleCounts = roleNames.reduce((acc, role) => {
       const match = roleCountsResult.find((item) => item._id === role);
       acc[role] = match ? match.count : 0;
       return acc;
@@ -40,10 +144,7 @@ export const getAdminOverview = async (req, res, next) => {
 
 export const getUsers = async (req, res, next) => {
   try {
-    const users = await User.find()
-      .select("-password")
-      .sort({ role: 1, name: 1 });
-
+    const users = await User.find().select("-password").sort({ role: 1, name: 1 });
     res.json(users);
   } catch (error) {
     next(error);
@@ -52,13 +153,22 @@ export const getUsers = async (req, res, next) => {
 
 export const createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role = "Client" } = req.body;
+    const {
+      name,
+      username,
+      mobile,
+      email,
+      password,
+      role = "Client",
+      isActive,
+    } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "Name, email, password and role are required." });
     }
 
-    if (!validRoles.includes(role)) {
+    const roleNames = await getRoleNames();
+    if (!roleNames.includes(role)) {
       return res.status(400).json({ message: "Invalid role provided." });
     }
 
@@ -67,14 +177,34 @@ export const createUser = async (req, res, next) => {
       return res.status(400).json({ message: "Email is already registered." });
     }
 
+    if (username) {
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username is already taken." });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashedPassword, role });
+    const user = await User.create({
+      name,
+      username,
+      mobile,
+      email,
+      password: hashedPassword,
+      role,
+      photo: req.file ? `/uploads/${req.file.filename}` : req.body.photo,
+      isActive: toBoolean(isActive, true),
+    });
 
     res.status(201).json({
       id: user._id,
       name: user.name,
+      username: user.username,
+      mobile: user.mobile,
       email: user.email,
       role: user.role,
+      photo: user.photo,
+      isActive: user.isActive,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -89,19 +219,17 @@ export const updateUser = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid user ID." });
     }
 
-    const { name, email, role, password } = req.body;
+    const { name, username, mobile, email, role, password, isActive } = req.body;
 
-    // Validate that at least one field is provided for update
-    if (!name && !email && !role && !password) {
+    if (!name && !username && !mobile && !email && !role && !password && typeof isActive === "undefined" && !req.file) {
       return res.status(400).json({ message: "At least one field is required to update." });
     }
 
-    // Validate role if provided
-    if (role && !validRoles.includes(role)) {
+    const roleNames = await getRoleNames();
+    if (role && !roleNames.includes(role)) {
       return res.status(400).json({ message: "Invalid role provided." });
     }
 
-    // Validate email format if provided
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Invalid email format." });
     }
@@ -111,7 +239,6 @@ export const updateUser = async (req, res, next) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Check if email is already taken (if changed)
     if (email && email !== user.email) {
       const emailTaken = await User.findOne({ email });
       if (emailTaken) {
@@ -119,10 +246,20 @@ export const updateUser = async (req, res, next) => {
       }
     }
 
-    // Update only provided fields
+    if (username && username !== user.username) {
+      const usernameTaken = await User.findOne({ username });
+      if (usernameTaken) {
+        return res.status(400).json({ message: "Username is already taken." });
+      }
+    }
+
     if (name && name.trim()) user.name = name.trim();
+    if (username && username.trim()) user.username = username.trim();
+    if (mobile && mobile.trim()) user.mobile = mobile.trim();
     if (email && email.trim()) user.email = email.trim();
     if (role) user.role = role;
+    if (req.file) user.photo = `/uploads/${req.file.filename}`;
+    if (typeof isActive !== "undefined") user.isActive = toBoolean(isActive, user.isActive);
     if (password && password.trim()) {
       if (password.trim().length < 6) {
         return res.status(400).json({ message: "Password must be at least 6 characters." });
@@ -131,7 +268,17 @@ export const updateUser = async (req, res, next) => {
     }
 
     await user.save();
-    res.json({ id: user._id, name: user.name, email: user.email, role: user.role, updatedAt: user.updatedAt });
+    res.json({
+      id: user._id,
+      name: user.name,
+      username: user.username,
+      mobile: user.mobile,
+      email: user.email,
+      role: user.role,
+      photo: user.photo,
+      isActive: user.isActive,
+      updatedAt: user.updatedAt,
+    });
   } catch (error) {
     next(error);
   }
@@ -160,10 +307,119 @@ export const deleteUser = async (req, res, next) => {
   }
 };
 
+export const getUserRoles = async (req, res, next) => {
+  try {
+    await ensureSystemRoles();
+    const [roles, users] = await Promise.all([
+      UserRole.find().sort({ name: 1 }).lean(),
+      User.find().select("name role photo").lean(),
+    ]);
+
+    res.json(
+      roles.map((role) => ({
+        ...role,
+        assignedUsers: users.filter((user) => user.role === role.name),
+      }))
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserRole = async (req, res, next) => {
+  try {
+    await ensureSystemRoles();
+    const role = await UserRole.findById(req.params.id).lean();
+    if (!role) {
+      return res.status(404).json({ message: "User role not found." });
+    }
+    res.json(role);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createUserRole = async (req, res, next) => {
+  try {
+    const { name, permissions = {} } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Role name is required." });
+    }
+
+    const role = await UserRole.create({
+      name: name.trim(),
+      permissions,
+      isSystem: false,
+    });
+
+    await syncRolePermissions(role.name, role.permissions);
+    res.status(201).json(role);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Role name already exists." });
+    }
+    next(error);
+  }
+};
+
+export const updateUserRole = async (req, res, next) => {
+  try {
+    const role = await UserRole.findById(req.params.id);
+    if (!role) {
+      return res.status(404).json({ message: "User role not found." });
+    }
+
+    const oldName = role.name;
+    if (req.body.name && req.body.name.trim() && !role.isSystem) {
+      role.name = req.body.name.trim();
+    }
+    if (req.body.permissions && typeof req.body.permissions === "object") {
+      role.permissions = req.body.permissions;
+    }
+
+    await role.save();
+    if (oldName !== role.name) {
+      await User.updateMany({ role: oldName }, { $set: { role: role.name } });
+      await Permission.deleteOne({ role: oldName });
+    }
+    await syncRolePermissions(role.name, role.permissions);
+    res.json(role);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Role name already exists." });
+    }
+    next(error);
+  }
+};
+
+export const deleteUserRole = async (req, res, next) => {
+  try {
+    const role = await UserRole.findById(req.params.id);
+    if (!role) {
+      return res.status(404).json({ message: "User role not found." });
+    }
+    if (role.isSystem) {
+      return res.status(400).json({ message: "System roles cannot be deleted." });
+    }
+
+    const assignedUsers = await User.countDocuments({ role: role.name });
+    if (assignedUsers > 0) {
+      return res.status(400).json({ message: "Cannot delete a role assigned to users." });
+    }
+
+    await Permission.deleteOne({ role: role.name });
+    await role.deleteOne();
+    res.json({ message: "User role deleted successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getPermissions = async (req, res, next) => {
   try {
-    const permissions = await Permission.find({ role: { $in: validRoles } }).lean();
-    const response = validRoles.map((role) => {
+    const roleNames = await getRoleNames();
+    const permissions = await Permission.find({ role: { $in: roleNames } }).lean();
+    const response = roleNames.map((role) => {
       const record = permissions.find((item) => item.role === role);
       return {
         role,
@@ -185,7 +441,8 @@ export const updatePermissions = async (req, res, next) => {
     }
 
     const updatedRecords = [];
-    for (const role of validRoles) {
+    const roleNames = await getRoleNames();
+    for (const role of roleNames) {
       const rolePermissions = Array.isArray(permissionsByRole[role]) ? permissionsByRole[role] : [];
       const record = await Permission.findOneAndUpdate(
         { role },
