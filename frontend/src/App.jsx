@@ -27,6 +27,7 @@ import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import "react-toastify/dist/ReactToastify.css";
 
 function App() {
+  console.log("App.jsx rendering");
   return (
     <AuthProvider>
       <BrowserRouter>
