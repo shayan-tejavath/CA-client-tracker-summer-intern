@@ -52,6 +52,10 @@ const ServicesList = () => {
     }
   };
 
+  const openServiceDetails = (serviceId) => {
+    navigate(`/dashboard/services/${serviceId}`);
+  };
+
   return (
     <DashboardLayout>
       <section className="page-card">
@@ -99,40 +103,53 @@ const ServicesList = () => {
                   </tr>
                 ) : (
                   filteredServices.map((service) => (
-                    <tr key={service._id}>
-                      <td onClick={() => navigate(`/dashboard/services/${service._id}`)} style={{ cursor: "pointer" }}>
-                        {service.serviceCategory || "—"}
-                      </td>
-                      <td onClick={() => navigate(`/dashboard/services/${service._id}`)} style={{ cursor: "pointer" }}>
-                        {service.subService || "—"}
-                      </td>
-                      <td onClick={() => navigate(`/dashboard/services/${service._id}`)} style={{ cursor: "pointer" }}>
-                        {service.frequency || "—"}
-                      </td>
-                      <td onClick={() => navigate(`/dashboard/services/${service._id}`)} style={{ cursor: "pointer" }}>
-                        {service.description || "—"}
-                      </td>
+                    <tr
+                      key={service._id}
+                      tabIndex={0}
+                      role="link"
+                      onClick={() => openServiceDetails(service._id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openServiceDetails(service._id);
+                        }
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>{service.serviceCategory || "—"}</td>
+                      <td>{service.subService || "—"}</td>
+                      <td>{service.frequency || "—"}</td>
+                      <td>{service.description || "—"}</td>
                       <td className="actions-cell">
+                        <button
+                          type="button"
+                          className="button secondary small"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openServiceDetails(service._id);
+                          }}
+                        >
+                          View details
+                        </button>
                         {canManageService && (
                           <>
                             <button
                               type="button"
                               className="button secondary small"
-                              onClick={() => navigate(`/dashboard/services/${service._id}`)}
-                            >
-                              View
-                            </button>
-                            <button
-                              type="button"
-                              className="button secondary small"
-                              onClick={() => navigate(`/dashboard/services/edit/${service._id}`)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(`/dashboard/services/edit/${service._id}`);
+                              }}
                             >
                               Edit
                             </button>
                             <button
                               type="button"
                               className="button danger small"
-                              onClick={() => handleDelete(service._id)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDelete(service._id);
+                              }}
                             >
                               Delete
                             </button>

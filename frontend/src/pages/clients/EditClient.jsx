@@ -12,6 +12,7 @@ import {
   updateClient,
   updateClientPhoto,
 } from "../../services/clientService.js";
+import "../../styles/edit-client.css";
 
 const serviceOptions = [
   "GST Filing",

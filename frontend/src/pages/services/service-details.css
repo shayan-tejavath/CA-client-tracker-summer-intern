@@ -961,9 +961,8 @@ td.checkbox-cell {
     grid-template-columns: 1fr;
   }
 
-  .service-tabs {
-    overflow-x: auto;
-  }
+.service-tabs {
+  overflow-x: auto;
 }
 
 /* Checklist styles */

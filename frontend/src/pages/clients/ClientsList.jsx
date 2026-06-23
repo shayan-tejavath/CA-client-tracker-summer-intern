@@ -17,6 +17,7 @@ import {
   archiveClient,
   restoreClient,
 } from "../../services/clientService.js";
+import "../../styles/clients-list.css";
 
 const ClientsList = () => {
   const navigate = useNavigate();

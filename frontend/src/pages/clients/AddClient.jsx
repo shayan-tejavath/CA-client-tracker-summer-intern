@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { createClient } from "../../services/clientService.js";
+import "../../styles/add-client.css";
 
 const serviceOptions = [
   "GST Filing",
