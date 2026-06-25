@@ -20,10 +20,79 @@ const validateService = (data) => {
   return null;
 };
 
+const toPlainObject = (item) => {
+  if (!item) return item;
+  if (typeof item.toObject === "function") return item.toObject();
+  return item;
+};
+
+const attachAssignmentStats = async (services = []) => {
+  const safeServices = services.map(toPlainObject).filter(Boolean);
+  if (safeServices.length === 0) return [];
+
+  const serviceIds = safeServices.map((service) => service._id);
+
+  const [counts, assignments] = await Promise.all([
+    ServiceAssignment.aggregate([
+      { $match: { serviceId: { $in: serviceIds } } },
+      {
+        $group: {
+          _id: "$serviceId",
+          clientCount: { $sum: 1 },
+        },
+      },
+    ]),
+    ServiceAssignment.find({ serviceId: { $in: serviceIds } })
+      .populate(
+        "clientId",
+        "clientName clientCode email mobile profileImage status"
+      )
+      .lean(),
+  ]);
+
+  const countMap = new Map(
+    counts.map((item) => [String(item._id), item.clientCount])
+  );
+
+  const previewMap = new Map();
+
+  for (const assignment of assignments) {
+    const key = String(assignment.serviceId);
+    if (!previewMap.has(key)) {
+      previewMap.set(key, []);
+    }
+
+    const previewList = previewMap.get(key);
+    if (previewList.length >= 3) continue;
+
+    if (assignment.clientId) {
+      previewList.push({
+        _id: assignment.clientId._id,
+        clientName: assignment.clientId.clientName,
+        clientCode: assignment.clientId.clientCode,
+        email: assignment.clientId.email,
+        mobile: assignment.clientId.mobile,
+        status: assignment.clientId.status,
+        profileImage: assignment.clientId.profileImage,
+      });
+    }
+  }
+
+  return safeServices.map((service) => {
+    const key = String(service._id);
+    return {
+      ...service,
+      clientCount: countMap.get(key) || 0,
+      assignedClientsPreview: previewMap.get(key) || [],
+    };
+  });
+};
+
 export const getServices = async (req, res, next) => {
   try {
-    const services = await Service.find().sort({ createdAt: -1 });
-    res.json(services);
+    const services = await Service.find().sort({ createdAt: -1 }).lean();
+    const enriched = await attachAssignmentStats(services);
+    res.json(enriched);
   } catch (error) {
     next(error);
   }
@@ -36,12 +105,13 @@ export const getServiceById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const service = await Service.findById(id);
+    const service = await Service.findById(id).lean();
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
 
-    res.json(service);
+    const [enriched] = await attachAssignmentStats([service]);
+    res.json(enriched);
   } catch (error) {
     next(error);
   }
@@ -112,7 +182,9 @@ export const deleteService = async (req, res, next) => {
       return res.status(404).json({ message: "Service not found" });
     }
 
+    await ServiceAssignment.deleteMany({ serviceId: id });
     await service.deleteOne();
+
     res.json({ message: "Service deleted successfully" });
   } catch (error) {
     next(error);
@@ -128,9 +200,10 @@ export const getAvailableClients = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    // Get all clients not yet assigned to this service
     const assignedAssignments = await ServiceAssignment.find({ serviceId });
-    const assignedClientIds = assignedAssignments.map((a) => a.clientId.toString());
+    const assignedClientIds = assignedAssignments.map((a) =>
+      a.clientId.toString()
+    );
 
     const availableClients = await Client.find({
       _id: { $nin: assignedClientIds },
@@ -151,22 +224,53 @@ export const getAssignedClients = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const query = { serviceId };
-    const assignments = await ServiceAssignment.find(query)
-      .populate("clientId", "clientName clientCode email mobile profileImage status")
+    const allAssignments = await ServiceAssignment.find({ serviceId })
+      .populate(
+        "clientId",
+        "clientName clientCode email mobile profileImage status"
+      )
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .lean();
 
-    const total = await ServiceAssignment.countDocuments(query);
+    const normalizedSearch = search.trim().toLowerCase();
+
+    let filteredAssignments = allAssignments;
+    if (normalizedSearch) {
+      filteredAssignments = allAssignments.filter((assignment) => {
+        const client = assignment.clientId;
+        if (!client) return false;
+
+        return [
+          client.clientName,
+          client.clientCode,
+          client.email,
+          client.mobile,
+          client.status,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch)
+          );
+      });
+    }
+
+    const pageNumber = Number(page) || 1;
+    const limitNumber = Number(limit) || 10;
+    const total = filteredAssignments.length;
+    const startIndex = (pageNumber - 1) * limitNumber;
+
+    const assignments = filteredAssignments.slice(
+      startIndex,
+      startIndex + limitNumber
+    );
 
     res.json({
       assignments,
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
+        page: pageNumber,
+        limit: limitNumber,
         total,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limitNumber),
       },
     });
   } catch (error) {
@@ -177,14 +281,21 @@ export const getAssignedClients = async (req, res, next) => {
 export const assignClientsToService = async (req, res, next) => {
   try {
     const { serviceId } = req.params;
-    const { clientIds, package: packageType, customPrice, assignedUsers } = req.body;
+    const {
+      clientIds,
+      package: packageType,
+      customPrice,
+      assignedUsers,
+    } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(serviceId)) {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
     if (!Array.isArray(clientIds) || clientIds.length === 0) {
-      return res.status(400).json({ message: "At least one client must be selected" });
+      return res
+        .status(400)
+        .json({ message: "At least one client must be selected" });
     }
 
     const service = await Service.findById(serviceId);
@@ -199,7 +310,6 @@ export const assignClientsToService = async (req, res, next) => {
       const client = await Client.findById(clientId);
       if (!client) continue;
 
-      // Check if assignment already exists
       const existing = await ServiceAssignment.findOne({ serviceId, clientId });
       if (!existing) {
         const assignment = await ServiceAssignment.create({
@@ -208,6 +318,7 @@ export const assignClientsToService = async (req, res, next) => {
           package: packageType || "Standard",
           customPrice: customPrice || null,
           assignedUsers: assignedUsers || [],
+          assignedBy: req.user?.name || req.user?.email || "System",
           status: "Active",
         });
         assignments.push(assignment);
@@ -226,21 +337,32 @@ export const assignClientsToService = async (req, res, next) => {
 export const updateServiceAssignment = async (req, res, next) => {
   try {
     const { serviceId, assignmentId } = req.params;
-    const { assignedUsers, customPrice, package: packageType, status } = req.body;
+    const {
+      assignedUsers,
+      customPrice,
+      package: packageType,
+      status,
+    } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(serviceId) || !mongoose.Types.ObjectId.isValid(assignmentId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(serviceId) ||
+      !mongoose.Types.ObjectId.isValid(assignmentId)
+    ) {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    const assignment = await ServiceAssignment.findOne({ _id: assignmentId, serviceId });
+    const assignment = await ServiceAssignment.findOne({
+      _id: assignmentId,
+      serviceId,
+    });
     if (!assignment) {
       return res.status(404).json({ message: "Assignment not found" });
     }
 
-    if (assignedUsers) assignment.assignedUsers = assignedUsers;
-    if (customPrice !== undefined) assignment.customPrice = customPrice;
-    if (packageType) assignment.package = packageType;
-    if (status) assignment.status = status;
+    if (typeof assignedUsers !== "undefined") assignment.assignedUsers = assignedUsers;
+    if (typeof customPrice !== "undefined") assignment.customPrice = customPrice;
+    if (typeof packageType !== "undefined") assignment.package = packageType;
+    if (typeof status !== "undefined") assignment.status = status;
 
     await assignment.save();
 
@@ -261,14 +383,18 @@ export const bulkUpdateAssignments = async (req, res, next) => {
     }
 
     if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) {
-      return res.status(400).json({ message: "At least one assignment must be selected" });
+      return res
+        .status(400)
+        .json({ message: "At least one assignment must be selected" });
     }
 
     const updateFields = {};
-    if (updates.assignedUsers) updateFields.assignedUsers = updates.assignedUsers;
-    if (updates.customPrice !== undefined) updateFields.customPrice = updates.customPrice;
-    if (updates.package) updateFields.package = updates.package;
-    if (updates.status) updateFields.status = updates.status;
+    const safeUpdates = updates || {};
+
+    if (safeUpdates.assignedUsers) updateFields.assignedUsers = safeUpdates.assignedUsers;
+    if (typeof safeUpdates.customPrice !== "undefined") updateFields.customPrice = safeUpdates.customPrice;
+    if (typeof safeUpdates.package !== "undefined") updateFields.package = safeUpdates.package;
+    if (typeof safeUpdates.status !== "undefined") updateFields.status = safeUpdates.status;
 
     const result = await ServiceAssignment.updateMany(
       { _id: { $in: assignmentIds }, serviceId },
@@ -288,11 +414,17 @@ export const removeClientFromService = async (req, res, next) => {
   try {
     const { serviceId, assignmentId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(serviceId) || !mongoose.Types.ObjectId.isValid(assignmentId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(serviceId) ||
+      !mongoose.Types.ObjectId.isValid(assignmentId)
+    ) {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    const assignment = await ServiceAssignment.findOneAndDelete({ _id: assignmentId, serviceId });
+    const assignment = await ServiceAssignment.findOneAndDelete({
+      _id: assignmentId,
+      serviceId,
+    });
     if (!assignment) {
       return res.status(404).json({ message: "Assignment not found" });
     }
@@ -313,7 +445,9 @@ export const bulkRemoveClientsFromService = async (req, res, next) => {
     }
 
     if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) {
-      return res.status(400).json({ message: "At least one assignment must be selected" });
+      return res
+        .status(400)
+        .json({ message: "At least one assignment must be selected" });
     }
 
     const result = await ServiceAssignment.deleteMany({

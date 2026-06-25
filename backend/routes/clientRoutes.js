@@ -11,6 +11,12 @@ import {
   deleteClient,
 } from "../controllers/clientController.js";
 
+import {
+  bulkImportClients,
+  previewClientImport,
+  downloadClientTemplate,
+} from "../controllers/clientImportController.js";
+
 import protect from "../middleware/authMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
 
@@ -22,7 +28,49 @@ const router = express.Router();
 
 router.use(protect);
 
+/* ===========================================================
+   BULK IMPORT ROUTES
+=========================================================== */
 
+// Import Clients from Excel
+
+router.post(
+  "/import",
+  authorizeRoles(
+    ROLES.SuperAdmin,
+    ROLES.Partner
+  ),
+  upload.single("file"),
+  bulkImportClients
+);
+
+// Preview Excel Before Import
+
+router.post(
+  "/preview-import",
+  authorizeRoles(
+    ROLES.SuperAdmin,
+    ROLES.Partner
+  ),
+  upload.single("file"),
+  previewClientImport
+);
+
+// Download Excel Template
+
+router.get(
+  "/download-template",
+  authorizeRoles(
+    ROLES.SuperAdmin,
+    ROLES.Partner,
+    ROLES.Manager
+  ),
+  downloadClientTemplate
+);
+
+/* ===========================================================
+   CLIENT CRUD
+=========================================================== */
 
 // GET ALL CLIENTS
 
@@ -37,8 +85,6 @@ router.get(
   getClients
 );
 
-
-
 // CREATE CLIENT
 
 router.post(
@@ -50,8 +96,6 @@ router.post(
   upload.single("profileImage"),
   createClient
 );
-
-
 
 // GET CLIENT BY ID
 
@@ -65,8 +109,6 @@ router.get(
   ),
   getClientById
 );
-
-
 
 // UPDATE CLIENT
 
@@ -92,8 +134,6 @@ router.post(
   updateClientProfileImage
 );
 
-
-
 // ARCHIVE CLIENT
 
 router.patch(
@@ -104,8 +144,6 @@ router.patch(
   ),
   archiveClient
 );
-
-
 
 // RESTORE CLIENT
 

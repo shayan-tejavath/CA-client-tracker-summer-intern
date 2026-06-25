@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FaEllipsisV, FaGripVertical, FaTrashAlt } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import {
   getServiceById,
@@ -14,7 +15,7 @@ import {
   removeClientFromService,
   bulkRemoveClientsFromService,
 } from "../../services/serviceService.js";
-import { getClients } from "../../services/clientService.js";
+
 import "./service-details.css";
 
 const tabs = [
@@ -65,6 +66,7 @@ const ServiceDetails = () => {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("Settings");
+
   const [checklist, setChecklist] = useState([]);
   const [subtasks, setSubtasks] = useState([]);
   const [customFields, setCustomFields] = useState([]);
@@ -75,7 +77,6 @@ const ServiceDetails = () => {
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldValue, setNewFieldValue] = useState("");
 
-  // Assignment management state
   const [assignments, setAssignments] = useState([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentError, setAssignmentError] = useState("");
@@ -87,15 +88,65 @@ const ServiceDetails = () => {
   const [sortField, setSortField] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
+  const rowsPerPage = 10;
   const [actionMenuAssignmentId, setActionMenuAssignmentId] = useState(null);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const [editingPrice, setEditingPrice] = useState(null);
   const [editingPackage, setEditingPackage] = useState(null);
 
+  const dragIndexRef = useRef(null);
+
+  const refreshAssignments = async (serviceId = service?._id) => {
+    if (!serviceId) return;
+
+    setAssignmentError("");
+    setAssignmentLoading(true);
+
+    try {
+      const data = await getAssignedClients(serviceId, {
+        page: 1,
+        limit: 1000,
+        search: "",
+      });
+      setAssignments(data.assignments || []);
+    } catch (err) {
+      setAssignmentError(err.response?.data?.message || "Unable to load assignments.");
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+  const refreshServiceSnapshot = async (serviceId = service?._id) => {
+    if (!serviceId) return;
+
+    try {
+      const data = await getServiceById(serviceId);
+      setService({ ...defaultServiceSettings, ...data });
+      setChecklist(data.checklistItems || []);
+      setSubtasks(data.subtasks || []);
+      setCustomFields(data.customFields || []);
+      setSupportingFiles(data.supportingFiles || data.documents || []);
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to refresh service details.");
+    }
+  };
+
+  const refreshAvailableClients = async (serviceId = service?._id) => {
+    if (!serviceId || !showAssignModal) return;
+
+    try {
+      const data = await getAvailableClients(serviceId);
+      setAvailableClients(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Unable to load available clients.");
+    }
+  };
+
   useEffect(() => {
     const loadService = async () => {
       try {
+        setLoading(true);
+        setError("");
+
         const data = await getServiceById(id);
         setService({ ...defaultServiceSettings, ...data });
         setChecklist(data.checklistItems || []);
@@ -112,43 +163,30 @@ const ServiceDetails = () => {
     loadService();
   }, [id]);
 
-  // Load assignments for this service
   useEffect(() => {
-    const loadAssignments = async () => {
-      if (!service?._id) return;
-
-      setAssignmentError("");
-      setAssignmentLoading(true);
-
-      try {
-        const data = await getAssignedClients(service._id, { page: 1, limit: 1000 });
-        setAssignments(data.assignments || []);
-      } catch (err) {
-        setAssignmentError(err.response?.data?.message || "Unable to load assignments.");
-      } finally {
-        setAssignmentLoading(false);
-      }
-    };
-
-    loadAssignments();
+    if (!service?._id) return;
+    refreshAssignments(service._id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service?._id]);
 
-  // Load available clients for assignment
   useEffect(() => {
-    const loadAvailableClients = async () => {
-      if (!service?._id || !showAssignModal) return;
+    if (!service?._id || !showAssignModal) return;
+    refreshAvailableClients(service._id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [service?._id, showAssignModal]);
 
-      try {
-        const data = await getAvailableClients(service._id);
-        setAvailableClients(Array.isArray(data) ? data : []);
-      } catch (err) {
-        toast.error("Unable to load available clients.");
+  useEffect(() => {
+    const handleClientsImported = () => {
+      if (service?._id) {
+        refreshAssignments(service._id);
+        refreshServiceSnapshot(service._id);
       }
     };
 
-    loadAvailableClients();
-  }, [service?._id, showAssignModal]);
-
+    window.addEventListener("clients-imported", handleClientsImported);
+    return () => window.removeEventListener("clients-imported", handleClientsImported);
+  }, [service?._id]);
+  
   const selectedCount = useMemo(
     () => Object.keys(selectedAssignments).length,
     [selectedAssignments]
@@ -156,23 +194,23 @@ const ServiceDetails = () => {
 
   const sortedAssignments = useMemo(() => {
     const normalized = assignmentSearch.trim().toLowerCase();
+
     const filtered = assignments.filter((assignment) => {
       if (!normalized) return true;
+
       const client = assignment.clientId;
       return [
         client?.clientName,
         client?.clientCode,
-        assignment.package,
         client?.email,
+        assignment.package,
+        assignment.status,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
 
     return [...filtered].sort((a, b) => {
-      const aClient = a.clientId;
-      const bClient = b.clientId;
-
       const getValue = (item) => {
         const client = item.clientId;
         switch (sortField) {
@@ -199,7 +237,10 @@ const ServiceDetails = () => {
   const pagedAssignments = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
     return sortedAssignments.slice(start, start + rowsPerPage);
-  }, [sortedAssignments, currentPage, rowsPerPage]);
+  }, [sortedAssignments, currentPage]);
+
+  const serviceClientCount = service?.clientCount ?? assignments.length;
+  const serviceClientPreview = service?.assignedClientsPreview || [];
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -214,10 +255,9 @@ const ServiceDetails = () => {
     setCurrentPage(page);
   };
 
-  // Assignment Management Functions
-
   const handleAssignClients = async () => {
     if (!service?._id) return;
+
     const selectedIds = Object.keys(selectedClientsToAssign);
     if (!selectedIds.length) {
       toast.info("Select at least one client to assign.");
@@ -233,10 +273,8 @@ const ServiceDetails = () => {
         assignedUsers: [],
       });
 
-      // Reload assignments
-      const data = await getAssignedClients(service._id, { page: 1, limit: 1000 });
-      setAssignments(data.assignments || []);
-
+      await refreshAssignments(service._id);
+      await refreshServiceSnapshot(service._id);
       setSelectedClientsToAssign({});
       setShowAssignModal(false);
       toast.success(`${selectedIds.length} client(s) assigned to service.`);
@@ -261,6 +299,7 @@ const ServiceDetails = () => {
 
   const toggleSelectAllAssignments = () => {
     const allSelected = pagedAssignments.every((a) => selectedAssignments[a._id]);
+
     if (allSelected) {
       setSelectedAssignments((current) => {
         const next = { ...current };
@@ -285,11 +324,8 @@ const ServiceDetails = () => {
     setAssignmentLoading(true);
     try {
       await bulkRemoveClientsFromService(service._id, assignmentIds);
-
-      // Reload assignments
-      const data = await getAssignedClients(service._id, { page: 1, limit: 1000 });
-      setAssignments(data.assignments || []);
-
+      await refreshAssignments(service._id);
+      await refreshServiceSnapshot(service._id);
       setSelectedAssignments({});
       toast.success(`${assignmentIds.length} client(s) removed from service.`);
     } catch (err) {
@@ -301,11 +337,14 @@ const ServiceDetails = () => {
 
   const handleBulkAction = async (action) => {
     setBulkMenuOpen(false);
+
     const selectedIds = Object.keys(selectedAssignments);
     if (!selectedIds.length) {
       toast.info("Select at least one client to apply this action.");
       return;
     }
+
+    if (!service?._id) return;
 
     setAssignmentLoading(true);
     try {
@@ -331,12 +370,11 @@ const ServiceDetails = () => {
           return;
 
         default:
-          toast.info(`${action} action selected. Implementation pending.`);
+          toast.info("This bulk action is not fully wired yet.");
       }
 
-      // Reload assignments
-      const data = await getAssignedClients(service._id, { page: 1, limit: 1000 });
-      setAssignments(data.assignments || []);
+      await refreshAssignments(service._id);
+      await refreshServiceSnapshot(service._id);
       setSelectedAssignments({});
     } catch (err) {
       toast.error(err.response?.data?.message || "Unable to apply bulk action.");
@@ -350,11 +388,8 @@ const ServiceDetails = () => {
 
     try {
       await updateServiceAssignment(service._id, assignmentId, updates);
-
-      // Reload assignments
-      const data = await getAssignedClients(service._id, { page: 1, limit: 1000 });
-      setAssignments(data.assignments || []);
-
+      await refreshAssignments(service._id);
+      await refreshServiceSnapshot(service._id);
       setEditingPrice(null);
       setEditingPackage(null);
       toast.success("Assignment updated.");
@@ -364,24 +399,17 @@ const ServiceDetails = () => {
   };
 
   const renderClientAvatars = (client) => {
-    const avatars = [];
-    if (client?.profileImage) {
-      avatars.push({ type: "img", src: client.profileImage, label: client.clientName?.charAt(0) || "C" });
-    } else {
-      avatars.push({ type: "initial", label: client?.clientName?.charAt(0) || "C" });
-    }
+    if (!client) return null;
 
     return (
       <div className="avatar-stack">
-        {avatars.slice(0, 3).map((avatar, index) => (
-          <div key={index} className="user-avatar">
-            {avatar.type === "img" ? (
-              <img src={avatar.src} alt={client?.clientName} />
-            ) : (
-              <span>{avatar.label}</span>
-            )}
-          </div>
-        ))}
+        <div className="user-avatar">
+          {client.profileImage ? (
+            <img src={client.profileImage} alt={client.clientName || "Client"} />
+          ) : (
+            <span>{client.clientName?.charAt(0)?.toUpperCase() || "C"}</span>
+          )}
+        </div>
       </div>
     );
   };
@@ -415,7 +443,7 @@ const ServiceDetails = () => {
     if (!service?.serviceCategory?.trim()) errors.serviceCategory = "Service category is required.";
     if (!service?.frequency?.trim()) errors.frequency = "Frequency is required.";
     if (service.sacCode && !/^[0-9]+$/.test(service.sacCode)) errors.sacCode = "SAC Code must contain only digits.";
-    if (service.gstPercentage < 0 || service.gstPercentage > 100) errors.gstPercentage = "GST percentage must be between 0 and 100.";
+    if (Number(service.gstPercentage) < 0 || Number(service.gstPercentage) > 100) errors.gstPercentage = "GST percentage must be between 0 and 100.";
     if (service.defaultBillingRate && Number(service.defaultBillingRate) < 0) errors.defaultBillingRate = "Billing rate cannot be negative.";
     if (service.creationDate && service.dueDate && service.dueDate < service.creationDate) {
       errors.dueDate = "Due date cannot be before the creation date.";
@@ -429,8 +457,12 @@ const ServiceDetails = () => {
     }
 
     try {
-      await updateService(id, service);
-      setService((current) => ({ ...current }));
+      await updateService(id, {
+        serviceCategory: service.serviceCategory,
+        subService: service.subService,
+        frequency: service.frequency,
+        description: service.description || "",
+      });
       toast.success("Service configuration saved.");
     } catch (err) {
       setError(err.response?.data?.message || "Unable to save service settings.");
@@ -456,9 +488,6 @@ const ServiceDetails = () => {
     setNewChecklistItem("");
   };
 
-  // Drag & drop for checklist ordering
-  const dragIndexRef = useRef(null);
-
   const handleDragStart = (event, index) => {
     dragIndexRef.current = index;
     event.dataTransfer.effectAllowed = "move";
@@ -473,34 +502,25 @@ const ServiceDetails = () => {
     const from = dragIndexRef.current;
     const to = dropIndex;
     if (from == null || from === to) return;
+
     setChecklist((current) => {
       const next = [...current];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
       return next;
     });
+
     dragIndexRef.current = null;
   };
 
   const updateChecklistLabel = (index, value) => {
-    setChecklist((current) => current.map((item, idx) => (idx === index ? { ...item, label: value } : item)));
+    setChecklist((current) =>
+      current.map((item, idx) => (idx === index ? { ...item, label: value } : item))
+    );
   };
 
   const deleteChecklistItem = (index) => {
     setChecklist((current) => current.filter((_, idx) => idx !== index));
-  };
-
-  const saveChecklist = async () => {
-    if (!service) return;
-    try {
-      setSaving(true);
-      await updateService(id, { checklistItems: checklist });
-      toast.success("Checklist saved.");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Unable to save checklist.");
-    } finally {
-      setSaving(false);
-    }
   };
 
   const toggleSubtask = (index) => {
@@ -542,7 +562,9 @@ const ServiceDetails = () => {
             <div className="settings-card-header">
               <div>
                 <h2>Basic details</h2>
-                <p className="section-description">Configure the core service profile, task automation rules, and timeline defaults.</p>
+                <p className="section-description">
+                  Configure the service profile and default automation rules.
+                </p>
               </div>
               <div className="status-pill">Practice service configuration</div>
             </div>
@@ -557,7 +579,9 @@ const ServiceDetails = () => {
                     onChange={handleDetailChange}
                     placeholder="GST Filing, ROC Compliance, etc."
                   />
-                  {validationErrors.subService && <p className="input-helper danger">{validationErrors.subService}</p>}
+                  {validationErrors.subService && (
+                    <p className="input-helper danger">{validationErrors.subService}</p>
+                  )}
                 </label>
 
                 <label>
@@ -573,7 +597,9 @@ const ServiceDetails = () => {
                     <option value="ROC">ROC</option>
                     <option value="Audit">Audit</option>
                   </select>
-                  {validationErrors.serviceCategory && <p className="input-helper danger">{validationErrors.serviceCategory}</p>}
+                  {validationErrors.serviceCategory && (
+                    <p className="input-helper danger">{validationErrors.serviceCategory}</p>
+                  )}
                 </label>
               </div>
 
@@ -583,7 +609,9 @@ const ServiceDetails = () => {
                   <div className="toggle-row">
                     <span className="toggle-details">
                       <strong>{service.recurring ? "Enabled" : "Disabled"}</strong>
-                      <span className="input-helper">Recurring schedules keep this service active for every billing cycle.</span>
+                      <span className="input-helper">
+                        Recurring schedules keep this service active for every billing cycle.
+                      </span>
                     </span>
                     <label className="toggle-switch">
                       <input
@@ -602,7 +630,9 @@ const ServiceDetails = () => {
                   <div className="toggle-row">
                     <span className="toggle-details">
                       <strong>{service.enabled ? "Active" : "Inactive"}</strong>
-                      <span className="input-helper">Toggle service availability across client workflows.</span>
+                      <span className="input-helper">
+                        Toggle service availability across client workflows.
+                      </span>
                     </span>
                     <label className="toggle-switch">
                       <input
@@ -633,7 +663,9 @@ const ServiceDetails = () => {
                     <option value="Monthly">Monthly</option>
                     <option value="Quarterly">Quarterly</option>
                   </select>
-                  <p className="input-helper">Choose how often the system creates recurring tasks for this service.</p>
+                  <p className="input-helper">
+                    Choose how often the system creates recurring tasks for this service.
+                  </p>
                 </label>
 
                 <label>
@@ -644,7 +676,9 @@ const ServiceDetails = () => {
                     onChange={handleDetailChange}
                     placeholder="e.g. Invoice date + 7 days"
                   />
-                  {validationErrors.targetDateFormula && <p className="input-helper danger">{validationErrors.targetDateFormula}</p>}
+                  {validationErrors.targetDateFormula && (
+                    <p className="input-helper danger">{validationErrors.targetDateFormula}</p>
+                  )}
                 </label>
               </div>
 
@@ -667,7 +701,9 @@ const ServiceDetails = () => {
                     value={service.dueDate || ""}
                     onChange={handleDetailChange}
                   />
-                  {validationErrors.dueDate && <p className="input-helper danger">{validationErrors.dueDate}</p>}
+                  {validationErrors.dueDate && (
+                    <p className="input-helper danger">{validationErrors.dueDate}</p>
+                  )}
                 </label>
               </div>
             </div>
@@ -679,7 +715,9 @@ const ServiceDetails = () => {
                   <input
                     type="checkbox"
                     checked={service.taskCreationOptions?.createOnServiceAdd ?? true}
-                    onChange={(event) => updateNestedValue("taskCreationOptions", "createOnServiceAdd", event.target.checked)}
+                    onChange={(event) =>
+                      updateNestedValue("taskCreationOptions", "createOnServiceAdd", event.target.checked)
+                    }
                   />
                   <span>Create task when service is assigned</span>
                 </label>
@@ -687,7 +725,9 @@ const ServiceDetails = () => {
                   <input
                     type="checkbox"
                     checked={service.taskCreationOptions?.createOnDueDate ?? false}
-                    onChange={(event) => updateNestedValue("taskCreationOptions", "createOnDueDate", event.target.checked)}
+                    onChange={(event) =>
+                      updateNestedValue("taskCreationOptions", "createOnDueDate", event.target.checked)
+                    }
                   />
                   <span>Create task on due date trigger</span>
                 </label>
@@ -695,7 +735,9 @@ const ServiceDetails = () => {
                   <input
                     type="checkbox"
                     checked={service.taskCreationOptions?.createOnClientOnboard ?? false}
-                    onChange={(event) => updateNestedValue("taskCreationOptions", "createOnClientOnboard", event.target.checked)}
+                    onChange={(event) =>
+                      updateNestedValue("taskCreationOptions", "createOnClientOnboard", event.target.checked)
+                    }
                   />
                   <span>Create onboarding task for new clients</span>
                 </label>
@@ -706,7 +748,9 @@ const ServiceDetails = () => {
               <button type="submit" className="button primary" disabled={saving}>
                 {saving ? "Saving..." : "Save settings"}
               </button>
-              <button type="button" className="button secondary" onClick={() => setActiveTab("Checklist")}>Manage checklist</button>
+              <button type="button" className="button secondary" onClick={() => setActiveTab("Clients")}>
+                Manage clients
+              </button>
             </div>
 
             {error && <div className="alert danger">{error}</div>}
@@ -718,7 +762,9 @@ const ServiceDetails = () => {
             <div className="settings-card-header">
               <div>
                 <h2>Billing settings</h2>
-                <p className="section-description">Control how this service bills clients and whether tasks generate billable hours.</p>
+                <p className="section-description">
+                  Control how this service bills clients and whether tasks generate billable hours.
+                </p>
               </div>
             </div>
 
@@ -731,7 +777,9 @@ const ServiceDetails = () => {
                   onChange={handleDetailChange}
                   placeholder="e.g. 998212"
                 />
-                {validationErrors.sacCode && <p className="input-helper danger">{validationErrors.sacCode}</p>}
+                {validationErrors.sacCode && (
+                  <p className="input-helper danger">{validationErrors.sacCode}</p>
+                )}
               </label>
 
               <label>
@@ -743,9 +791,15 @@ const ServiceDetails = () => {
                   max="100"
                   name="gstPercentage"
                   value={service.gstPercentage || 0}
-                  onChange={(event) => handleDetailChange({ target: { name: "gstPercentage", value: Number(event.target.value) } })}
+                  onChange={(event) =>
+                    handleDetailChange({
+                      target: { name: "gstPercentage", value: Number(event.target.value) },
+                    })
+                  }
                 />
-                {validationErrors.gstPercentage && <p className="input-helper danger">{validationErrors.gstPercentage}</p>}
+                {validationErrors.gstPercentage && (
+                  <p className="input-helper danger">{validationErrors.gstPercentage}</p>
+                )}
               </label>
             </div>
 
@@ -761,7 +815,9 @@ const ServiceDetails = () => {
                   onChange={handleDetailChange}
                   placeholder="e.g. 1500"
                 />
-                {validationErrors.defaultBillingRate && <p className="input-helper danger">{validationErrors.defaultBillingRate}</p>}
+                {validationErrors.defaultBillingRate && (
+                  <p className="input-helper danger">{validationErrors.defaultBillingRate}</p>
+                )}
               </label>
 
               <label>
@@ -769,7 +825,9 @@ const ServiceDetails = () => {
                 <div className="toggle-row">
                   <span className="toggle-details">
                     <strong>{service.billableTask ? "Yes" : "No"}</strong>
-                    <span className="input-helper">Mark tasks created for this service as billable by default.</span>
+                    <span className="input-helper">
+                      Mark tasks created for this service as billable by default.
+                    </span>
                   </span>
                   <label className="toggle-switch">
                     <input
@@ -789,7 +847,9 @@ const ServiceDetails = () => {
             <div className="settings-card-header">
               <div>
                 <h2>GST API configuration</h2>
-                <p className="section-description">Connect this service to GST return workflows and filing status updates.</p>
+                <p className="section-description">
+                  Connect this service to GST return workflows and filing status updates.
+                </p>
               </div>
             </div>
 
@@ -812,7 +872,9 @@ const ServiceDetails = () => {
                 <input
                   type="checkbox"
                   checked={service.gstIntegration?.syncFilingStatus ?? true}
-                  onChange={(event) => updateNestedValue("gstIntegration", "syncFilingStatus", event.target.checked)}
+                  onChange={(event) =>
+                    updateNestedValue("gstIntegration", "syncFilingStatus", event.target.checked)
+                  }
                 />
                 <span>Sync filing status from GST API</span>
               </label>
@@ -822,7 +884,9 @@ const ServiceDetails = () => {
               <input
                 type="checkbox"
                 checked={service.gstIntegration?.fetchReturnStatus ?? false}
-                onChange={(event) => updateNestedValue("gstIntegration", "fetchReturnStatus", event.target.checked)}
+                onChange={(event) =>
+                  updateNestedValue("gstIntegration", "fetchReturnStatus", event.target.checked)
+                }
               />
               <span>Fetch GST return status automatically</span>
             </label>
@@ -832,7 +896,9 @@ const ServiceDetails = () => {
             <div className="settings-card-header">
               <div>
                 <h2>Document collection request</h2>
-                <p className="section-description">Select required documents that clients must upload for this service.</p>
+                <p className="section-description">
+                  Select required documents that clients must upload for this service.
+                </p>
               </div>
             </div>
 
@@ -841,7 +907,9 @@ const ServiceDetails = () => {
                 <input
                   type="checkbox"
                   checked={service.documentRequirements?.panProof ?? true}
-                  onChange={(event) => updateNestedValue("documentRequirements", "panProof", event.target.checked)}
+                  onChange={(event) =>
+                    updateNestedValue("documentRequirements", "panProof", event.target.checked)
+                  }
                 />
                 <span>PAN proof</span>
               </label>
@@ -849,7 +917,9 @@ const ServiceDetails = () => {
                 <input
                   type="checkbox"
                   checked={service.documentRequirements?.gstProof ?? true}
-                  onChange={(event) => updateNestedValue("documentRequirements", "gstProof", event.target.checked)}
+                  onChange={(event) =>
+                    updateNestedValue("documentRequirements", "gstProof", event.target.checked)
+                  }
                 />
                 <span>GSTIN proof</span>
               </label>
@@ -857,7 +927,9 @@ const ServiceDetails = () => {
                 <input
                   type="checkbox"
                   checked={service.documentRequirements?.bankStatement ?? false}
-                  onChange={(event) => updateNestedValue("documentRequirements", "bankStatement", event.target.checked)}
+                  onChange={(event) =>
+                    updateNestedValue("documentRequirements", "bankStatement", event.target.checked)
+                  }
                 />
                 <span>Bank statement</span>
               </label>
@@ -865,7 +937,9 @@ const ServiceDetails = () => {
                 <input
                   type="checkbox"
                   checked={service.documentRequirements?.invoiceCopy ?? false}
-                  onChange={(event) => updateNestedValue("documentRequirements", "invoiceCopy", event.target.checked)}
+                  onChange={(event) =>
+                    updateNestedValue("documentRequirements", "invoiceCopy", event.target.checked)
+                  }
                 />
                 <span>Invoice copy</span>
               </label>
@@ -874,13 +948,16 @@ const ServiceDetails = () => {
             <label className="settings-textarea">
               Custom required documents
               <textarea
-                name="documentRequirements"
                 value={service.documentRequirements?.customDocs || ""}
-                onChange={(event) => updateNestedValue("documentRequirements", "customDocs", event.target.value)}
+                onChange={(event) =>
+                  updateNestedValue("documentRequirements", "customDocs", event.target.value)
+                }
                 rows="4"
                 placeholder="e.g. Rent agreement, Salary slips, GST challan"
               />
-              <p className="input-helper">Add any additional document requirements that are specific to this service.</p>
+              <p className="input-helper">
+                Add any additional document requirements that are specific to this service.
+              </p>
             </label>
           </div>
         </div>
@@ -904,8 +981,8 @@ const ServiceDetails = () => {
             <button type="button" className="button primary" onClick={addChecklistItem}>
               Add
             </button>
-            <button type="button" className="button secondary" onClick={saveChecklist} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+            <button type="button" className="button secondary" onClick={() => toast.info("Checklist state is local in this version.")}>
+              Save
             </button>
           </div>
         </div>
@@ -938,10 +1015,20 @@ const ServiceDetails = () => {
                 </div>
 
                 <div className="checklist-actions">
-                  <button type="button" className="icon-button" onClick={() => toggleChecklistItem(index)} title="Toggle complete">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => toggleChecklistItem(index)}
+                    title="Toggle complete"
+                  >
                     {item.completed ? "✓" : "○"}
                   </button>
-                  <button type="button" className="icon-button danger" onClick={() => deleteChecklistItem(index)} title="Delete step">
+                  <button
+                    type="button"
+                    className="icon-button danger"
+                    onClick={() => deleteChecklistItem(index)}
+                    title="Delete step"
+                  >
                     <FaTrashAlt />
                   </button>
                 </div>
@@ -1043,7 +1130,13 @@ const ServiceDetails = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Assign Clients to Service</h2>
-              <button type="button" className="close-button" onClick={() => setShowAssignModal(false)}>×</button>
+              <button
+                type="button"
+                className="close-button"
+                onClick={() => setShowAssignModal(false)}
+              >
+                ×
+              </button>
             </div>
 
             <div className="modal-body">
@@ -1055,6 +1148,7 @@ const ServiceDetails = () => {
                     <input
                       type="search"
                       placeholder="Search clients..."
+                      value={assignmentSearch}
                       onChange={(e) => setAssignmentSearch(e.target.value)}
                     />
                   </div>
@@ -1063,10 +1157,12 @@ const ServiceDetails = () => {
                     {availableClients
                       .filter((client) => {
                         const normalized = assignmentSearch.trim().toLowerCase();
-                        return !normalized ||
+                        return (
+                          !normalized ||
                           client.clientName?.toLowerCase().includes(normalized) ||
                           client.clientCode?.toLowerCase().includes(normalized) ||
-                          client.email?.toLowerCase().includes(normalized);
+                          client.email?.toLowerCase().includes(normalized)
+                        );
                       })
                       .map((client) => (
                         <label key={client._id} className="modal-client-item">
@@ -1087,7 +1183,9 @@ const ServiceDetails = () => {
                           />
                           <div className="client-info">
                             <p className="client-name">{client.clientName}</p>
-                            <p className="client-meta">{client.clientCode} • {client.email}</p>
+                            <p className="client-meta">
+                              {client.clientCode} • {client.email}
+                            </p>
                           </div>
                         </label>
                       ))}
@@ -1159,29 +1257,9 @@ const ServiceDetails = () => {
               >
                 Bulk Action ({selectedCount})
               </button>
+
               {bulkMenuOpen && (
                 <div className="bulk-action-menu">
-                  <button
-                    type="button"
-                    className="action-menu-item"
-                    onClick={() => handleBulkAction("assign-users")}
-                  >
-                    Assign Users
-                  </button>
-                  <button
-                    type="button"
-                    className="action-menu-item"
-                    onClick={() => handleBulkAction("change-price")}
-                  >
-                    Change Custom Price
-                  </button>
-                  <button
-                    type="button"
-                    className="action-menu-item"
-                    onClick={() => handleBulkAction("change-package")}
-                  >
-                    Change Package
-                  </button>
                   <button
                     type="button"
                     className="action-menu-item"
@@ -1265,7 +1343,7 @@ const ServiceDetails = () => {
                       </span>
                     </th>
                     <th>Status</th>
-                    <th>Assigned Users</th>
+                    <th>Client</th>
                     <th className="actions-cell">Actions</th>
                   </tr>
                 </thead>
@@ -1302,7 +1380,9 @@ const ServiceDetails = () => {
                             <select
                               value={assignment.package}
                               onChange={(e) =>
-                                handleUpdateAssignment(assignment._id, { package: e.target.value })
+                                handleUpdateAssignment(assignment._id, {
+                                  package: e.target.value,
+                                })
                               }
                               onBlur={() => setEditingPackage(null)}
                               autoFocus
@@ -1336,8 +1416,13 @@ const ServiceDetails = () => {
                               style={{ width: "100px" }}
                             />
                           ) : (
-                            <span onClick={() => setEditingPrice(assignment._id)} style={{ cursor: "pointer" }}>
-                              {assignment.customPrice != null ? `₹ ${Number(assignment.customPrice).toLocaleString()}` : "—"}
+                            <span
+                              onClick={() => setEditingPrice(assignment._id)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              {assignment.customPrice != null
+                                ? `₹ ${Number(assignment.customPrice).toLocaleString()}`
+                                : "—"}
                             </span>
                           )}
                         </td>
@@ -1360,6 +1445,7 @@ const ServiceDetails = () => {
                             >
                               <FaEllipsisV />
                             </button>
+
                             {actionMenuAssignmentId === assignment._id && (
                               <div className="row-action-menu">
                                 <button
@@ -1426,7 +1512,11 @@ const ServiceDetails = () => {
                     <button
                       key={index + 1}
                       type="button"
-                      className={currentPage === index + 1 ? "button primary small" : "button secondary small"}
+                      className={
+                        currentPage === index + 1
+                          ? "button primary small"
+                          : "button secondary small"
+                      }
                       onClick={() => handlePageChange(index + 1)}
                     >
                       {index + 1}
@@ -1454,7 +1544,9 @@ const ServiceDetails = () => {
                   <p className="file-name">{file.name || file.fileName || "Untitled file"}</p>
                   <p className="file-meta">{file.fileType || file.type || "Document"}</p>
                 </div>
-                <span>{file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : "—"}</span>
+                <span>
+                  {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : "—"}
+                </span>
               </div>
             ))}
           </div>
@@ -1489,10 +1581,19 @@ const ServiceDetails = () => {
           <div>
             <p className="eyebrow">Services</p>
             <h1>Service details</h1>
-            <p>Manage service settings, checklist, subtasks, clients, and files for this offering.</p>
+            <p>
+              Manage service settings, checklist, subtasks, clients, and files for this offering.
+            </p>
           </div>
+
           <div className="page-tools">
-            <button type="button" className="button secondary" onClick={() => navigate("/dashboard/services")}>Back to Services</button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => navigate("/dashboard/services")}
+            >
+              Back to Services
+            </button>
           </div>
         </div>
 
@@ -1509,14 +1610,19 @@ const ServiceDetails = () => {
                 <p className="service-frequency">{service.frequency || "Frequency not set"}</p>
                 <p className="service-description">{service.description || "No description available."}</p>
               </div>
+
               <div className="service-summary-metrics">
                 <div>
                   <p className="metric-label">Status</p>
-                  <p>{service.active === false ? "Inactive" : "Active"}</p>
+                  <p>{service.enabled === false ? "Inactive" : "Active"}</p>
                 </div>
                 <div>
                   <p className="metric-label">Clients</p>
-                  <p>{assignments.length}</p>
+                  <p>{serviceClientCount}</p>
+                </div>
+                <div>
+                  <p className="metric-label">Preview</p>
+                  <p>{serviceClientPreview.length}</p>
                 </div>
                 <div>
                   <p className="metric-label">Files</p>

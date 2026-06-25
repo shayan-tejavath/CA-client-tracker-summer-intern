@@ -430,12 +430,6 @@
 .search-input:focus {
   border-color: #2563eb;
 }
-
-.bulk-action-wrapper {
-  position: relative;
-}
-
-.bulk-action-menu,
 .row-action-menu {
   position: absolute;
   right: 0;
@@ -449,15 +443,6 @@
   display: grid;
 }
 
-.action-menu-item {
-  border: none;
-  background: transparent;
-  text-align: left;
-  padding: 14px 18px;
-  color: #f8fafc;
-  font-size: 0.95rem;
-  cursor: pointer;
-}
 
 .action-menu-item:hover,
 .action-menu-item.danger:hover {
@@ -575,43 +560,7 @@ td.checkbox-cell {
   font-size: 0.92rem;
 }
 
-.avatar-stack {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(59, 130, 246, 0.18);
-  color: #f8fafc;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.user-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-count {
-  min-width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: #94a3b8;
-  font-size: 0.8rem;
-}
 
 .row-action-wrapper {
   position: relative;
@@ -961,12 +910,18 @@ td.checkbox-cell {
     grid-template-columns: 1fr;
   }
 
-.service-tabs {
-  overflow-x: auto;
+  .service-tabs {
+    overflow-x: auto;
+  }
 }
 
-/* Checklist styles */
-.checklist-card {}
+/* ===========================
+   Checklist Styles
+=========================== */
+
+.checklist-card {
+}
+
 .checklist-list {
   display: grid;
   gap: 10px;
@@ -980,8 +935,8 @@ td.checkbox-cell {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(15,23,42,0.88);
-  border: 1px solid rgba(148,163,184,0.08);
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .drag-handle {
@@ -999,10 +954,10 @@ td.checkbox-cell {
 
 .checklist-input {
   width: 100%;
-  border: 1px solid rgba(148,163,184,0.18);
+  border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 10px;
   padding: 10px 12px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   color: #f8fafc;
 }
 
@@ -1013,13 +968,13 @@ td.checkbox-cell {
 
 .checklist-actions {
   display: flex;
-  gap: 8px;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .icon-button.danger {
   background: rgba(252, 165, 165, 0.06);
-  border: 1px solid rgba(252,165,165,0.12);
+  border: 1px solid rgba(252, 165, 165, 0.12);
   color: #fca5a5;
 }
 
@@ -1028,7 +983,82 @@ td.checkbox-cell {
   padding: 12px 14px;
 }
 
+/* ===========================
+   Responsive
+=========================== */
+
+@media (max-width: 900px) {
+  .service-settings-grid,
+  .service-summary-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .service-tabs {
     overflow-x: auto;
   }
+}
+
+.client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.client-info p {
+  margin: 0;
+}
+.modal-clients-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+.data-table.full-width td input,
+.data-table.full-width td select{
+    width:100%;
+}
+.status-badge{
+    white-space:nowrap;
+}
+.service-summary-metrics div{
+    text-align:center;
+}
+@media(max-width:768px){
+
+.service-summary-card{
+    padding:16px;
+}
+
+.clients-table-toolbar{
+    flex-direction:column;
+    align-items:stretch;
+}
+
+.table-toolbar-left{
+    flex-direction:column;
+}
+
+.table-toolbar-left button{
+    width:100%;
+}
+
+.search-input{
+    min-width:unset;
+}
+
+}
+.modal-content{
+    animation: popup .25s ease;
+}
+
+@keyframes popup{
+
+from{
+opacity:0;
+transform:translateY(20px) scale(.95);
+}
+
+to{
+opacity:1;
+transform:translateY(0) scale(1);
+}
+
 }

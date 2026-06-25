@@ -142,3 +142,80 @@ export const deleteClient = async (
 
   return response.data;
 };
+
+/* ======================================================
+   BULK IMPORT CLIENTS
+====================================================== */
+
+export const bulkImportClients = async (
+  file
+) => {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response = await api.post(
+    "/clients/import",
+    formData
+  );
+
+  return response.data;
+};
+
+/* ======================================================
+   PREVIEW CLIENT IMPORT
+====================================================== */
+
+export const previewClientImport =
+  async (file) => {
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    const response = await api.post(
+      "/clients/preview-import",
+      formData
+    );
+
+    return response.data;
+  };
+
+/* ======================================================
+   DOWNLOAD TEMPLATE
+====================================================== */
+
+export const downloadClientTemplate =
+  async () => {
+    const response = await api.get(
+      "/clients/download-template",
+      {
+        responseType: "blob",
+      }
+    );
+
+    const blob = new Blob(
+      [response.data],
+      {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }
+    );
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      "client-import-template.xlsx";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
+  };
