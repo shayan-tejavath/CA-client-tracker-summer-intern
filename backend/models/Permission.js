@@ -1,12 +1,9 @@
 import mongoose from "mongoose";
 
-const validRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
-
 const permissionSchema = new mongoose.Schema(
   {
     role: {
       type: String,
-      enum: validRoles,
       required: true,
       unique: true,
       trim: true,
