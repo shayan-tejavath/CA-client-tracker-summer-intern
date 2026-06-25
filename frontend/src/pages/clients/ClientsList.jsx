@@ -17,6 +17,14 @@ import {
   archiveClient,
   restoreClient,
 } from "../../services/clientService.js";
+
+import BulkImportDialog from "../../components/clients/BulkImportDialog";
+
+import {
+  Upload,
+  Plus,
+} from "lucide-react";
+
 import "../../styles/clients-list.css";
 
 const ClientsList = () => {
@@ -65,35 +73,39 @@ const ClientsList = () => {
       totalPages: 1,
       limit: 10,
     });
+  const [showImportDialog, setShowImportDialog] =
+    useState(false);
+
+  // Moveable loader so it can be reused after import
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await getClients({
+        search,
+        status: statusFilter,
+        type: typeFilter,
+        page,
+        limit,
+      });
+
+      setClients(data.clients);
+
+      setPagination(data.pagination);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Failed to load clients."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // LOAD CLIENTS
 
   useEffect(() => {
-    const loadClients = async () => {
-      try {
-        setLoading(true);
-
-        const data = await getClients({
-          search,
-          status: statusFilter,
-          type: typeFilter,
-          page,
-          limit,
-        });
-
-        setClients(data.clients);
-
-        setPagination(data.pagination);
-      } catch (err) {
-        setError(
-          err.response?.data?.message ||
-            "Failed to load clients."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadClients();
   }, [
     search,
@@ -276,16 +288,22 @@ const ClientsList = () => {
           </div>
 
           {canCreateClient && (
-            <div className="page-tools">
+            <div className="page-tools" style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                className="button success"
+                onClick={() => setShowImportDialog(true)}
+              >
+                <Upload size={18} />
+                Import Clients
+              </button>
+
               <button
                 type="button"
                 className="button primary"
-                onClick={() =>
-                  navigate(
-                    "/dashboard/clients/add"
-                  )
-                }
+                onClick={() => navigate("/dashboard/clients/add")}
               >
+                <Plus size={18} />
                 Add Client
               </button>
             </div>
@@ -629,8 +647,24 @@ const ClientsList = () => {
           </>
         )}
       </section>
+
+      <BulkImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImported={async () => {
+            setShowImportDialog(false);
+
+            await loadClients();
+
+            toast.success(
+              "Clients imported successfully."
+            );
+        }}
+      />
     </DashboardLayout>
   );
 };
 
 export default ClientsList;
+
+  

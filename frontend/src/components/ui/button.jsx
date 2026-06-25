@@ -1,12 +1,31 @@
 import React from "react";
 
-export const Button = ({ children, asChild, className = "", ...props }) => {
+export const Button = ({
+  children,
+  asChild = false,
+  variant = "",
+  size = "",
+  className = "",
+  ...props
+}) => {
+  const classes = [
+    "button",
+    variant,
+    size,
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, { className, ...props });
+    return React.cloneElement(children, {
+      ...props,
+      className: `${children.props.className || ""} ${classes}`.trim(),
+    });
   }
 
   return (
-    <button className={className} {...props}>
+    <button className={classes} {...props}>
       {children}
     </button>
   );

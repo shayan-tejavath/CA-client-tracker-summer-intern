@@ -1,5 +1,6 @@
 ﻿import mongoose from "mongoose";
 import Client from "../models/Client.js";
+import ServiceAssignment from "../models/ServiceAssignment.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
 
 const validateClientData = (data) => {
@@ -10,6 +11,26 @@ const validateClientData = (data) => {
     "mobile",
     "email",
   ];
+
+  const normalizeArrayField = (value) => {
+    if (Array.isArray(value)) return value.filter(Boolean);
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return [];
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch {
+        // fall back to single value
+      }
+
+      return [trimmed];
+    }
+
+    return [];
+  };
 
   const missingFields = requiredFields.filter(
     (field) =>
@@ -260,17 +281,59 @@ export const createClient = async (
             "Client with same PAN or GSTIN already exists",
         });
     }
+    const assignedServices = normalizeArrayField(req.body.assignedServices);
+    const assignedEmployees = normalizeArrayField(req.body.assignedEmployees);
 
     const client = await Client.create({
       ...req.body,
+
+      assignedServices,
+      assignedEmployees,
+
       profileImage: req.file
         ? `/uploads/${req.file.filename}`
         : req.body.profileImage || "",
+
       pan: req.body.pan.toUpperCase(),
-      gstin:
-        req.body.gstin.toUpperCase(),
+      gstin: req.body.gstin.toUpperCase(),
       tan: req.body.tan?.toUpperCase(),
     });
+
+    if (
+      req.body.assignedServices &&
+      Array.isArray(req.body.assignedServices)
+    ) {
+      const assignedUsers =
+        Array.isArray(req.body.assignedEmployees)
+          ? req.body.assignedEmployees
+          : [];
+
+          try {
+
+              await Promise.all(
+                  req.body.assignedServices.map((serviceId)=>
+                      ServiceAssignment.create({
+                          serviceId,
+                          clientId: client._id,
+                          assignedUsers,
+                          assignedBy:
+                              req.user?.name ||
+                              req.user?.email ||
+                              "System",
+                      })
+                  )
+              );
+
+          }
+          catch(err){
+
+              console.error(
+                  "Service Assignment Error",
+                  err
+              );
+
+          }
+    }
 
     res.status(201).json(client);
   } catch (error) {
@@ -359,29 +422,63 @@ export const updateClient = async (
       }
     }
 
+    const assignedServices = req.body.assignedServices !== undefined
+      ? normalizeArrayField(req.body.assignedServices)
+      : normalizeArrayField(client.assignedServices);
+
+    const assignedEmployees =
+      req.body.assignedEmployees !== undefined
+        ? normalizeArrayField(req.body.assignedEmployees)
+        : normalizeArrayField(client.assignedEmployees);
     const updatedClient =
+    
       await Client.findByIdAndUpdate(
         id,
         {
           ...req.body,
+          assignedServices,
           profileImage: req.file
             ? `/uploads/${req.file.filename}`
             : req.body.profileImage || client.profileImage,
-          pan:
-            req.body.pan?.toUpperCase() ??
-            client.pan,
-          gstin:
-            req.body.gstin?.toUpperCase() ??
-            client.gstin,
-          tan:
-            req.body.tan?.toUpperCase() ??
-            client.tan,
+          pan: req.body.pan?.toUpperCase() ?? client.pan,
+          gstin: req.body.gstin?.toUpperCase() ?? client.gstin,
+          tan: req.body.tan?.toUpperCase() ?? client.tan,
         },
         {
           new: true,
           runValidators: true,
         }
       );
+
+    // Sync service assignments: remove existing and recreate from payload
+    try {
+      const assignedServices = Array.isArray(req.body.assignedServices)
+        ? req.body.assignedServices
+        : [];
+
+      const assignedEmployees = Array.isArray(req.body.assignedEmployees)
+        ? req.body.assignedEmployees
+        : [];
+
+      // Remove previous assignments for this client
+      await ServiceAssignment.deleteMany({ clientId: id });
+
+      if (assignedServices.length > 0) {
+        await Promise.all(
+          assignedServices.map((serviceId) =>
+            ServiceAssignment.create({
+              serviceId,
+              clientId: id,
+              assignedUsers: assignedEmployees,
+              assignedBy: req.user?.name || req.user?.email || "System",
+            })
+          )
+        );
+      }
+    } catch (err) {
+      // log and continue - don't block the update response
+      console.error("Service assignment sync error:", err);
+    }
 
     res.json(updatedClient);
   } catch (error) {
