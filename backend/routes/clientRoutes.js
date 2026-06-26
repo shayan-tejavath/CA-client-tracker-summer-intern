@@ -162,7 +162,8 @@ router.delete(
   "/:id",
   authorizeRoles(
     ROLES.SuperAdmin,
-    ROLES.Partner
+    ROLES.Partner,
+    ROLES.Manager
   ),
   deleteClient
 );
