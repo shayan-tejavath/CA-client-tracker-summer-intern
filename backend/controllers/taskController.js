@@ -1,8 +1,15 @@
 ﻿import mongoose from "mongoose";
+
 import Task from "../models/Task.js";
 import Client from "../models/Client.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
-import { notifyTaskAssigned } from "../services/notificationService.js";
+
+import {
+  notifyTaskAssigned,
+  notifyTaskStatusUpdated,
+  notifyTaskCompleted,
+  notifyTaskCommentAdded,
+} from "../services/notificationService.js";
 
 const allowedStatuses = ["Pending", "In Progress", "Completed", "Overdue"];
 const allowedPriorities = ["Low", "Medium", "High", "Critical"];
@@ -44,7 +51,9 @@ const getAssignedToId = (taskDoc) => {
   if (typeof taskDoc.assignedTo === "object" && taskDoc.assignedTo._id) {
     return taskDoc.assignedTo._id.toString();
   }
-  return taskDoc.assignedTo.toString ? taskDoc.assignedTo.toString() : String(taskDoc.assignedTo);
+  return taskDoc.assignedTo.toString
+    ? taskDoc.assignedTo.toString()
+    : String(taskDoc.assignedTo);
 };
 
 export const getTasks = async (req, res, next) => {
@@ -112,7 +121,10 @@ export const getTaskById = async (req, res, next) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    if (req.user?.role === ROLES.Employee && task.assignedTo?.toString() !== req.user._id.toString()) {
+    if (
+      req.user?.role === ROLES.Employee &&
+      task.assignedTo?.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -195,7 +207,9 @@ export const updateTask = async (req, res, next) => {
         (field) => !allowedFields.includes(field)
       );
       if (disallowedFields.length) {
-        return res.status(403).json({ message: "Employees may only update task status." });
+        return res
+          .status(403)
+          .json({ message: "Employees may only update task status." });
       }
     }
 
@@ -217,7 +231,13 @@ export const updateTask = async (req, res, next) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    const populatedUpdatedTask = await taskPopulate(Task.findById(updatedTask._id));
+    const populatedUpdatedTask = await taskPopulate(
+      Task.findById(updatedTask._id)
+    );
+
+    /* ===========================================
+       TASK REASSIGNED
+    =========================================== */
 
     const assignedToChanged =
       req.body.assignedTo &&
@@ -226,6 +246,7 @@ export const updateTask = async (req, res, next) => {
     if (assignedToChanged) {
       try {
         const newAssignedToId = getAssignedToId(populatedUpdatedTask);
+
         if (newAssignedToId) {
           await notifyTaskAssigned({
             userId: newAssignedToId,
@@ -235,6 +256,34 @@ export const updateTask = async (req, res, next) => {
         }
       } catch (err) {
         console.error("Task reassignment notification failed:", err.message);
+      }
+    }
+
+    /* ===========================================
+       STATUS CHANGED
+    =========================================== */
+
+    if (req.body.status && req.body.status !== task.status) {
+      try {
+        const assignedToId = getAssignedToId(populatedUpdatedTask);
+
+        if (assignedToId) {
+          await notifyTaskStatusUpdated({
+            userId: assignedToId,
+            task: populatedUpdatedTask,
+            oldStatus: task.status,
+            newStatus: req.body.status,
+          });
+        }
+
+        if (req.body.status === "Completed") {
+          await notifyTaskCompleted({
+            userId: assignedToId,
+            task: populatedUpdatedTask,
+          });
+        }
+      } catch (err) {
+        console.error("Task status notification failed:", err.message);
       }
     }
 
@@ -281,7 +330,10 @@ export const addComment = async (req, res, next) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    if (req.user?.role === ROLES.Employee && task.assignedTo?.toString() !== req.user._id.toString()) {
+    if (
+      req.user?.role === ROLES.Employee &&
+      task.assignedTo?.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -295,6 +347,21 @@ export const addComment = async (req, res, next) => {
     const comment = { author: req.user._id, text: String(text).trim() };
     task.comments.push(comment);
     await task.save();
+
+    try {
+      const assignedToId = task.assignedTo?.toString();
+
+      if (assignedToId) {
+        await notifyTaskCommentAdded({
+          userId: assignedToId,
+          task,
+          comment: text,
+          sender: req.user?._id,
+        });
+      }
+    } catch (err) {
+      console.error("Comment notification failed:", err.message);
+    }
 
     const populated = await taskPopulate(Task.findById(task._id));
     res.status(201).json(populated);

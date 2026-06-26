@@ -435,7 +435,110 @@ export const notifyTaskAssigned = async ({
     },
   });
 };
+/* ==========================================================
+   TASK STATUS UPDATED
+========================================================== */
 
+export const notifyTaskStatusUpdated = async ({
+  userId,
+  task,
+  oldStatus,
+  newStatus,
+  sender = null,
+}) => {
+  return createNotification({
+    title: "Task Status Updated",
+    message: `${task.title || "Task"} status changed from ${oldStatus} to ${newStatus}.`,
+    recipient: userId,
+    recipientRole: "Employee",
+    sender,
+    type: "Task",
+    priority: "Medium",
+    entityType: "Task",
+    entityId: task._id,
+    actionUrl: `/tasks/${task._id}`,
+    channels: {
+      inApp: true,
+      email: true,
+      sms: false,
+      whatsapp: false,
+    },
+    metadata: {
+      taskId: task._id,
+      event: "task_status_updated",
+      oldStatus,
+      newStatus,
+    },
+  });
+};
+
+/* ==========================================================
+   TASK COMPLETED
+========================================================== */
+
+export const notifyTaskCompleted = async ({
+  userId,
+  task,
+  sender = null,
+}) => {
+  return createNotification({
+    title: "Task Completed",
+    message: `${task.title || "Task"} has been marked as completed.`,
+    recipient: userId,
+    recipientRole: "Employee",
+    sender,
+    type: "Task",
+    priority: "Medium",
+    entityType: "Task",
+    entityId: task._id,
+    actionUrl: `/tasks/${task._id}`,
+    channels: {
+      inApp: true,
+      email: true,
+      sms: false,
+      whatsapp: false,
+    },
+    metadata: {
+      taskId: task._id,
+      event: "task_completed",
+    },
+  });
+};
+
+/* ==========================================================
+   TASK COMMENT ADDED
+========================================================== */
+
+export const notifyTaskCommentAdded = async ({
+  userId,
+  task,
+  comment,
+  sender = null,
+}) => {
+  return createNotification({
+    title: "New Task Comment",
+    message: `A new comment was added to ${task.title || "Task"}.`,
+    recipient: userId,
+    recipientRole: "Employee",
+    sender,
+    type: "Task",
+    priority: "Low",
+    entityType: "Task",
+    entityId: task._id,
+    actionUrl: `/tasks/${task._id}`,
+    channels: {
+      inApp: true,
+      email: false,
+      sms: false,
+      whatsapp: false,
+    },
+    metadata: {
+      taskId: task._id,
+      commentId: comment?._id,
+      event: "task_comment_added",
+    },
+  });
+};
 /* ==========================================================
    GET USER NOTIFICATIONS
 ========================================================== */
@@ -555,7 +658,12 @@ export default {
   notifyClientUpdated,
   notifyBulkImportCompleted,
   notifyServiceAssigned,
+
+  notifyTaskStatusUpdated,
+  notifyTaskCompleted,
+  notifyTaskCommentAdded,
   notifyTaskAssigned,
+  
   getUserNotifications,
   getUnreadCount,
   markNotificationRead,
