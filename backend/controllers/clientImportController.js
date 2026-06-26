@@ -24,17 +24,21 @@ export const bulkImportClients = async (
       });
     }
 
+    const assignedBy =
+      req.user?.name ||
+      req.user?.email ||
+      "Bulk Import";
+
     const result =
       await importClientsFromExcel(
-        req.file.path
+        req.file.path,
+        assignedBy
       );
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Clients imported successfully.",
-
+      message: "Clients imported successfully.",
+      importedCount: result.successCount,
       ...result,
     });
   } catch (error) {

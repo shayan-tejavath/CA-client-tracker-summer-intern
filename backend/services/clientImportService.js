@@ -75,28 +75,83 @@ const validateClient = (client) => {
    FIND SERVICES
 ------------------------------------------------------- */
 
+const escapeRegExp = (value) =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const findServices = async (
   serviceNames = []
 ) => {
   const foundServices = [];
+  const seenIds = new Set();
+  const matchedNames = new Set();
 
-  for (const serviceName of serviceNames) {
-    const service =
-      await Service.findOne({
-        subService: {
-          $regex: new RegExp(
-            `^${serviceName}$`,
-            "i"
-          ),
+  const normalizedServiceNames = serviceNames
+    .map((name) => String(name || "").trim())
+    .filter(Boolean);
+
+  for (const serviceName of normalizedServiceNames) {
+    const escapedName = escapeRegExp(serviceName);
+
+    const exactMatch = await Service.findOne({
+      $or: [
+        {
+          subService: {
+            $regex: new RegExp(`^${escapedName}$`, "i"),
+          },
         },
-      });
+        {
+          serviceCategory: {
+            $regex: new RegExp(`^${escapedName}$`, "i"),
+          },
+        },
+      ],
+    });
+
+    const service =
+      exactMatch ||
+      (await Service.findOne({
+        $or: [
+          {
+            subService: {
+              $regex: new RegExp(escapedName, "i"),
+            },
+          },
+          {
+            serviceCategory: {
+              $regex: new RegExp(escapedName, "i"),
+            },
+          },
+        ],
+      }));
 
     if (service) {
-      foundServices.push(service);
+      matchedNames.add(serviceName);
+      const serviceId = String(service._id);
+      if (!seenIds.has(serviceId)) {
+        foundServices.push(service);
+        seenIds.add(serviceId);
+      }
     }
   }
 
-  return foundServices;
+  return {
+    foundServices,
+    matchedNames,
+    normalizedServiceNames,
+  };
+};
+
+const findServicesByCategory = async (serviceCategory) => {
+  const normalizedCategory = String(serviceCategory || "").trim();
+  if (!normalizedCategory) return [];
+
+  const escapedCategory = escapeRegExp(normalizedCategory);
+
+  return Service.find({
+    serviceCategory: {
+      $regex: new RegExp(`^${escapedCategory}$`, "i"),
+    },
+  });
 };
 
 /* -------------------------------------------------------
@@ -130,32 +185,35 @@ const checkDuplicate = async (
 
 const assignServices = async (
   clientId,
-  services
+  services,
+  assignedBy = "Bulk Import"
 ) => {
+  let assignmentCount = 0;
+
   for (const service of services) {
+    if (!service || !service._id) continue;
+
     const alreadyAssigned =
       await ServiceAssignment.findOne({
         clientId,
         serviceId: service._id,
       });
 
-    if (alreadyAssigned)
-      continue;
+    if (alreadyAssigned) continue;
 
     await ServiceAssignment.create({
       clientId,
-
       serviceId: service._id,
-
       package: "Standard",
-
       status: "Active",
-
-      assignedBy: "Bulk Import",
-
+      assignedBy,
       assignedUsers: [],
     });
+
+    assignmentCount += 1;
   }
+
+  return assignmentCount;
 };
 
 /* -------------------------------------------------------
@@ -163,21 +221,18 @@ const assignServices = async (
 ------------------------------------------------------- */
 
 export const importClientsFromExcel =
-  async (filePath) => {
+  async (filePath, assignedBy = "Bulk Import") => {
     const rows =
       parseClientExcel(filePath);
 
     const summary = {
       totalRows: rows.length,
-
       successCount: 0,
-
       failedCount: 0,
-
       skippedCount: 0,
-
+      assignedServicesCount: 0,
+      assignmentWarnings: [],
       createdClients: [],
-
       failedClients: [],
     };
 
@@ -237,10 +292,49 @@ export const importClientsFromExcel =
            Find Services
         ----------------------------- */
 
-        const services =
-          await findServices(
-            client.assignedServices
+        const foundServices = [];
+        const invalidServiceNames = [];
+
+        if (client.serviceCategory) {
+          const categoryServices = await findServicesByCategory(
+            client.serviceCategory
           );
+
+          if (categoryServices.length) {
+            foundServices.push(...categoryServices);
+          } else {
+            invalidServiceNames.push(client.serviceCategory);
+            summary.assignmentWarnings.push(
+              `Row ${client.rowNumber}: Service category "${client.serviceCategory}" not found.`
+            );
+            console.warn(
+              `Client import row ${client.rowNumber}: Service category "${client.serviceCategory}" not found.`
+            );
+          }
+        } else if (client.assignedServices.length) {
+          const {
+            foundServices: fallbackServices,
+            matchedNames,
+            normalizedServiceNames,
+          } = await findServices(client.assignedServices);
+
+          foundServices.push(...fallbackServices);
+
+          invalidServiceNames.push(
+            ...normalizedServiceNames.filter(
+              (serviceName) => !matchedNames.has(serviceName)
+            )
+          );
+
+          if (invalidServiceNames.length) {
+            summary.assignmentWarnings.push(
+              `Row ${client.rowNumber}: Assigned service names not found: ${invalidServiceNames.join(", ")}`
+            );
+            console.warn(
+              `Client import row ${client.rowNumber}: Assigned service names not found: ${invalidServiceNames.join(", ")}`
+            );
+          }
+        }
 
         /* -----------------------------
            Create Client
@@ -309,13 +403,13 @@ export const importClientsFromExcel =
               client.notes,
 
             assignedServices:
-              services.map(
+              foundServices.map(
                 (service) =>
                   service.subService
               ),
 
             services:
-              services.map(
+              foundServices.map(
                 (service) =>
                   service.subService
               ),
@@ -325,11 +419,13 @@ export const importClientsFromExcel =
            Assign Services
         ----------------------------- */
 
-        await assignServices(
+        const createdAssignmentCount = await assignServices(
           newClient._id,
-          services
+          foundServices,
+          assignedBy
         );
 
+        summary.assignedServicesCount += createdAssignmentCount;
         summary.successCount++;
 
         summary.createdClients.push({
@@ -343,10 +439,12 @@ export const importClientsFromExcel =
             newClient.clientName,
 
           services:
-            services.map(
+            foundServices.map(
               (service) =>
                 service.subService
             ),
+
+          invalidServiceNames,
         });
       }      return summary;
     } catch (error) {
@@ -398,6 +496,7 @@ export const getClientImportTemplate =
       "Contact Person Email",
       "Contact Person Mobile",
       "Assigned Manager",
+      "Service Category",
       "Assigned Services",
       "Notes",
     ];
@@ -431,6 +530,9 @@ export const previewImport =
 
         gstin:
           client.gstin,
+
+        serviceCategory:
+          client.serviceCategory,
 
         assignedServices:
           client.assignedServices,

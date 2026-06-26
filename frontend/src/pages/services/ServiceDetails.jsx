@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FaEllipsisV, FaGripVertical, FaTrashAlt } from "react-icons/fa";
+import { FaEllipsisV, FaGripVertical, FaTrashAlt, FaUsers, FaClipboardList, FaTasks, FaFileAlt } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -241,6 +241,16 @@ const ServiceDetails = () => {
 
   const serviceClientCount = service?.clientCount ?? assignments.length;
   const serviceClientPreview = service?.assignedClientsPreview || [];
+  const checklistCount = checklist.length;
+  const subtaskCount = subtasks.length;
+  const filesCount = supportingFiles.length;
+  const createdDate = service?.creationDate
+    ? new Date(service.creationDate).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "Not set";
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -1604,30 +1614,83 @@ const ServiceDetails = () => {
         ) : (
           <>
             <div className="service-summary-card">
-              <div>
-                <p className="service-category">{service.serviceCategory || "Service category"}</p>
-                <h2>{service.subService || "Untitled service"}</h2>
-                <p className="service-frequency">{service.frequency || "Frequency not set"}</p>
-                <p className="service-description">{service.description || "No description available."}</p>
-              </div>
+              <div className="service-hero-top">
+                <div className="service-hero-copy">
+                  <div className="service-title-row">
+                    <p className="service-category">{service.serviceCategory || "Service category"}</p>
+                    <span
+                      className={`badge status-pill ${service.enabled === false ? "danger" : "success"}`}
+                    >
+                      {service.enabled === false ? "Inactive" : "Active"}
+                    </span>
+                    <span className="badge frequency-badge">{service.frequency || "Frequency not set"}</span>
+                  </div>
 
-              <div className="service-summary-metrics">
-                <div>
-                  <p className="metric-label">Status</p>
-                  <p>{service.enabled === false ? "Inactive" : "Active"}</p>
+                  <h2 className="service-title">{service.subService || "Untitled service"}</h2>
+                  <p className="service-summary-description">
+                    {service.description || "No description available."}
+                  </p>
+
+                  <div className="service-meta-grid">
+                    <div className="service-meta-card">
+                      <p className="meta-label">Created on</p>
+                      <p className="meta-value">{createdDate}</p>
+                    </div>
+                    <div className="service-meta-card">
+                      <p className="meta-label">Assigned clients</p>
+                      <p className="meta-value">{serviceClientCount}</p>
+                    </div>
+                    <div className="service-meta-card">
+                      <p className="meta-label">Checklist items</p>
+                      <p className="meta-value">{checklistCount}</p>
+                    </div>
+                    <div className="service-meta-card">
+                      <p className="meta-label">Subtasks</p>
+                      <p className="meta-value">{subtaskCount}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="metric-label">Clients</p>
-                  <p>{serviceClientCount}</p>
+
+                <div className="service-hero-actions">
+                  <button
+                    type="button"
+                    className="button primary"
+                    onClick={() => setActiveTab("Clients")}
+                  >
+                    View clients
+                  </button>
                 </div>
-                <div>
-                  <p className="metric-label">Preview</p>
-                  <p>{serviceClientPreview.length}</p>
+              </div>
+            </div>
+
+            <div className="service-stats-grid">
+              <div className="stat-card">
+                <div className="stat-card-icon">
+                  <FaUsers />
                 </div>
-                <div>
-                  <p className="metric-label">Files</p>
-                  <p>{supportingFiles.length}</p>
+                <p className="stat-card-title">Assigned clients</p>
+                <p className="stat-card-value">{serviceClientCount}</p>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon secondary">
+                  <FaClipboardList />
                 </div>
+                <p className="stat-card-title">Checklist items</p>
+                <p className="stat-card-value">{checklistCount}</p>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon warning">
+                  <FaTasks />
+                </div>
+                <p className="stat-card-title">Subtasks</p>
+                <p className="stat-card-value">{subtaskCount}</p>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon accent">
+                  <FaFileAlt />
+                </div>
+                <p className="stat-card-title">Supporting files</p>
+                <p className="stat-card-value">{filesCount}</p>
               </div>
             </div>
 

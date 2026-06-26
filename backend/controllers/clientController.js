@@ -3,6 +3,26 @@ import Client from "../models/Client.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
 
+const normalizeArrayField = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {
+      // fall back to single value
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+};
+
 const validateClientData = (data) => {
   const requiredFields = [
     "clientName",
@@ -11,26 +31,6 @@ const validateClientData = (data) => {
     "mobile",
     "email",
   ];
-
-  const normalizeArrayField = (value) => {
-    if (Array.isArray(value)) return value.filter(Boolean);
-
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return [];
-
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) return parsed.filter(Boolean);
-      } catch {
-        // fall back to single value
-      }
-
-      return [trimmed];
-    }
-
-    return [];
-  };
 
   const missingFields = requiredFields.filter(
     (field) =>
