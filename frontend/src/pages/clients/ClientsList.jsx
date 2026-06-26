@@ -25,6 +25,10 @@ import {
   Plus,
   Search,
   Eye,
+  Users,
+  CheckCircle2,
+  Clock,
+  FileText,
   MoreVertical,
   Edit2,
   Trash2,
@@ -43,7 +47,11 @@ const ClientsList = () => {
     "Partner",
   ].includes(user?.role);
 
-  const canEditClient = canCreateClient;
+  const canEditClient = [
+    "SuperAdmin",
+    "Partner",
+    "Manager",
+  ].includes(user?.role);
 
   // DATA
 
@@ -354,13 +362,15 @@ const ClientsList = () => {
     <DashboardLayout>
       <section className="page-card clients-page">
         <div className="clients-page-inner">
-          <div className="clients-header">
+          <div className="clients-header clients-header--compact">
             <div className="clients-header-copy">
               <p className="clients-eyebrow">Clients</p>
-              <h1 className="clients-title">Client Management</h1>
-              <p className="clients-subtitle">
-                Manage and organize all your clients in one place.
-              </p>
+              <div className="clients-title-row">
+                <h1 className="clients-title">Clients</h1>
+                <p className="clients-subtitle">
+                  Manage and track all your clients in one place.
+                </p>
+              </div>
             </div>
 
             <div className="clients-header-actions">
@@ -388,26 +398,46 @@ const ClientsList = () => {
           </div>
 
           <div className="clients-stats-grid">
-            <div className="stat-card">
-              <span className="stat-card__label">Total clients</span>
-              <span className="stat-card__value">{totalClients}</span>
+            <div className="stat-card stat-card--default">
+              <div className="stat-card__icon stat-card__icon--default">
+                <Users size={20} />
+              </div>
+              <div className="stat-card__content">
+                <span className="stat-card__label">Total clients</span>
+                <span className="stat-card__value">{totalClients}</span>
+              </div>
             </div>
             <div className="stat-card stat-card--active">
-              <span className="stat-card__label">Active</span>
-              <span className="stat-card__value">{activeClients}</span>
+              <div className="stat-card__icon stat-card__icon--active">
+                <CheckCircle2 size={20} />
+              </div>
+              <div className="stat-card__content">
+                <span className="stat-card__label">Active</span>
+                <span className="stat-card__value">{activeClients}</span>
+              </div>
             </div>
             <div className="stat-card stat-card--pending">
-              <span className="stat-card__label">Pending</span>
-              <span className="stat-card__value">{pendingClients}</span>
+              <div className="stat-card__icon stat-card__icon--pending">
+                <Clock size={20} />
+              </div>
+              <div className="stat-card__content">
+                <span className="stat-card__label">Pending</span>
+                <span className="stat-card__value">{pendingClients}</span>
+              </div>
             </div>
             <div className="stat-card stat-card--inactive">
-              <span className="stat-card__label">Inactive</span>
-              <span className="stat-card__value">{inactiveClients}</span>
+              <div className="stat-card__icon stat-card__icon--inactive">
+                <FileText size={20} />
+              </div>
+              <div className="stat-card__content">
+                <span className="stat-card__label">Inactive</span>
+                <span className="stat-card__value">{inactiveClients}</span>
+              </div>
             </div>
           </div>
 
           <div className="clients-filters-card">
-            <div className="clients-filters">
+            <div className="clients-filters clients-filters--compact">
               <label className="filter-field filter-search">
                 <span>Search clients</span>
                 <div className="search-input-group">
@@ -522,18 +552,15 @@ const ClientsList = () => {
                             />
                           </th>
                         )}
-                        <th className="client-photo-header">
-                          Photo
-                        </th>
+                        <th className="client-photo-header" aria-label="Client avatar" />
                         <th>Client</th>
-                        <th>Code</th>
-                        <th>Mobile</th>
+                        <th>Contact</th>
+                        <th>PAN / GSTIN</th>
                         <th>Type</th>
                         <th>Manager</th>
-                        <th>Tags</th>
                         <th>Status</th>
-                        <th>Pending Tasks</th>
-                        <th>Documents</th>
+                        <th>Pending</th>
+                        <th>Docs</th>
                         <th>Updated</th>
                         <th>Actions</th>
                       </tr>
@@ -542,7 +569,7 @@ const ClientsList = () => {
                     <tbody>
                       {clients.length === 0 ? (
                         <tr>
-                          <td colSpan={canEditClient ? 13 : 12}>
+                          <td colSpan={canEditClient ? 12 : 11}>
                             No clients found.
                           </td>
                         </tr>
@@ -579,17 +606,23 @@ const ClientsList = () => {
                                   />
                                 ) : (
                                   <span>
-                                    {client.clientName?.charAt(0) || "C"}
+                                    {client.clientName
+                                      ? client.clientName
+                                          .split(" ")
+                                          .map((part) => part[0])
+                                          .join("")
+                                          .slice(0, 2)
+                                      : "C"}
                                   </span>
                                 )}
                               </div>
                             </td>
 
                             <td>
-                              <div className="client-name-cell">
+                              <div className="client-profile-cell">
                                 <button
                                   type="button"
-                                  className="link-button"
+                                  className="link-button client-name-link"
                                   onClick={() =>
                                     navigate(
                                       `/dashboard/clients/${client._id}`
@@ -598,36 +631,30 @@ const ClientsList = () => {
                                 >
                                   {client.clientName || "—"}
                                 </button>
-                                <p className="client-subtitle">
-                                  {client.email || "—"}
-                                </p>
+                                <span className="client-code">
+                                  {client.clientCode || "—"}
+                                </span>
                               </div>
                             </td>
 
-                            <td>{client.clientCode || "—"}</td>
-                            <td>{client.mobile || "—"}</td>
-                            <td>{client.clientType || "—"}</td>
-                            <td>{client.assignedManager || "—"}</td>
-                            <td>
-                              <div className="tag-list">
-                                {client.tags?.slice(0, 3).length > 0 ? (
-                                  client.tags
-                                    .slice(0, 3)
-                                    .map((tag) => (
-                                      <span
-                                        key={tag}
-                                        className="tag-badge"
-                                      >
-                                        {tag}
-                                      </span>
-                                    ))
-                                ) : (
-                                  <span className="empty-inline">
-                                    —
-                                  </span>
-                                )}
+                            <td className="contact-cell">
+                              <div className="contact-email">
+                                {client.email || "—"}
+                              </div>
+                              <div className="contact-phone">
+                                {client.mobile || "—"}
                               </div>
                             </td>
+
+                            <td className="pan-gstin-cell">
+                              <div>{client.pan || "—"}</div>
+                              <div className="gstin-value">
+                                {client.gstin || "—"}
+                              </div>
+                            </td>
+
+                            <td>{client.clientType || "—"}</td>
+                            <td>{client.assignedManager || "—"}</td>
 
                             <td>
                               <span
@@ -644,51 +671,66 @@ const ClientsList = () => {
                             <td>{formatDate(client.updatedAt)}</td>
 
                             <td className="actions-cell">
-                              <Link
-                                className="button secondary small"
-                                to={`/dashboard/clients/${client._id}`}
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/clients/${client._id}`
+                                  )
+                                }
+                                aria-label="View client"
                               >
-                                View
-                              </Link>
+                                <Eye size={16} />
+                              </button>
 
                               {canEditClient &&
                                 (client.isArchived ? (
                                   <>
                                     <button
                                       type="button"
-                                      className="button success small"
+                                      className="icon-button"
                                       onClick={() =>
                                         handleRestore(client._id)
                                       }
+                                      aria-label="Restore client"
                                     >
-                                      Restore
+                                      <Copy size={16} />
                                     </button>
                                     <button
                                       type="button"
-                                      className="button danger small"
+                                      className="icon-button danger-icon"
                                       onClick={() =>
                                         handleDelete(client._id)
                                       }
+                                      aria-label="Delete client"
                                     >
-                                      Delete
+                                      <Trash2 size={16} />
                                     </button>
                                   </>
                                 ) : (
                                   <>
-                                    <Link
-                                      className="button secondary small"
-                                      to={`/dashboard/clients/${client._id}/edit`}
-                                    >
-                                      Edit
-                                    </Link>
                                     <button
                                       type="button"
-                                      className="button warning small"
+                                      className="icon-button"
+                                      onClick={() =>
+                                        navigate(
+                                          `/dashboard/clients/${client._id}/edit`
+                                        )
+                                      }
+                                      aria-label="Edit client"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="icon-button warning-icon"
                                       onClick={() =>
                                         handleArchive(client._id)
                                       }
+                                      aria-label="Archive client"
                                     >
-                                      Archive
+                                      <Trash2 size={16} />
                                     </button>
                                   </>
                                 ))}

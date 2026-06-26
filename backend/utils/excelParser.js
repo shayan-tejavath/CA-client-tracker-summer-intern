@@ -5,6 +5,17 @@ import XLSX from "xlsx";
  * an array of client objects.
  */
 
+const getCellValue = (row, keys = []) => {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null) {
+      const trimmed = String(value).toString().trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return "";
+};
+
 export const parseClientExcel = (filePath) => {
   const workbook = XLSX.readFile(filePath);
 
@@ -21,78 +32,67 @@ export const parseClientExcel = (filePath) => {
     rowNumber: index + 2, // Header is row 1
 
     clientName:
-      row["Client Name"]?.toString().trim() || "",
+      getCellValue(row, ["Client Name", "Name", "Full Name"]),
 
     email:
-      row["Email"]?.toString().trim().toLowerCase() || "",
+      getCellValue(row, ["Email", "Email Address", "E-mail"]).toLowerCase(),
 
     mobile:
-      row["Mobile"]?.toString().trim() || "",
+      getCellValue(row, ["Mobile", "Mobile Number", "Phone", "Phone Number", "Contact Number"]),
 
     pan:
-      row["PAN"]?.toString().trim().toUpperCase() || "",
+      getCellValue(row, ["PAN", "Pan", "Pan Number"]).toUpperCase(),
 
     gstin:
-      row["GSTIN"]?.toString().trim().toUpperCase() || "",
+      getCellValue(row, ["GSTIN", "GSTIN Number", "GST No", "GST Number"]).toUpperCase(),
 
     tan:
-      row["TAN"]?.toString().trim().toUpperCase() || "",
+      getCellValue(row, ["TAN", "TAN Number"]).toUpperCase(),
 
     clientType:
-      row["Client Type"]?.toString().trim() ||
-      "Business",
+      getCellValue(row, ["Client Type", "Type"]) || "Business",
 
     status:
-      row["Status"]?.toString().trim() ||
-      "Active",
+      getCellValue(row, ["Status"]) || "Active",
 
     clientCode:
-      row["Client Code"]?.toString().trim() || "",
+      getCellValue(row, ["Client Code", "Client ID", "File Number"]),
 
     address:
-      row["Address"]?.toString().trim() || "",
+      getCellValue(row, ["Address"]),
 
     city:
-      row["City"]?.toString().trim() || "",
+      getCellValue(row, ["City"]),
 
     state:
-      row["State"]?.toString().trim() || "",
+      getCellValue(row, ["State"]),
 
     country:
-      row["Country"]?.toString().trim() || "",
+      getCellValue(row, ["Country"]),
 
     pincode:
-      row["Pincode"]?.toString().trim() || "",
+      getCellValue(row, ["Pincode", "Pin Code", "Postal Code"]),
 
     contactPerson:
-      row["Contact Person"]?.toString().trim() ||
-      "",
+      getCellValue(row, ["Contact Person", "Contact Name"]),
 
     designation:
-      row["Designation"]?.toString().trim() || "",
+      getCellValue(row, ["Designation", "Role"]),
 
     contactPersonEmail:
-      row["Contact Person Email"]
-        ?.toString()
-        .trim()
-        .toLowerCase() || "",
+      getCellValue(row, ["Contact Person Email", "Contact Email"]).toLowerCase(),
 
     contactPersonMobile:
-      row["Contact Person Mobile"]
-        ?.toString()
-        .trim() || "",
+      getCellValue(row, ["Contact Person Mobile", "Contact Mobile", "Contact Number"]),
 
     assignedManager:
-      row["Assigned Manager"]?.toString().trim() ||
-      "",
+      getCellValue(row, ["Assigned Manager", "Manager"]),
 
     notes:
-      row["Notes"]?.toString().trim() || "",
+      getCellValue(row, ["Notes", "Remarks"]),
 
     serviceCategory:
-      row["Service Category"]
-        ?.toString()
-        .trim() || "",
+      getCellValue(row, ["Service Category", "Category", "Service"]).replace(/\s+/g, " "),
 
     /**
      * Example:
@@ -100,9 +100,9 @@ export const parseClientExcel = (filePath) => {
      */
 
     assignedServices:
-      row["Assigned Services"]
-        ?.split(",")
-        .map((service) => service.trim())
-        .filter(Boolean) || [],
+      getCellValue(row, ["Assigned Services", "Services", "Service Names"])
+        .split(/[;,\r\n]+/)
+        .map((service) => service.toString().trim())
+        .filter(Boolean),
   }));
 };

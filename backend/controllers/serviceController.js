@@ -36,31 +36,29 @@ const attachAssignmentStats = async (services = []) => {
 
   const serviceIds = safeServices.map((service) => service._id);
 
-  const [counts, assignments] = await Promise.all([
-    ServiceAssignment.aggregate([
-      { $match: { serviceId: { $in: serviceIds } } },
+  const assignments = await ServiceAssignment.find({ serviceId: { $in: serviceIds } })
+    .populate(
       {
-        $group: {
-          _id: "$serviceId",
-          clientCount: { $sum: 1 },
-        },
-      },
-    ]),
-    ServiceAssignment.find({ serviceId: { $in: serviceIds } })
-      .populate(
-        "clientId",
-        "clientName clientCode email mobile profileImage status"
-      )
-      .lean(),
-  ]);
+        path: "clientId",
+        select: "clientName clientCode email mobile profileImage status isArchived",
+        match: { isArchived: false },
+      }
+    )
+    .lean();
 
-  const countMap = new Map(
-    counts.map((item) => [String(item._id), item.clientCount])
+  const activeAssignments = assignments.filter(
+    (assignment) => assignment.clientId
   );
+
+  const countMap = new Map();
+  for (const assignment of activeAssignments) {
+    const key = String(assignment.serviceId);
+    countMap.set(key, (countMap.get(key) || 0) + 1);
+  }
 
   const previewMap = new Map();
 
-  for (const assignment of assignments) {
+  for (const assignment of activeAssignments) {
     const key = String(assignment.serviceId);
     if (!previewMap.has(key)) {
       previewMap.set(key, []);
@@ -69,17 +67,15 @@ const attachAssignmentStats = async (services = []) => {
     const previewList = previewMap.get(key);
     if (previewList.length >= 3) continue;
 
-    if (assignment.clientId) {
-      previewList.push({
-        _id: assignment.clientId._id,
-        clientName: assignment.clientId.clientName,
-        clientCode: assignment.clientId.clientCode,
-        email: assignment.clientId.email,
-        mobile: assignment.clientId.mobile,
-        status: assignment.clientId.status,
-        profileImage: assignment.clientId.profileImage,
-      });
-    }
+    previewList.push({
+      _id: assignment.clientId._id,
+      clientName: assignment.clientId.clientName,
+      clientCode: assignment.clientId.clientCode,
+      email: assignment.clientId.email,
+      mobile: assignment.clientId.mobile,
+      status: assignment.clientId.status,
+      profileImage: assignment.clientId.profileImage,
+    });
   }
 
   return safeServices.map((service) => {
@@ -237,6 +233,7 @@ export const getAvailableClients = async (req, res, next) => {
 
     const availableClients = await Client.find({
       _id: { $nin: assignedClientIds },
+      isArchived: false,
     }).select("_id clientName clientCode email mobile status");
 
     res.json(availableClients);
@@ -255,10 +252,11 @@ export const getAssignedClients = async (req, res, next) => {
     }
 
     const allAssignments = await ServiceAssignment.find({ serviceId })
-      .populate(
-        "clientId",
-        "clientName clientCode email mobile profileImage status"
-      )
+      .populate({
+        path: "clientId",
+        select: "clientName clientCode email mobile profileImage status isArchived",
+        match: { isArchived: false },
+      })
       .sort({ createdAt: -1 })
       .lean();
 

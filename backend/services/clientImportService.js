@@ -82,6 +82,60 @@ const validateClient = (client) => {
 const escapeRegExp = (value) =>
   String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const normalizeServiceString = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const serviceMatchesName = (service, serviceName) => {
+  const normalizedName = normalizeServiceString(serviceName);
+  if (!normalizedName) return false;
+
+  const normalizedSubService = normalizeServiceString(
+    service.subService || ""
+  );
+  const normalizedCategory = normalizeServiceString(
+    service.serviceCategory || ""
+  );
+
+  if (
+    normalizedSubService === normalizedName ||
+    normalizedCategory === normalizedName
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedSubService.includes(normalizedName) ||
+    normalizedName.includes(normalizedSubService) ||
+    normalizedCategory.includes(normalizedName) ||
+    normalizedName.includes(normalizedCategory)
+  ) {
+    return true;
+  }
+
+  const normalizedTokens = normalizedName.split(" ").filter(Boolean);
+  const serviceTokens = Array.from(
+    new Set(
+      `${normalizedSubService} ${normalizedCategory}`
+        .split(" ")
+        .filter(Boolean)
+    )
+  );
+
+  if (
+    normalizedTokens.length > 0 &&
+    normalizedTokens.every((token) => serviceTokens.includes(token))
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 const findServices = async (
   serviceNames = []
 ) => {
@@ -92,6 +146,8 @@ const findServices = async (
   const normalizedServiceNames = serviceNames
     .map((name) => String(name || "").trim())
     .filter(Boolean);
+
+  const allServices = await Service.find().lean();
 
   for (const serviceName of normalizedServiceNames) {
     const escapedName = escapeRegExp(serviceName);
@@ -126,7 +182,10 @@ const findServices = async (
             },
           },
         ],
-      }));
+      })) ||
+      allServices.find((candidate) =>
+        serviceMatchesName(candidate, serviceName)
+      );
 
     if (service) {
       matchedNames.add(serviceName);
@@ -162,25 +221,125 @@ const findServicesByCategory = async (serviceCategory) => {
    DUPLICATE CHECK
 ------------------------------------------------------- */
 
+const normalizeImportIdentifier = (
+  value,
+  type = "string"
+) => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  if (type === "email") return trimmed.toLowerCase();
+  if (type === "pan" || type === "gstin") return trimmed.toUpperCase();
+  return trimmed;
+};
+
+const isDuplicateKeyError = (error) => {
+  if (!error) return false;
+  return (
+    error.code === 11000 ||
+    error.code === "11000" ||
+    error.name === "MongoServerError" ||
+    error.name === "MongoError" ||
+    error.name === "BulkWriteError" ||
+    /E11000|duplicate key/i.test(error.message || "")
+  );
+};
+
+const exactMatchRegex = (value) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return new RegExp(`^\\s*${escapeRegExp(trimmed)}\\s*$`, "i");
+};
+
+const normalizeClientIdentifiers = (client) => {
+  client.pan = normalizeImportIdentifier(
+    client.pan,
+    "pan"
+  );
+  client.gstin = normalizeImportIdentifier(
+    client.gstin,
+    "gstin"
+  );
+  client.email = normalizeImportIdentifier(
+    client.email,
+    "email"
+  );
+  client.mobile = normalizeImportIdentifier(
+    client.mobile
+  );
+  client.assignedServices = Array.isArray(
+    client.assignedServices
+  )
+    ? client.assignedServices
+        .map((service) =>
+          normalizeImportIdentifier(service)
+        )
+        .filter(Boolean)
+    : [];
+
+  return client;
+};
+
 const checkDuplicate = async (
   client
 ) => {
-  const existing =
-    await Client.findOne({
-      $or: [
-        {
-          pan: client.pan,
-        },
-        {
-          gstin: client.gstin,
-        },
-        {
-          email: client.email,
-        },
-      ],
-    });
+  const criteria = [];
+
+  const panRegex = exactMatchRegex(client.pan);
+  const gstinRegex = exactMatchRegex(client.gstin);
+  const emailRegex = exactMatchRegex(client.email);
+
+  if (panRegex) {
+    criteria.push({ pan: panRegex });
+  }
+  if (gstinRegex) {
+    criteria.push({ gstin: gstinRegex });
+  }
+  if (emailRegex) {
+    criteria.push({ email: emailRegex });
+  }
+
+  if (!criteria.length) {
+    return null;
+  }
+
+  const existing = await Client.findOne({
+    $or: criteria,
+    isArchived: false,
+  });
 
   return existing;
+};
+
+const findArchivedDuplicate = async (
+  client
+) => {
+  const criteria = [];
+
+  const panRegex = exactMatchRegex(client.pan);
+  const gstinRegex = exactMatchRegex(client.gstin);
+  const emailRegex = exactMatchRegex(client.email);
+
+  if (panRegex) {
+    criteria.push({ pan: panRegex });
+  }
+  if (gstinRegex) {
+    criteria.push({ gstin: gstinRegex });
+  }
+  if (emailRegex) {
+    criteria.push({ email: emailRegex });
+  }
+
+  if (!criteria.length) {
+    return null;
+  }
+
+  return Client.findOne({
+    $or: criteria,
+    isArchived: true,
+  });
 };
 
 /* -------------------------------------------------------
@@ -240,8 +399,14 @@ export const importClientsFromExcel =
       failedClients: [],
     };
 
+    const processedIdentifiers = new Set();
+
     try {
-      for (const client of rows) {
+      for (const rawClient of rows) {
+        const client = normalizeClientIdentifiers(
+          rawClient
+        );
+
         /* -----------------------------
            Validate Row
         ----------------------------- */
@@ -292,6 +457,25 @@ export const importClientsFromExcel =
           continue;
         }
 
+        const identifierKey = JSON.stringify({
+          pan: client.pan,
+          gstin: client.gstin,
+          email: client.email,
+        });
+
+        if (processedIdentifiers.has(identifierKey)) {
+          summary.skippedCount++;
+          summary.failedClients.push({
+            row: client.rowNumber,
+            clientName: client.clientName,
+            reason:
+              "Duplicate record in import file",
+          });
+          continue;
+        }
+
+        processedIdentifiers.add(identifierKey);
+
         /* -----------------------------
            Find Services
         ----------------------------- */
@@ -299,23 +483,7 @@ export const importClientsFromExcel =
         const foundServices = [];
         const invalidServiceNames = [];
 
-        if (client.serviceCategory) {
-          const categoryServices = await findServicesByCategory(
-            client.serviceCategory
-          );
-
-          if (categoryServices.length) {
-            foundServices.push(...categoryServices);
-          } else {
-            invalidServiceNames.push(client.serviceCategory);
-            summary.assignmentWarnings.push(
-              `Row ${client.rowNumber}: Service category "${client.serviceCategory}" not found.`
-            );
-            console.warn(
-              `Client import row ${client.rowNumber}: Service category "${client.serviceCategory}" not found.`
-            );
-          }
-        } else if (client.assignedServices.length) {
+        if (client.assignedServices.length) {
           const {
             foundServices: fallbackServices,
             matchedNames,
@@ -340,84 +508,190 @@ export const importClientsFromExcel =
           }
         }
 
+        if (!foundServices.length && client.serviceCategory) {
+          const categoryServices = await findServicesByCategory(
+            client.serviceCategory
+          );
+
+          if (categoryServices.length) {
+            foundServices.push(...categoryServices);
+          } else {
+            if (!client.assignedServices.length) {
+              invalidServiceNames.push(client.serviceCategory);
+              summary.assignmentWarnings.push(
+                `Row ${client.rowNumber}: Service category "${client.serviceCategory}" not found.`
+              );
+              console.warn(
+                `Client import row ${client.rowNumber}: Service category "${client.serviceCategory}" not found.`
+              );
+            }
+          }
+        }
+
         /* -----------------------------
            Create Client
         ----------------------------- */
 
-        const newClient =
-          await Client.create({
-            clientName:
-              client.clientName,
+        let newClient;
+        let restoredFromArchive = false;
 
-            email:
-              client.email,
+        const archivedClient = await findArchivedDuplicate(
+          client
+        );
 
-            mobile:
-              client.mobile,
+        if (archivedClient) {
+          restoredFromArchive = true;
+          archivedClient.isArchived = false;
+          archivedClient.status =
+            client.status || "Active";
+          archivedClient.clientName =
+            client.clientName;
+          archivedClient.email =
+            client.email;
+          archivedClient.mobile =
+            client.mobile;
+          archivedClient.pan =
+            client.pan;
+          archivedClient.gstin =
+            client.gstin;
+          archivedClient.tan = client.tan;
+          archivedClient.clientType =
+            client.clientType;
+          archivedClient.clientCode =
+            client.clientCode;
+          archivedClient.address =
+            client.address;
+          archivedClient.city = client.city;
+          archivedClient.state = client.state;
+          archivedClient.country = client.country;
+          archivedClient.pincode =
+            client.pincode;
+          archivedClient.contactPerson =
+            client.contactPerson;
+          archivedClient.designation =
+            client.designation;
+          archivedClient.contactPersonEmail =
+            client.contactPersonEmail;
+          archivedClient.contactPersonMobile =
+            client.contactPersonMobile;
+          archivedClient.assignedManager =
+            client.assignedManager;
+          archivedClient.notes = client.notes;
+          archivedClient.assignedServices =
+            foundServices.map(
+              (service) =>
+                service.subService
+            );
+          archivedClient.services =
+            foundServices.map(
+              (service) =>
+                service.subService
+            );
 
-            pan:
-              client.pan,
+          try {
+            newClient = await archivedClient.save();
+          } catch (error) {
+            if (isDuplicateKeyError(error)) {
+              summary.skippedCount++;
+              summary.failedClients.push({
+                row: client.rowNumber,
+                clientName: client.clientName,
+                reason:
+                  "Duplicate PAN / GSTIN / Email",
+              });
+              continue;
+            }
+            throw error;
+          }
+        } else {
+          try {
+            newClient = await Client.create({
+              clientName:
+                client.clientName,
 
-            gstin:
-              client.gstin,
+              email:
+                client.email,
 
-            tan:
-              client.tan,
+              mobile:
+                client.mobile,
 
-            clientType:
-              client.clientType,
+              pan:
+                client.pan,
 
-            status:
-              client.status,
+              gstin:
+                client.gstin,
 
-            clientCode:
-              client.clientCode,
+              tan:
+                client.tan,
 
-            address:
-              client.address,
+              clientType:
+                client.clientType,
 
-            city:
-              client.city,
+              status:
+                client.status,
 
-            state:
-              client.state,
+              clientCode:
+                client.clientCode,
 
-            country:
-              client.country,
+              address:
+                client.address,
 
-            pincode:
-              client.pincode,
+              city:
+                client.city,
 
-            contactPerson:
-              client.contactPerson,
+              state:
+                client.state,
 
-            designation:
-              client.designation,
+              country:
+                client.country,
 
-            contactPersonEmail:
-              client.contactPersonEmail,
+              pincode:
+                client.pincode,
 
-            contactPersonMobile:
-              client.contactPersonMobile,
+              contactPerson:
+                client.contactPerson,
 
-            assignedManager:
-              client.assignedManager,
+              designation:
+                client.designation,
 
-            notes:
-              client.notes,
+              contactPersonEmail:
+                client.contactPersonEmail,
 
-            assignedServices:
-              foundServices.map(
-                (service) =>
-                  service.subService
-              ),
+              contactPersonMobile:
+                client.contactPersonMobile,
 
-            services:
-              foundServices.map(
-                (service) =>
-                  service.subService
-              ),
-          });
+              assignedManager:
+                client.assignedManager,
+
+              notes:
+                client.notes,
+
+              assignedServices:
+                foundServices.map(
+                  (service) =>
+                    service.subService
+                ),
+
+              services:
+                foundServices.map(
+                  (service) =>
+                    service.subService
+                ),
+            });
+          } catch (error) {
+            if (isDuplicateKeyError(error)) {
+              summary.skippedCount++;
+              summary.failedClients.push({
+                row: client.rowNumber,
+                clientName: client.clientName,
+                reason:
+                  "Duplicate PAN / GSTIN / Email",
+              });
+              continue;
+            }
+            throw error;
+          }
+        }
 
         /* -----------------------------
            Assign Services

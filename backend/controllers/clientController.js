@@ -454,6 +454,7 @@ export const deleteClient = async (req, res, next) => {
       });
     }
 
+    await ServiceAssignment.deleteMany({ clientId: id });
     await client.deleteOne();
 
     res.json({
