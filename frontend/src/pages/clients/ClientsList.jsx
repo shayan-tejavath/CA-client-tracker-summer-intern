@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { toast } from "react-toastify";
 
@@ -23,6 +23,12 @@ import BulkImportDialog from "../../components/clients/BulkImportDialog";
 import {
   Upload,
   Plus,
+  Search,
+  Eye,
+  MoreVertical,
+  Edit2,
+  Trash2,
+  Copy,
 } from "lucide-react";
 
 import "../../styles/clients-list.css";
@@ -59,6 +65,12 @@ const ClientsList = () => {
   const [typeFilter, setTypeFilter] =
     useState("All");
 
+  const [industryFilter, setIndustryFilter] =
+    useState("All");
+
+  const [activeActionsMenu, setActiveActionsMenu] =
+    useState(null);
+
   // PAGINATION
 
   const [page, setPage] = useState(1);
@@ -73,6 +85,8 @@ const ClientsList = () => {
       totalPages: 1,
       limit: 10,
     });
+  const [selectedClientIds, setSelectedClientIds] =
+    useState([]);
   const [showImportDialog, setShowImportDialog] =
     useState(false);
 
@@ -91,7 +105,7 @@ const ClientsList = () => {
       });
 
       setClients(data.clients);
-
+      setSelectedClientIds([]);
       setPagination(data.pagination);
     } catch (err) {
       setError(
@@ -130,12 +144,82 @@ const ClientsList = () => {
       client.status === "Pending"
   ).length;
 
+  const industryOptions = useMemo(() => {
+    const industries = new Set();
+    clients.forEach((client) => {
+      if (client.industryType) {
+        industries.add(client.industryType);
+      }
+    });
+    return ["All", ...Array.from(industries).sort()];
+  }, [clients]);
+
+  const displayedClients = useMemo(() => {
+    if (industryFilter === "All") return clients;
+    return clients.filter(
+      (client) =>
+        client.industryType === industryFilter
+    );
+  }, [clients, industryFilter]);
+
   const inactiveClients = clients.filter(
     (client) =>
       client.status === "Inactive"
   ).length;
 
   // ARCHIVE
+
+  const handleToggleSelect = (clientId) => {
+    setSelectedClientIds((current) =>
+      current.includes(clientId)
+        ? current.filter((id) => id !== clientId)
+        : [...current, clientId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedClientIds.length === clients.length) {
+      setSelectedClientIds([]);
+      return;
+    }
+
+    setSelectedClientIds(clients.map((client) => client._id));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedClientIds.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Permanently delete ${selectedClientIds.length} selected client(s)?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await Promise.all(
+        selectedClientIds.map((clientId) =>
+          deleteClient(clientId)
+        )
+      );
+
+      toast.success(
+        `${selectedClientIds.length} client(s) deleted permanently.`
+      );
+
+      setClients((current) =>
+        current.filter(
+          (client) =>
+            !selectedClientIds.includes(client._id)
+        )
+      );
+      setSelectedClientIds([]);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          "Unable to delete selected clients."
+      );
+    }
+  };
 
   const handleArchive = async (
     clientId
@@ -268,287 +352,328 @@ const ClientsList = () => {
 
   return (
     <DashboardLayout>
-      <section className="page-card">
-        {/* HEADER */}
+      <section className="page-card clients-page">
+        <div className="clients-page-inner">
+          <div className="clients-header">
+            <div className="clients-header-copy">
+              <p className="clients-eyebrow">Clients</p>
+              <h1 className="clients-title">Client Management</h1>
+              <p className="clients-subtitle">
+                Manage and organize all your clients in one place.
+              </p>
+            </div>
 
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">
-              Clients
-            </p>
-
-            <h1>
-              Client Management
-            </h1>
-
-            <p>
-              Manage onboarding,
-              compliance, and services.
-            </p>
+            <div className="clients-header-actions">
+              {canCreateClient && (
+                <>
+                  <button
+                    type="button"
+                    className="button import-button"
+                    onClick={() => setShowImportDialog(true)}
+                  >
+                    <Upload size={16} />
+                    Import Clients
+                  </button>
+                  <button
+                    type="button"
+                    className="button add-button"
+                    onClick={() => navigate("/dashboard/clients/add")}
+                  >
+                    <Plus size={16} />
+                    Add Client
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
-          {canCreateClient && (
-            <div className="page-tools" style={{ display: "flex", gap: "12px" }}>
-              <button
-                type="button"
-                className="button success"
-                onClick={() => setShowImportDialog(true)}
-              >
-                <Upload size={18} />
-                Import Clients
+          <div className="clients-stats-grid">
+            <div className="stat-card">
+              <span className="stat-card__label">Total clients</span>
+              <span className="stat-card__value">{totalClients}</span>
+            </div>
+            <div className="stat-card stat-card--active">
+              <span className="stat-card__label">Active</span>
+              <span className="stat-card__value">{activeClients}</span>
+            </div>
+            <div className="stat-card stat-card--pending">
+              <span className="stat-card__label">Pending</span>
+              <span className="stat-card__value">{pendingClients}</span>
+            </div>
+            <div className="stat-card stat-card--inactive">
+              <span className="stat-card__label">Inactive</span>
+              <span className="stat-card__value">{inactiveClients}</span>
+            </div>
+          </div>
+
+          <div className="clients-filters-card">
+            <div className="clients-filters">
+              <label className="filter-field filter-search">
+                <span>Search clients</span>
+                <div className="search-input-group">
+                  <Search size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search clients by name, email, or code"
+                    value={search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              </label>
+
+              <label className="filter-field">
+                <span>Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="All">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span>Type</span>
+                <select
+                  value={typeFilter}
+                  onChange={(event) => {
+                    setTypeFilter(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="All">All Types</option>
+                  <option value="Individual">Individual</option>
+                  <option value="Business">Business</option>
+                  <option value="LLP">LLP</option>
+                  <option value="Private Limited">Private Limited</option>
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span>Industries</span>
+                <select
+                  value={industryFilter}
+                  onChange={(event) => {
+                    setIndustryFilter(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  {industryOptions.map((industry) => (
+                    <option key={industry} value={industry}>
+                      {industry}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button type="button" className="button filter-button">
+                Filters
               </button>
-
-              <button
-                type="button"
-                className="button primary"
-                onClick={() => navigate("/dashboard/clients/add")}
-              >
-                <Plus size={18} />
-                Add Client
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* STATS */}
-
-        <div className="client-stats-grid">
-          <div className="client-stat-card">
-            <h2>{totalClients}</h2>
-            <p>Total Clients</p>
-          </div>
-
-          <div className="client-stat-card active">
-            <h2>{activeClients}</h2>
-            <p>Active</p>
-          </div>
-
-          <div className="client-stat-card pending">
-            <h2>{pendingClients}</h2>
-            <p>Pending</p>
-          </div>
-
-          <div className="client-stat-card inactive">
-            <h2>{inactiveClients}</h2>
-            <p>Inactive</p>
-          </div>
-        </div>
-
-        <div className="client-overview-panel">
-          <div>
-            <p className="panel-label">New client</p>
-            <h2>Onboard a client in one step</h2>
-            <p>
-              Start client setup with contact details, type, and service assignment from one place.
-            </p>
-          </div>
-        </div>
-
-        <div className="client-filters">
-          <div className="client-filter-panel">
-            <div className="search-panel">
-              <input
-                type="text"
-                placeholder="Search clients by name, email, or code"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-
-            <div className="client-filter-row">
-              <select
-                value={statusFilter}
-                onChange={(event) => {
-                  setStatusFilter(event.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="All">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Pending">Pending</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-
-              <select
-                value={typeFilter}
-                onChange={(event) => {
-                  setTypeFilter(event.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="All">All Types</option>
-                <option value="Individual">Individual</option>
-                <option value="Business">Business</option>
-                <option value="LLP">LLP</option>
-                <option value="Private Limited">Private Limited</option>
-              </select>
-
-              <select
-                value={limit}
-                onChange={(event) => {
-                  setLimit(Number(event.target.value));
-                  setPage(1);
-                }}
-              >
-                <option value={5}>5 / page</option>
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
-              </select>
             </div>
           </div>
-        </div>
 
-        {/* TABLE */}
+          <div className="clients-table-card">
+            {loading ? (
+              <div className="alert">
+                Loading clients...
+              </div>
+            ) : error ? (
+              <div className="alert danger">
+                {error}
+              </div>
+            ) : (
+              <>
+                <div className="clients-table-top">
+                  <div>
+                    <h2>Client directory</h2>
+                    <p>
+                      A summary of all client accounts and
+                      their status in the system.
+                    </p>
+                  </div>
+                  <p className="clients-table-meta">
+                    Showing {clients.length} of {totalClients} clients
+                  </p>
+                </div>
 
-        {loading ? (
-          <div className="alert">
-            Loading clients...
-          </div>
-        ) : error ? (
-          <div className="alert danger">
-            {error}
-          </div>
-        ) : (
-          <>
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th className="client-photo-header">Photo</th>
-                    <th>Client</th>
-                    <th>Code</th>
-                    <th>Mobile</th>
-                    <th>Type</th>
-                    <th>Manager</th>
-                    <th>Tags</th>
-                    <th>Status</th>
-                    <th>Pending Tasks</th>
-                    <th>Documents</th>
-                    <th>Updated</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        {canEditClient && (
+                          <th className="select-column">
+                            <input
+                              type="checkbox"
+                              checked={
+                                clients.length > 0 &&
+                                selectedClientIds.length ===
+                                  clients.length
+                              }
+                              onChange={handleSelectAll}
+                              aria-label="Select all clients"
+                            />
+                          </th>
+                        )}
+                        <th className="client-photo-header">
+                          Photo
+                        </th>
+                        <th>Client</th>
+                        <th>Code</th>
+                        <th>Mobile</th>
+                        <th>Type</th>
+                        <th>Manager</th>
+                        <th>Tags</th>
+                        <th>Status</th>
+                        <th>Pending Tasks</th>
+                        <th>Documents</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
 
-                <tbody>
-                  {clients.length === 0 ? (
-                    <tr>
-                      <td colSpan="12">
-                        No clients found.
-                      </td>
-                    </tr>
-                  ) : (
-                    clients.map(
-                      (client) => (
-                        <tr
-                          key={
-                            client._id
-                          }
-                          className={
-                            client.isArchived
-                              ? "archived-row"
-                              : ""
-                          }
-                        >
-                          <td className="client-photo-cell">
-                            <div className="client-avatar">
-                              {client.profileImage ? (
-                                <img
-                                  src={client.profileImage}
-                                  alt={client.clientName}
-                                />
-                              ) : (
-                                <span>
-                                  {client.clientName?.charAt(0) || "C"}
-                                </span>
-                              )}
-                            </div>
+                    <tbody>
+                      {clients.length === 0 ? (
+                        <tr>
+                          <td colSpan={canEditClient ? 13 : 12}>
+                            No clients found.
                           </td>
-
-                          <td>
-                            <div className="client-name-cell">
-                              <button
-                                type="button"
-                                className="link-button"
-                                onClick={() =>
-                                  navigate(
-                                    `/dashboard/clients/${client._id}`
-                                  )
-                                }
-                              >
-                                {client.clientName || "—"}
-                              </button>
-                              <p className="client-subtitle">
-                                {client.email || "—"}
-                              </p>
-                            </div>
-                          </td>
-
-                          <td>
-                            {client.clientCode || "—"}
-                          </td>
-
-                          <td>
-                            {client.mobile || "—"}
-                          </td>
-
-                          <td>
-                            {client.clientType || "—"}
-                          </td>
-
-                          <td>
-                            {client.assignedManager || "—"}
-                          </td>
-
-                          <td>
-                            <div className="tag-list">
-                              {client.tags?.slice(0, 3).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="tag-badge"
-                                >
-                                  {tag}
-                                </span>
-                              )) || "—"}
-                            </div>
-                          </td>
-
-                          <td>
-                            <span
-                              className={getStatusBadgeClass(
-                                client.status
-                              )}
-                            >
-                              {client.status || "—"}
-                            </span>
-                          </td>
-
-                          <td>
-                            {getPendingTaskCount(client)}
-                          </td>
-
-                          <td>
-                            {getDocumentCount(client)}
-                          </td>
-
-                          <td>
-                            {formatDate(client.updatedAt)}
-                          </td>
-
-                          <td className="actions-cell">
-                            <Link
-                              className="button secondary small"
-                              to={`/dashboard/clients/${client._id}`}
-                            >
-                              View
-                            </Link>
-
+                        </tr>
+                      ) : (
+                        clients.map((client) => (
+                          <tr
+                            key={client._id}
+                            className={
+                              client.isArchived
+                                ? "archived-row"
+                                : ""
+                            }
+                          >
                             {canEditClient && (
-                              <>
-                                {!client.isArchived ? (
+                              <td className="select-column">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedClientIds.includes(
+                                    client._id
+                                  )}
+                                  onChange={() =>
+                                    handleToggleSelect(client._id)
+                                  }
+                                  aria-label={`Select ${client.clientName}`}
+                                />
+                              </td>
+                            )}
+                            <td className="client-photo-cell">
+                              <div className="client-avatar">
+                                {client.profileImage ? (
+                                  <img
+                                    src={client.profileImage}
+                                    alt={client.clientName}
+                                  />
+                                ) : (
+                                  <span>
+                                    {client.clientName?.charAt(0) || "C"}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td>
+                              <div className="client-name-cell">
+                                <button
+                                  type="button"
+                                  className="link-button"
+                                  onClick={() =>
+                                    navigate(
+                                      `/dashboard/clients/${client._id}`
+                                    )
+                                  }
+                                >
+                                  {client.clientName || "—"}
+                                </button>
+                                <p className="client-subtitle">
+                                  {client.email || "—"}
+                                </p>
+                              </div>
+                            </td>
+
+                            <td>{client.clientCode || "—"}</td>
+                            <td>{client.mobile || "—"}</td>
+                            <td>{client.clientType || "—"}</td>
+                            <td>{client.assignedManager || "—"}</td>
+                            <td>
+                              <div className="tag-list">
+                                {client.tags?.slice(0, 3).length > 0 ? (
+                                  client.tags
+                                    .slice(0, 3)
+                                    .map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className="tag-badge"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))
+                                ) : (
+                                  <span className="empty-inline">
+                                    —
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td>
+                              <span
+                                className={getStatusBadgeClass(
+                                  client.status
+                                )}
+                              >
+                                {client.status || "—"}
+                              </span>
+                            </td>
+
+                            <td>{getPendingTaskCount(client)}</td>
+                            <td>{getDocumentCount(client)}</td>
+                            <td>{formatDate(client.updatedAt)}</td>
+
+                            <td className="actions-cell">
+                              <Link
+                                className="button secondary small"
+                                to={`/dashboard/clients/${client._id}`}
+                              >
+                                View
+                              </Link>
+
+                              {canEditClient &&
+                                (client.isArchived ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="button success small"
+                                      onClick={() =>
+                                        handleRestore(client._id)
+                                      }
+                                    >
+                                      Restore
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="button danger small"
+                                      onClick={() =>
+                                        handleDelete(client._id)
+                                      }
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
+                                ) : (
                                   <>
                                     <Link
                                       className="button secondary small"
@@ -556,96 +681,54 @@ const ClientsList = () => {
                                     >
                                       Edit
                                     </Link>
-
                                     <button
                                       type="button"
                                       className="button warning small"
                                       onClick={() =>
-                                        handleArchive(
-                                          client._id
-                                        )
+                                        handleArchive(client._id)
                                       }
                                     >
                                       Archive
                                     </button>
                                   </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="button success small"
-                                      onClick={() =>
-                                        handleRestore(
-                                          client._id
-                                        )
-                                      }
-                                    >
-                                      Restore
-                                    </button>
+                                ))}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-                                    <button
-                                      type="button"
-                                      className="button danger small"
-                                      onClick={() =>
-                                        handleDelete(
-                                          client._id
-                                        )
-                                      }
-                                    >
-                                      Delete
-                                    </button>
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
+                <div className="pagination-bar">
+                  <button
+                    className="button secondary"
+                    disabled={page === 1}
+                    onClick={() =>
+                      setPage((current) => current - 1)
+                    }
+                  >
+                    Previous
+                  </button>
 
-            {/* PAGINATION */}
+                  <div className="pagination-info">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </div>
 
-            <div className="pagination-bar">
-              <button
-                className="button secondary"
-                disabled={page === 1}
-                onClick={() =>
-                  setPage(
-                    (current) =>
-                      current - 1
-                  )
-                }
-              >
-                Previous
-              </button>
-
-              <div className="pagination-info">
-                Page {pagination.currentPage} of{" "}
-                {pagination.totalPages}
-              </div>
-
-              <button
-                className="button secondary"
-                disabled={
-                  page ===
-                  pagination.totalPages
-                }
-                onClick={() =>
-                  setPage(
-                    (current) =>
-                      current + 1
-                  )
-                }
-              >
-                Next
-              </button>
-            </div>
-          </>
-        )}
+                  <button
+                    className="button secondary"
+                    disabled={page === pagination.totalPages}
+                    onClick={() =>
+                      setPage((current) => current + 1)
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </section>
 
       <BulkImportDialog

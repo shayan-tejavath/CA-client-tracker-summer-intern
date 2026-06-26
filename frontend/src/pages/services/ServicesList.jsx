@@ -34,6 +34,13 @@ const ServicesList = () => {
     };
 
     loadServices();
+
+    const handleClientsImported = () => {
+      loadServices();
+    };
+
+    window.addEventListener("clients-imported", handleClientsImported);
+    return () => window.removeEventListener("clients-imported", handleClientsImported);
   }, []);
 
   const filteredServices = useMemo(() => {
