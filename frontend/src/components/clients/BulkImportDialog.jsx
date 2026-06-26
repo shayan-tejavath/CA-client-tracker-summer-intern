@@ -178,6 +178,17 @@ const BulkImportDialog = ({ open, onOpenChange, onImported }) => {
       toast.success(
         `${data.importedCount ?? 0} clients imported successfully.`
       );
+
+      const skippedServices = data.createdClients
+        ?.flatMap((client) => client.invalidServiceNames || [])
+        .filter(Boolean);
+
+      if (skippedServices?.length) {
+        const uniqueNames = [...new Set(skippedServices)];
+        toast.warn(
+          `Skipped invalid services: ${uniqueNames.join(", ")}`
+        );
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || "Import failed.");
     } finally {

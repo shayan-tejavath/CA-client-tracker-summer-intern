@@ -89,6 +89,11 @@ export const parseClientExcel = (filePath) => {
     notes:
       row["Notes"]?.toString().trim() || "",
 
+    serviceCategory:
+      row["Service Category"]
+        ?.toString()
+        .trim() || "",
+
     /**
      * Example:
      * GST Filing, Audit, TDS

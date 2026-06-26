@@ -11,7 +11,7 @@ on:
         default: 'false'
 
 jobs:
-  build-and-push:
+  build-and-puus-east-1
     runs-on: ubuntu-latest
     outputs:
       backend_image: ${{ steps.set_outputs.outputs.backend_image }}
