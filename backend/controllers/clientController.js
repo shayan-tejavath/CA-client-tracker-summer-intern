@@ -2,15 +2,9 @@
 import Client from "../models/Client.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
-
-const validateClientData = (data) => {
-  const requiredFields = [
-    "clientName",
-    "pan",
-    "gstin",
-    "mobile",
-    "email",
-  ];
+import {
+  notifyClientCreated,
+} from "../services/notificationService.js";
 
   const normalizeArrayField = (value) => {
     if (Array.isArray(value)) return value.filter(Boolean);
@@ -31,6 +25,15 @@ const validateClientData = (data) => {
 
     return [];
   };
+
+const validateClientData = (data) => {
+  const requiredFields = [
+    "clientName",
+    "pan",
+    "gstin",
+    "mobile",
+    "email",
+  ];
 
   const missingFields = requiredFields.filter(
     (field) =>
@@ -334,6 +337,17 @@ export const createClient = async (
 
           }
     }
+    try {
+      await notifyClientCreated({
+        client,
+        sender: req.user?._id,
+      });
+    } catch (err) {
+      console.error(
+        "Client notification failed:",
+        err.message
+      );
+    }
 
     res.status(201).json(client);
   } catch (error) {
@@ -478,6 +492,16 @@ export const updateClient = async (
     } catch (err) {
       // log and continue - don't block the update response
       console.error("Service assignment sync error:", err);
+    }
+    try {
+      await notifyClientUpdated({
+        client: updatedClient,
+      });
+    } catch (err) {
+      console.error(
+        "Update notification failed:",
+        err.message
+      );
     }
 
     res.json(updatedClient);

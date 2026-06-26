@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import {
-  Bell,
   Search,
   LogOut,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext.jsx";
+import NotificationBell from "./notifications/NotificationBell.jsx";
 
 import "../styles/navbar.css";
 
@@ -58,13 +58,11 @@ const Navbar = () => {
 
       <div className="navbar-right">
 
-        <button className="notification-btn">
+        {/* Notification Bell */}
 
-          <Bell size={19} />
+        <NotificationBell />
 
-          <span className="notification-badge" />
-
-        </button>
+        {/* User */}
 
         <div className="profile-box">
 
@@ -81,6 +79,8 @@ const Navbar = () => {
           </div>
 
         </div>
+
+        {/* Logout */}
 
         <button
           className="logout-btn"

@@ -2,6 +2,7 @@
 import Task from "../models/Task.js";
 import Client from "../models/Client.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
+import { notifyTaskAssigned } from "../services/notificationService.js";
 
 const allowedStatuses = ["Pending", "In Progress", "Completed", "Overdue"];
 const allowedPriorities = ["Low", "Medium", "High", "Critical"];
@@ -37,6 +38,14 @@ const taskPopulate = (query) =>
     .populate("service", "serviceCategory subService frequency")
     .populate("assignedTo", "name email role")
     .populate("comments.author", "name email role");
+
+const getAssignedToId = (taskDoc) => {
+  if (!taskDoc?.assignedTo) return null;
+  if (typeof taskDoc.assignedTo === "object" && taskDoc.assignedTo._id) {
+    return taskDoc.assignedTo._id.toString();
+  }
+  return taskDoc.assignedTo.toString ? taskDoc.assignedTo.toString() : String(taskDoc.assignedTo);
+};
 
 export const getTasks = async (req, res, next) => {
   try {
@@ -82,7 +91,9 @@ export const getTasks = async (req, res, next) => {
       query.client = client._id;
     }
 
-    const tasks = await taskPopulate(Task.find(query).sort({ dueDate: 1, priority: -1 }));
+    const tasks = await taskPopulate(
+      Task.find(query).sort({ dueDate: 1, priority: -1 })
+    );
     res.json(tasks);
   } catch (error) {
     next(error);
@@ -138,6 +149,20 @@ export const createTask = async (req, res, next) => {
     });
 
     const createdTask = await taskPopulate(Task.findById(task._id));
+
+    try {
+      const assignedToId = getAssignedToId(createdTask);
+      if (assignedToId) {
+        await notifyTaskAssigned({
+          userId: assignedToId,
+          task: createdTask,
+          sender: req.user?._id,
+        });
+      }
+    } catch (err) {
+      console.error("Task notification failed:", err.message);
+    }
+
     res.status(201).json(createdTask);
   } catch (error) {
     next(error);
@@ -166,7 +191,9 @@ export const updateTask = async (req, res, next) => {
       }
 
       const allowedFields = ["status"];
-      const disallowedFields = Object.keys(req.body).filter((field) => !allowedFields.includes(field));
+      const disallowedFields = Object.keys(req.body).filter(
+        (field) => !allowedFields.includes(field)
+      );
       if (disallowedFields.length) {
         return res.status(403).json({ message: "Employees may only update task status." });
       }
@@ -191,6 +218,26 @@ export const updateTask = async (req, res, next) => {
     }
 
     const populatedUpdatedTask = await taskPopulate(Task.findById(updatedTask._id));
+
+    const assignedToChanged =
+      req.body.assignedTo &&
+      req.body.assignedTo.toString() !== task.assignedTo?.toString();
+
+    if (assignedToChanged) {
+      try {
+        const newAssignedToId = getAssignedToId(populatedUpdatedTask);
+        if (newAssignedToId) {
+          await notifyTaskAssigned({
+            userId: newAssignedToId,
+            task: populatedUpdatedTask,
+            sender: req.user?._id,
+          });
+        }
+      } catch (err) {
+        console.error("Task reassignment notification failed:", err.message);
+      }
+    }
+
     res.json(populatedUpdatedTask);
   } catch (error) {
     next(error);
@@ -255,4 +302,3 @@ export const addComment = async (req, res, next) => {
     next(error);
   }
 };
-
