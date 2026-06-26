@@ -5,6 +5,10 @@ import Service from "../models/Service.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
 
 import { parseClientExcel } from "../utils/excelParser.js";
+import {
+  notifyBulkImportCompleted,
+  notifyServiceAssigned,
+} from "./notificationService.js";
 
 /* -------------------------------------------------------
    REGEX
@@ -698,6 +702,38 @@ export const importClientsFromExcel =
           foundServices,
           assignedBy
         );
+                  /* -----------------------------
+            SEND CLIENT WELCOME MESSAGE
+          ----------------------------- */
+
+          try {
+            await notifyBulkImportCompleted({
+              client: newClient,
+            });
+          } catch (err) {
+            console.error(
+              "Bulk import notification failed:",
+              err.message
+            );
+          }
+
+          /* -----------------------------
+            SEND SERVICE ASSIGNMENT MESSAGES
+          ----------------------------- */
+
+          for (const service of services) {
+            try {
+              await notifyServiceAssigned({
+                client: newClient,
+                service,
+              });
+            } catch (err) {
+              console.error(
+                "Service notification failed:",
+                err.message
+              );
+            }
+          }
 
         summary.assignedServicesCount += createdAssignmentCount;
         summary.successCount++;

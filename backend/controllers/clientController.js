@@ -2,6 +2,10 @@
 import Client from "../models/Client.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
+import {
+  notifyClientCreated,
+  notifyClientUpdated,
+} from "../services/notificationService.js";
 
 const normalizeArrayField = (value) => {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -24,69 +28,33 @@ const normalizeArrayField = (value) => {
 };
 
 const validateClientData = (data) => {
-  const requiredFields = [
-    "clientName",
-    "pan",
-    "gstin",
-    "mobile",
-    "email",
-  ];
+  const requiredFields = ["clientName", "pan", "gstin", "mobile", "email"];
 
   const missingFields = requiredFields.filter(
-    (field) =>
-      !data[field] ||
-      String(data[field]).trim() === ""
+    (field) => !data[field] || String(data[field]).trim() === ""
   );
 
   if (missingFields.length) {
-    return `Missing required fields: ${missingFields.join(
-      ", "
-    )}`;
+    return `Missing required fields: ${missingFields.join(", ")}`;
   }
 
-  if (
-    data.assignedServices &&
-    !Array.isArray(data.assignedServices)
-  ) {
+  if (data.assignedServices && !Array.isArray(data.assignedServices)) {
     return "assignedServices must be an array of strings";
   }
 
   return null;
 };
 
-
-
 // GET CLIENTS
-
-export const getClients = async (
-  req,
-  res,
-  next
-) => {
+export const getClients = async (req, res, next) => {
   try {
-    // QUERY PARAMS
-
-    const search =
-      req.query.search?.trim() || "";
-
-    const status =
-      req.query.status || "All";
-
-    const type =
-      req.query.type || "All";
-
-    const includeArchived =
-      req.query.includeArchived === "true";
-
-    const page =
-      Number(req.query.page) || 1;
-
-    const limit =
-      Number(req.query.limit) || 10;
-
+    const search = req.query.search?.trim() || "";
+    const status = req.query.status || "All";
+    const type = req.query.type || "All";
+    const includeArchived = req.query.includeArchived === "true";
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-
-    // QUERY OBJECT
 
     const query = {};
 
@@ -106,87 +74,40 @@ export const getClients = async (
       });
     }
 
-    // ARCHIVE FILTER
-
     if (!includeArchived) {
       query.isArchived = false;
     }
 
-    // SEARCH
-
     if (search) {
       query.$or = [
-        {
-          clientName: new RegExp(
-            search,
-            "i"
-          ),
-        },
-        {
-          email: new RegExp(
-            search,
-            "i"
-          ),
-        },
-        {
-          pan: new RegExp(
-            search,
-            "i"
-          ),
-        },
-        {
-          gstin: new RegExp(
-            search,
-            "i"
-          ),
-        },
+        { clientName: new RegExp(search, "i") },
+        { email: new RegExp(search, "i") },
+        { pan: new RegExp(search, "i") },
+        { gstin: new RegExp(search, "i") },
       ];
     }
-
-    // STATUS FILTER
 
     if (status !== "All") {
       query.status = status;
     }
 
-    // TYPE FILTER
-
     if (type !== "All") {
       query.clientType = type;
     }
 
-    // TOTAL COUNT
+    const totalClients = await Client.countDocuments(query);
 
-    const totalClients =
-      await Client.countDocuments(
-        query
-      );
-
-    // FETCH CLIENTS
-
-    const clients = await Client.find(
-      query
-    )
-      .sort({
-        createdAt: -1,
-      })
+    const clients = await Client.find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    // RESPONSE
-
     res.json({
       clients,
-
       pagination: {
         totalClients,
-
         currentPage: page,
-
-        totalPages: Math.ceil(
-          totalClients / limit
-        ),
-
+        totalPages: Math.ceil(totalClients / limit),
         limit,
       },
     });
@@ -195,40 +116,31 @@ export const getClients = async (
   }
 };
 
-
 // GET CLIENT BY ID
-
-export const getClientById = async (
-  req,
-  res,
-  next
-) => {
+export const getClientById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (
-      !mongoose.Types.ObjectId.isValid(id)
-    ) {
-      return res
-        .status(400)
-        .json({
-          message: "Invalid client ID",
-        });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
     }
 
     const client = await Client.findById(id);
 
     if (!client) {
-      return res
-        .status(404)
-        .json({
-          message: "Client not found",
-        });
+      return res.status(404).json({
+        message: "Client not found",
+      });
     }
 
     if (req.user?.role === ROLES.Client) {
       const currentClient = await Client.findOne({ email: req.user.email });
-      if (!currentClient || currentClient._id.toString() !== client._id.toString()) {
+      if (
+        !currentClient ||
+        currentClient._id.toString() !== client._id.toString()
+      ) {
         return res.status(403).json({ message: "Forbidden" });
       }
     }
@@ -239,100 +151,75 @@ export const getClientById = async (
   }
 };
 
-
-
 // CREATE CLIENT
-
-export const createClient = async (
-  req,
-  res,
-  next
-) => {
+export const createClient = async (req, res, next) => {
   try {
-    const validationError =
-      validateClientData(req.body);
+    const validationError = validateClientData(req.body);
 
     if (validationError) {
-      return res
-        .status(400)
-        .json({
-          message: validationError,
-        });
+      return res.status(400).json({
+        message: validationError,
+      });
     }
 
-    const existingClient =
-      await Client.findOne({
-        $or: [
-          {
-            pan: req.body.pan.toUpperCase(),
-          },
-          {
-            gstin:
-              req.body.gstin.toUpperCase(),
-          },
-        ],
-      });
+    const existingClient = await Client.findOne({
+      $or: [
+        {
+          pan: req.body.pan.toUpperCase(),
+        },
+        {
+          gstin: req.body.gstin.toUpperCase(),
+        },
+      ],
+    });
 
     if (existingClient) {
-      return res
-        .status(409)
-        .json({
-          message:
-            "Client with same PAN or GSTIN already exists",
-        });
+      return res.status(409).json({
+        message: "Client with same PAN or GSTIN already exists",
+      });
     }
+
     const assignedServices = normalizeArrayField(req.body.assignedServices);
     const assignedEmployees = normalizeArrayField(req.body.assignedEmployees);
 
     const client = await Client.create({
       ...req.body,
-
       assignedServices,
       assignedEmployees,
-
       profileImage: req.file
         ? `/uploads/${req.file.filename}`
         : req.body.profileImage || "",
-
       pan: req.body.pan.toUpperCase(),
       gstin: req.body.gstin.toUpperCase(),
       tan: req.body.tan?.toUpperCase(),
     });
 
-    if (
-      req.body.assignedServices &&
-      Array.isArray(req.body.assignedServices)
-    ) {
-      const assignedUsers =
-        Array.isArray(req.body.assignedEmployees)
-          ? req.body.assignedEmployees
-          : [];
+    if (assignedServices.length > 0) {
+      const assignedUsers = assignedEmployees.length ? assignedEmployees : [];
 
-          try {
+      try {
+        await Promise.all(
+          assignedServices.map((serviceId) =>
+            ServiceAssignment.create({
+              serviceId,
+              clientId: client._id,
+              assignedUsers,
+              assignedBy: req.user?.name || req.user?.email || "System",
+            })
+          )
+        );
+      } catch (err) {
+        console.error("Service Assignment Error", err);
+      }
+    }
 
-              await Promise.all(
-                  req.body.assignedServices.map((serviceId)=>
-                      ServiceAssignment.create({
-                          serviceId,
-                          clientId: client._id,
-                          assignedUsers,
-                          assignedBy:
-                              req.user?.name ||
-                              req.user?.email ||
-                              "System",
-                      })
-                  )
-              );
-
-          }
-          catch(err){
-
-              console.error(
-                  "Service Assignment Error",
-                  err
-              );
-
-          }
+    try {
+      await notifyClientCreated({
+        client,
+        sender: req.user?._id,
+      });
+    } catch (err) {
+      console.error("Client notification failed:", err.message);
     }
 
     res.status(201).json(client);
@@ -341,126 +228,82 @@ export const createClient = async (
   }
 };
 
-
-
 // UPDATE CLIENT
-
-export const updateClient = async (
-  req,
-  res,
-  next
-) => {
+export const updateClient = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (
-      !mongoose.Types.ObjectId.isValid(id)
-    ) {
-      return res
-        .status(400)
-        .json({
-          message: "Invalid client ID",
-        });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
     }
 
     const client = await Client.findById(id);
 
     if (!client) {
-      return res
-        .status(404)
-        .json({
-          message: "Client not found",
-        });
+      return res.status(404).json({
+        message: "Client not found",
+      });
     }
 
-    const validationError =
-      validateClientData({
-        ...client.toObject(),
-        ...req.body,
-      });
+    const validationError = validateClientData({
+      ...client.toObject(),
+      ...req.body,
+    });
 
     if (validationError) {
-      return res
-        .status(400)
-        .json({
-          message: validationError,
-        });
+      return res.status(400).json({
+        message: validationError,
+      });
     }
 
-    if (
-      req.body.pan ||
-      req.body.gstin
-    ) {
-      const normalizedPan =
-        req.body.pan?.toUpperCase() ||
-        client.pan;
+    if (req.body.pan || req.body.gstin) {
+      const normalizedPan = req.body.pan?.toUpperCase() || client.pan;
+      const normalizedGstin = req.body.gstin?.toUpperCase() || client.gstin;
 
-      const normalizedGstin =
-        req.body.gstin?.toUpperCase() ||
-        client.gstin;
-
-      const duplicateClient =
-        await Client.findOne({
-          _id: { $ne: id },
-
-          $or: [
-            { pan: normalizedPan },
-
-            {
-              gstin: normalizedGstin,
-            },
-          ],
-        });
+      const duplicateClient = await Client.findOne({
+        _id: { $ne: id },
+        $or: [{ pan: normalizedPan }, { gstin: normalizedGstin }],
+      });
 
       if (duplicateClient) {
-        return res
-          .status(409)
-          .json({
-            message:
-              "Another client with same PAN or GSTIN exists",
-          });
+        return res.status(409).json({
+          message: "Another client with same PAN or GSTIN exists",
+        });
       }
     }
 
-    const assignedServices = req.body.assignedServices !== undefined
-      ? normalizeArrayField(req.body.assignedServices)
-      : normalizeArrayField(client.assignedServices);
+    const assignedServices =
+      req.body.assignedServices !== undefined
+        ? normalizeArrayField(req.body.assignedServices)
+        : normalizeArrayField(client.assignedServices);
 
     const assignedEmployees =
       req.body.assignedEmployees !== undefined
         ? normalizeArrayField(req.body.assignedEmployees)
         : normalizeArrayField(client.assignedEmployees);
-    const updatedClient =
-    
-      await Client.findByIdAndUpdate(
-        id,
-        {
-          ...req.body,
-          assignedServices,
-          profileImage: req.file
-            ? `/uploads/${req.file.filename}`
-            : req.body.profileImage || client.profileImage,
-          pan: req.body.pan?.toUpperCase() ?? client.pan,
-          gstin: req.body.gstin?.toUpperCase() ?? client.gstin,
-          tan: req.body.tan?.toUpperCase() ?? client.tan,
-        },
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+
+    const updatedClient = await Client.findByIdAndUpdate(
+      id,
+      {
+        ...req.body,
+        assignedServices,
+        profileImage: req.file
+          ? `/uploads/${req.file.filename}`
+          : req.body.profileImage || client.profileImage,
+        pan: req.body.pan?.toUpperCase() ?? client.pan,
+        gstin: req.body.gstin?.toUpperCase() ?? client.gstin,
+        tan: req.body.tan?.toUpperCase() ?? client.tan,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     // Sync service assignments: remove existing and recreate from payload
     try {
-      const assignedServices = Array.isArray(req.body.assignedServices)
-        ? req.body.assignedServices
-        : [];
-
-      const assignedEmployees = Array.isArray(req.body.assignedEmployees)
-        ? req.body.assignedEmployees
-        : [];
-
-      // Remove previous assignments for this client
       await ServiceAssignment.deleteMany({ clientId: id });
 
       if (assignedServices.length > 0) {
@@ -480,6 +323,14 @@ export const updateClient = async (
       console.error("Service assignment sync error:", err);
     }
 
+    try {
+      await notifyClientUpdated({
+        client: updatedClient,
+      });
+    } catch (err) {
+      console.error("Update notification failed:", err.message);
+    }
+
     res.json(updatedClient);
   } catch (error) {
     next(error);
@@ -487,12 +338,7 @@ export const updateClient = async (
 };
 
 // UPDATE CLIENT PROFILE IMAGE
-
-export const updateClientProfileImage = async (
-  req,
-  res,
-  next
-) => {
+export const updateClientProfileImage = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -525,94 +371,64 @@ export const updateClientProfileImage = async (
   }
 };
 
-
-
 // ARCHIVE CLIENT
-
-export const archiveClient = async (
-  req,
-  res,
-  next
-) => {
+export const archiveClient = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (
-      !mongoose.Types.ObjectId.isValid(id)
-    ) {
-      return res
-        .status(400)
-        .json({
-          message: "Invalid client ID",
-        });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
     }
 
     const client = await Client.findById(id);
 
     if (!client) {
-      return res
-        .status(404)
-        .json({
-          message: "Client not found",
-        });
+      return res.status(404).json({
+        message: "Client not found",
+      });
     }
 
     client.isArchived = true;
-
     client.status = "Archived";
 
     await client.save();
 
     res.json({
-      message:
-        "Client archived successfully",
+      message: "Client archived successfully",
     });
   } catch (error) {
     next(error);
   }
 };
 
-
-
 // RESTORE CLIENT
-
-export const restoreClient = async (
-  req,
-  res,
-  next
-) => {
+export const restoreClient = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (
-      !mongoose.Types.ObjectId.isValid(id)
-    ) {
-      return res
-        .status(400)
-        .json({
-          message: "Invalid client ID",
-        });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
     }
 
     const client = await Client.findById(id);
 
     if (!client) {
-      return res
-        .status(404)
-        .json({
-          message: "Client not found",
-        });
+      return res.status(404).json({
+        message: "Client not found",
+      });
     }
 
     client.isArchived = false;
-
     client.status = "Active";
 
     await client.save();
 
     res.json({
-      message:
-        "Client restored successfully",
+      message: "Client restored successfully",
     });
   } catch (error) {
     next(error);
@@ -620,41 +436,29 @@ export const restoreClient = async (
 };
 
 // DELETE CLIENT
-
-export const deleteClient = async (
-  req,
-  res,
-  next
-) => {
+export const deleteClient = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (
-      !mongoose.Types.ObjectId.isValid(id)
-    ) {
-      return res
-        .status(400)
-        .json({
-          message: "Invalid client ID",
-        });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid client ID",
+      });
     }
 
     const client = await Client.findById(id);
 
     if (!client) {
-      return res
-        .status(404)
-        .json({
-          message: "Client not found",
-        });
+      return res.status(404).json({
+        message: "Client not found",
+      });
     }
 
     await ServiceAssignment.deleteMany({ clientId: id });
     await client.deleteOne();
 
     res.json({
-      message:
-        "Client deleted successfully",
+      message: "Client deleted successfully",
     });
   } catch (error) {
     next(error);

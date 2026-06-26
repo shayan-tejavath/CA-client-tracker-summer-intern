@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import Service from "../models/Service.js";
 import Client from "../models/Client.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
+import {
+  notifyServiceAssigned,
+  notifyClient,
+} from "../services/notificationService.js";
 
 const validateService = (data) => {
   const requiredFields = ["serviceCategory", "subService", "frequency"];
@@ -82,6 +86,32 @@ const attachAssignmentStats = async (services = []) => {
       assignedClientsPreview: previewMap.get(key) || [],
     };
   });
+};
+
+const buildServiceUpdateMessage = (serviceName, updates = {}) => {
+  const details = [];
+
+  if (typeof updates.package !== "undefined") {
+    details.push(`package set to ${updates.package}`);
+  }
+
+  if (typeof updates.customPrice !== "undefined") {
+    details.push(`price updated`);
+  }
+
+  if (typeof updates.status !== "undefined") {
+    details.push(`status changed to ${updates.status}`);
+  }
+
+  if (Array.isArray(updates.assignedUsers)) {
+    details.push(`assigned users updated`);
+  }
+
+  if (details.length === 0) {
+    return `Your ${serviceName} service assignment has been updated.`;
+  }
+
+  return `Your ${serviceName} service assignment has been updated (${details.join(", ")}).`;
 };
 
 export const getServices = async (req, res, next) => {
@@ -309,17 +339,28 @@ export const assignClientsToService = async (req, res, next) => {
       if (!client) continue;
 
       const existing = await ServiceAssignment.findOne({ serviceId, clientId });
-      if (!existing) {
-        const assignment = await ServiceAssignment.create({
-          serviceId,
-          clientId,
-          package: packageType || "Standard",
-          customPrice: customPrice || null,
-          assignedUsers: assignedUsers || [],
-          assignedBy: req.user?.name || req.user?.email || "System",
-          status: "Active",
+      if (existing) continue;
+
+      const assignment = await ServiceAssignment.create({
+        serviceId,
+        clientId,
+        package: packageType || "Standard",
+        customPrice: customPrice || null,
+        assignedUsers: assignedUsers || [],
+        assignedBy: req.user?.name || req.user?.email || "System",
+        status: "Active",
+      });
+
+      assignments.push(assignment);
+
+      try {
+        await notifyServiceAssigned({
+          client,
+          service,
+          sender: req.user?._id,
         });
-        assignments.push(assignment);
+      } catch (err) {
+        console.error("Service notification failed:", err.message);
       }
     }
 
@@ -365,6 +406,32 @@ export const updateServiceAssignment = async (req, res, next) => {
     await assignment.save();
 
     const populated = await assignment.populate("clientId");
+
+    try {
+      const client = await Client.findById(assignment.clientId);
+      const service = await Service.findById(assignment.serviceId);
+
+      if (client && service) {
+        await notifyClient({
+          client,
+          title: "Service Assignment Updated",
+          message: buildServiceUpdateMessage(service.subService, req.body),
+          channels: {
+            email: true,
+            sms: false,
+            whatsapp: true,
+          },
+          metadata: {
+            serviceId: service._id,
+            assignmentId: assignment._id,
+            event: "service_assignment_updated",
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Service update notification failed:", err.message);
+    }
+
     res.json(populated);
   } catch (error) {
     next(error);
@@ -386,10 +453,15 @@ export const bulkUpdateAssignments = async (req, res, next) => {
         .json({ message: "At least one assignment must be selected" });
     }
 
-    const updateFields = {};
     const safeUpdates = updates || {};
 
-    if (safeUpdates.assignedUsers) updateFields.assignedUsers = safeUpdates.assignedUsers;
+    const assignmentsToNotify = await ServiceAssignment.find({
+      _id: { $in: assignmentIds },
+      serviceId,
+    }).populate("clientId", "clientName email mobile status");
+
+    const updateFields = {};
+    if (typeof safeUpdates.assignedUsers !== "undefined") updateFields.assignedUsers = safeUpdates.assignedUsers;
     if (typeof safeUpdates.customPrice !== "undefined") updateFields.customPrice = safeUpdates.customPrice;
     if (typeof safeUpdates.package !== "undefined") updateFields.package = safeUpdates.package;
     if (typeof safeUpdates.status !== "undefined") updateFields.status = safeUpdates.status;
@@ -398,6 +470,35 @@ export const bulkUpdateAssignments = async (req, res, next) => {
       { _id: { $in: assignmentIds }, serviceId },
       { $set: updateFields }
     );
+
+    const service = await Service.findById(serviceId);
+
+    if (service && assignmentsToNotify.length > 0) {
+      for (const assignment of assignmentsToNotify) {
+        const client = assignment.clientId;
+        if (!client) continue;
+
+        try {
+          await notifyClient({
+            client,
+            title: "Service Assignment Updated",
+            message: buildServiceUpdateMessage(service.subService, safeUpdates),
+            channels: {
+              email: true,
+              sms: false,
+              whatsapp: true,
+            },
+            metadata: {
+              serviceId: service._id,
+              assignmentIds,
+              event: "service_assignment_bulk_updated",
+            },
+          });
+        } catch (err) {
+          console.error("Bulk update notification failed:", err.message);
+        }
+      }
+    }
 
     res.json({
       message: `${result.modifiedCount} assignment(s) updated`,
@@ -419,12 +520,40 @@ export const removeClientFromService = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    const assignment = await ServiceAssignment.findOneAndDelete({
+    const assignment = await ServiceAssignment.findOne({
       _id: assignmentId,
       serviceId,
     });
+
     if (!assignment) {
       return res.status(404).json({ message: "Assignment not found" });
+    }
+
+    const client = await Client.findById(assignment.clientId);
+    const service = await Service.findById(assignment.serviceId);
+
+    await assignment.deleteOne();
+
+    try {
+      if (client && service) {
+        await notifyClient({
+          client,
+          title: "Service Removed",
+          message: `${service.subService} has been removed from your account.`,
+          channels: {
+            email: true,
+            sms: false,
+            whatsapp: true,
+          },
+          metadata: {
+            serviceId: service._id,
+            assignmentId: assignment._id,
+            event: "service_removed",
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Service removal notification failed:", err.message);
     }
 
     res.json({ message: "Client removed from service" });
@@ -448,10 +577,44 @@ export const bulkRemoveClientsFromService = async (req, res, next) => {
         .json({ message: "At least one assignment must be selected" });
     }
 
+    const assignmentsToNotify = await ServiceAssignment.find({
+      _id: { $in: assignmentIds },
+      serviceId,
+    }).populate("clientId", "clientName email mobile status");
+
+    const service = await Service.findById(serviceId);
+
     const result = await ServiceAssignment.deleteMany({
       _id: { $in: assignmentIds },
       serviceId,
     });
+
+    if (service && assignmentsToNotify.length > 0) {
+      for (const assignment of assignmentsToNotify) {
+        const client = assignment.clientId;
+        if (!client) continue;
+
+        try {
+          await notifyClient({
+            client,
+            title: "Service Removed",
+            message: `${service.subService} has been removed from your account.`,
+            channels: {
+              email: true,
+              sms: false,
+              whatsapp: true,
+            },
+            metadata: {
+              serviceId: service._id,
+              assignmentIds,
+              event: "service_bulk_removed",
+            },
+          });
+        } catch (err) {
+          console.error("Bulk removal notification failed:", err.message);
+        }
+      }
+    }
 
     res.json({
       message: `${result.deletedCount} client(s) removed from service`,
