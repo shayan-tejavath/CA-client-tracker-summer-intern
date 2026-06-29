@@ -17,6 +17,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import { initializeTaskReminderScheduler } from "./services/taskReminderScheduler.js";
+import { sendEmailViaUMS } from "./services/umsService.js";
 
 dotenv.config();
 connectDB();
@@ -55,6 +56,35 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+app.get("/api/test-ums", async (req, res, next) => {
+  try {
+    const to = req.query.to || process.env.TEST_EMAIL_TO;
+
+    if (!to) {
+      return res.status(400).json({
+        message: "Provide ?to=your@email.com or set TEST_EMAIL_TO in .env",
+      });
+    }
+
+    const result = await sendEmailViaUMS({
+      to,
+      subject: "QwikCA UMS Test",
+      body: "UMS integration is working from QwikCA.",
+      metadata: {
+        source: "qwikca-backend",
+        test: true,
+      },
+    });
+
+    return res.status(200).json({
+      message: "UMS email queued successfully",
+      result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/services", serviceRoutes);
@@ -73,4 +103,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
