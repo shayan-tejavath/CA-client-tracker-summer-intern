@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { getServiceById, updateService } from "../../services/serviceService.js";
 
-const SERVICE_CATEGORIES = ["GST", "Income Tax", "TDS", "ROC", "Audit"];
+const SERVICE_CATEGORIES = ["GST", "Income Tax", "TDS", "ROC", "Audit", "Payroll", "PF & ESI", "Registration", "Certification", "Advisory"];
 
 const validateService = (data) => {
   if (!data.subService.trim()) return "Service name is required.";

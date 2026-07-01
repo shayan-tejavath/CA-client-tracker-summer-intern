@@ -721,7 +721,7 @@ export const importClientsFromExcel =
             SEND SERVICE ASSIGNMENT MESSAGES
           ----------------------------- */
 
-          for (const service of services) {
+          for (const service of foundServices) {
             try {
               await notifyServiceAssigned({
                 client: newClient,

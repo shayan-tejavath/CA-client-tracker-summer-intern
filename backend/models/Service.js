@@ -5,7 +5,7 @@ const serviceSchema = new mongoose.Schema(
     serviceCategory: {
       type: String,
       required: [true, "Service category is required"],
-      enum: ["GST", "Income Tax", "TDS", "ROC", "Audit"],
+      enum: ["GST", "Income Tax", "TDS", "ROC", "Audit", "Payroll", "PF & ESI", "Registration", "Certification", "Advisory"],
     },
     subService: {
       type: String,
