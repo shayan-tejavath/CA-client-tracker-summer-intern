@@ -1,10 +1,10 @@
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import {
-  sendEmail,
   sendSMS,
   sendWhatsApp,
 } from "./messengerClient.js";
+import { sendEmailViaUMS } from "./umsService.js";
 
 /* ==========================================================
    DEFAULT CHANNELS
@@ -37,28 +37,40 @@ const deliverInternalChannels = async ({
   if (!recipientUser) return;
 
   if (channels.email && recipientUser.email) {
-    await sendEmail({
-      to: recipientUser.email,
-      subject: title,
-      body: message,
-      metadata,
-    });
+    try {
+      await sendEmailViaUMS({
+        to: recipientUser.email,
+        subject: title,
+        body: message,
+        metadata,
+      });
+    } catch (error) {
+      console.error("UMS email delivery failed:", error.message);
+    }
   }
 
   if (channels.sms && recipientUser.mobile) {
-    await sendSMS({
-      to: recipientUser.mobile,
-      body: message,
-      metadata,
-    });
+    try {
+      await sendSMS({
+        to: recipientUser.mobile,
+        body: message,
+        metadata,
+      });
+    } catch (error) {
+      console.error("SMS delivery failed:", error.message);
+    }
   }
 
   if (channels.whatsapp && recipientUser.mobile) {
-    await sendWhatsApp({
-      to: recipientUser.mobile,
-      body: message,
-      metadata,
-    });
+    try {
+      await sendWhatsApp({
+        to: recipientUser.mobile,
+        body: message,
+        metadata,
+      });
+    } catch (error) {
+      console.error("WhatsApp delivery failed:", error.message);
+    }
   }
 };
 
@@ -78,34 +90,46 @@ const deliverClientChannels = async ({
   const results = [];
 
   if (channels.email && client.email) {
-    results.push(
-      await sendEmail({
-        to: client.email,
-        subject: title,
-        body: message,
-        metadata,
-      })
-    );
+    try {
+      results.push(
+        await sendEmailViaUMS({
+          to: client.email,
+          subject: title,
+          body: message,
+          metadata,
+        })
+      );
+    } catch (error) {
+      console.error("UMS email delivery failed:", error.message);
+    }
   }
 
   if (channels.sms && client.mobile) {
-    results.push(
-      await sendSMS({
-        to: client.mobile,
-        body: message,
-        metadata,
-      })
-    );
+    try {
+      results.push(
+        await sendSMS({
+          to: client.mobile,
+          body: message,
+          metadata,
+        })
+      );
+    } catch (error) {
+      console.error("SMS delivery failed:", error.message);
+    }
   }
 
   if (channels.whatsapp && client.mobile) {
-    results.push(
-      await sendWhatsApp({
-        to: client.mobile,
-        body: message,
-        metadata,
-      })
-    );
+    try {
+      results.push(
+        await sendWhatsApp({
+          to: client.mobile,
+          body: message,
+          metadata,
+        })
+      );
+    } catch (error) {
+      console.error("WhatsApp delivery failed:", error.message);
+    }
   }
 
   return results;
@@ -312,8 +336,8 @@ export const notifyClientCreated = async ({
     message,
     channels: {
       email: true,
-      sms: true,
-      whatsapp: true,
+      sms: false,
+      whatsapp: false,
     },
     metadata: {
       clientId: client._id,
@@ -339,7 +363,7 @@ export const notifyClientUpdated = async ({
     channels: {
       email: true,
       sms: false,
-      whatsapp: true,
+      whatsapp: false,
     },
     metadata: {
       clientId: client._id,
@@ -364,8 +388,8 @@ export const notifyBulkImportCompleted = async ({
     message,
     channels: {
       email: true,
-      sms: true,
-      whatsapp: true,
+      sms: false,
+      whatsapp: false,
     },
     metadata: {
       clientId: client._id,
@@ -393,7 +417,7 @@ export const notifyServiceAssigned = async ({
     channels: {
       email: true,
       sms: false,
-      whatsapp: true,
+      whatsapp: false,
     },
     metadata: {
       clientId: client._id,
@@ -435,6 +459,7 @@ export const notifyTaskAssigned = async ({
     },
   });
 };
+
 /* ==========================================================
    TASK STATUS UPDATED
 ========================================================== */
@@ -539,6 +564,7 @@ export const notifyTaskCommentAdded = async ({
     },
   });
 };
+
 /* ==========================================================
    GET USER NOTIFICATIONS
 ========================================================== */
@@ -649,6 +675,38 @@ export const clearNotifications = async (userId) => {
   });
 };
 
+export const notifyEmployeeWelcome = async ({
+  user,
+}) => {
+  try {
+    await sendEmailViaUMS({
+      to: user.email,
+      subject: "Welcome to QwikCA",
+      body: `
+Hello ${user.name},
+
+Your account has been created successfully.
+
+Role: ${user.role}
+
+You can now log in to QwikCA using your registered email.
+
+Regards,
+QwikCA Team
+      `,
+      metadata: {
+        event: "employee_welcome",
+        userId: user._id,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Employee welcome email failed:",
+      error.message
+    );
+  }
+};
+
 export default {
   createNotification,
   notifyRole,
@@ -658,16 +716,15 @@ export default {
   notifyClientUpdated,
   notifyBulkImportCompleted,
   notifyServiceAssigned,
-
+  notifyTaskAssigned,
   notifyTaskStatusUpdated,
   notifyTaskCompleted,
   notifyTaskCommentAdded,
-  notifyTaskAssigned,
-  
   getUserNotifications,
   getUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
   clearNotifications,
+  notifyEmployeeWelcome,
 };
