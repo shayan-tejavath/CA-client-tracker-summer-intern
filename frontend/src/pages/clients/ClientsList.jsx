@@ -295,7 +295,7 @@ const ClientsList = () => {
     clientId
   ) => {
     const confirmed = window.confirm(
-      "Permanently delete this client?"
+      "Delete this client permanently?"
     );
 
     if (!confirmed) return;
@@ -304,7 +304,7 @@ const ClientsList = () => {
       await deleteClient(clientId);
 
       toast.success(
-        "Client deleted permanently."
+        "Client deleted successfully."
       );
 
       setClients((current) =>
@@ -726,9 +726,9 @@ const ClientsList = () => {
                                       type="button"
                                       className="icon-button warning-icon"
                                       onClick={() =>
-                                        handleArchive(client._id)
+                                        handleDelete(client._id)
                                       }
-                                      aria-label="Archive client"
+                                      aria-label="Delete client"
                                     >
                                       <Trash2 size={16} />
                                     </button>
