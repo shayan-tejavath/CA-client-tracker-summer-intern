@@ -35,8 +35,6 @@ import {
   Copy,
 } from "lucide-react";
 
-import "../../styles/clients-list.css";
-
 const ClientsList = () => {
   const navigate = useNavigate();
 
@@ -360,180 +358,178 @@ const ClientsList = () => {
 
   return (
     <DashboardLayout>
-      <section className="page-card clients-page">
-        <div className="clients-page-inner">
-          <div className="clients-header clients-header--compact">
-            <div className="clients-header-copy">
-              <p className="clients-eyebrow">Clients</p>
-              <div className="clients-title-row">
-                <h1 className="clients-title">Clients</h1>
-                <p className="clients-subtitle">
-                  Manage and track all your clients in one place.
-                </p>
-              </div>
-            </div>
-
-            <div className="clients-header-actions">
-              {canCreateClient && (
-                <>
-                  <button
-                    type="button"
-                    className="button import-button"
-                    onClick={() => setShowImportDialog(true)}
-                  >
-                    <Upload size={16} />
-                    Import Clients
-                  </button>
-                  <button
-                    type="button"
-                    className="button add-button"
-                    onClick={() => navigate("/dashboard/clients/add")}
-                  >
-                    <Plus size={16} />
-                    Add Client
-                  </button>
-                </>
-              )}
-            </div>
+      <section className="page-card">
+        <div className="page-header" style={{ alignItems: "flex-start" }}>
+          <div style={{ maxWidth: 760 }}>
+            <p className="eyebrow">Clients</p>
+            <h1>Client management</h1>
+            <p>
+              Search, manage, and track all your clients in one place.
+            </p>
           </div>
 
-          <div className="clients-stats-grid">
-            <div className="stat-card stat-card--default">
-              <div className="stat-card__icon stat-card__icon--default">
-                <Users size={20} />
-              </div>
-              <div className="stat-card__content">
-                <span className="stat-card__label">Total clients</span>
-                <span className="stat-card__value">{totalClients}</span>
-              </div>
-            </div>
-            <div className="stat-card stat-card--active">
-              <div className="stat-card__icon stat-card__icon--active">
-                <CheckCircle2 size={20} />
-              </div>
-              <div className="stat-card__content">
-                <span className="stat-card__label">Active</span>
-                <span className="stat-card__value">{activeClients}</span>
-              </div>
-            </div>
-            <div className="stat-card stat-card--pending">
-              <div className="stat-card__icon stat-card__icon--pending">
-                <Clock size={20} />
-              </div>
-              <div className="stat-card__content">
-                <span className="stat-card__label">Pending</span>
-                <span className="stat-card__value">{pendingClients}</span>
-              </div>
-            </div>
-            <div className="stat-card stat-card--inactive">
-              <div className="stat-card__icon stat-card__icon--inactive">
-                <FileText size={20} />
-              </div>
-              <div className="stat-card__content">
-                <span className="stat-card__label">Inactive</span>
-                <span className="stat-card__value">{inactiveClients}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="clients-filters-card">
-            <div className="clients-filters clients-filters--compact">
-              <label className="filter-field filter-search">
-                <span>Search clients</span>
-                <div className="search-input-group">
-                  <Search size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search clients by name, email, or code"
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setPage(1);
-                    }}
-                  />
-                </div>
-              </label>
-
-              <label className="filter-field">
-                <span>Status</span>
-                <select
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </label>
-
-              <label className="filter-field">
-                <span>Type</span>
-                <select
-                  value={typeFilter}
-                  onChange={(event) => {
-                    setTypeFilter(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="All">All Types</option>
-                  <option value="Individual">Individual</option>
-                  <option value="Business">Business</option>
-                  <option value="LLP">LLP</option>
-                  <option value="Private Limited">Private Limited</option>
-                </select>
-              </label>
-
-              <label className="filter-field">
-                <span>Industries</span>
-                <select
-                  value={industryFilter}
-                  onChange={(event) => {
-                    setIndustryFilter(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  {industryOptions.map((industry) => (
-                    <option key={industry} value={industry}>
-                      {industry}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button type="button" className="button filter-button">
-                Filters
+          {canCreateClient && (
+            <div className="page-tools">
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => setShowImportDialog(true)}
+              >
+                <Upload size={16} />
+                Import
+              </button>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => navigate("/dashboard/clients/add")}
+              >
+                <Plus size={16} />
+                Add client
               </button>
             </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: "16px",
+            margin: "20px 0",
+          }}
+        >
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Users size={18} />
+              <div style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 600 }}>
+                Total clients
+              </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em" }}>
+              {totalClients}
+            </div>
           </div>
 
-          <div className="clients-table-card">
-            {loading ? (
-              <div className="alert">
-                Loading clients...
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <CheckCircle2 size={18} />
+              <div style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 600 }}>
+                Active
               </div>
-            ) : error ? (
-              <div className="alert danger">
-                {error}
-              </div>
-            ) : (
-              <>
-                <div className="clients-table-top">
-                  <div>
-                    <h2>Client directory</h2>
-                    <p>
-                      A summary of all client accounts and
-                      their status in the system.
-                    </p>
-                  </div>
-                  <p className="clients-table-meta">
-                    Showing {clients.length} of {totalClients} clients
-                  </p>
-                </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em" }}>
+              {activeClients}
+            </div>
+          </div>
 
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Clock size={18} />
+              <div style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 600 }}>
+                Pending
+              </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em" }}>
+              {pendingClients}
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <FileText size={18} />
+              <div style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 600 }}>
+                Inactive
+              </div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em" }}>
+              {inactiveClients}
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: "12px", alignItems: "end" }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Search</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--hover)", borderRadius: 8, paddingRight: 12 }}>
+                <Search size={16} style={{ color: "var(--text-secondary)", marginLeft: 12 }} />
+                <input
+                  type="text"
+                  placeholder="Name, email, code..."
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
+                  style={{ background: "transparent", border: "none", flex: 1, padding: "10px 0" }}
+                />
+              </div>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Status</span>
+              <select
+                value={statusFilter}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Type</span>
+              <select
+                value={typeFilter}
+                onChange={(event) => {
+                  setTypeFilter(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="All">All Types</option>
+                <option value="Individual">Individual</option>
+                <option value="Business">Business</option>
+                <option value="LLP">LLP</option>
+                <option value="Private Limited">Private Limited</option>
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Industry</span>
+              <select
+                value={industryFilter}
+                onChange={(event) => {
+                  setIndustryFilter(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {industryOptions.map((industry) => (
+                  <option key={industry} value={industry}>
+                    {industry}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div style={{ height: 40 }} />
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="alert">
+            Loading clients...
+          </div>
+        ) : error ? (
+          <div className="alert danger">
+            {error}
+          </div>
+        ) : (
+          <>
                 <div className="table-responsive">
                   <table className="data-table">
                     <thead>
@@ -562,7 +558,7 @@ const ClientsList = () => {
                         <th>Pending</th>
                         <th>Docs</th>
                         <th>Updated</th>
-                        <th>Actions</th>
+                        <th className="actions-cell">Actions</th>
                       </tr>
                     </thead>
 
@@ -673,15 +669,14 @@ const ClientsList = () => {
                             <td className="actions-cell">
                               <button
                                 type="button"
-                                className="icon-button"
+                                className="button secondary small"
                                 onClick={() =>
                                   navigate(
                                     `/dashboard/clients/${client._id}`
                                   )
                                 }
-                                aria-label="View client"
                               >
-                                <Eye size={16} />
+                                View
                               </button>
 
                               {canEditClient &&
@@ -689,48 +684,44 @@ const ClientsList = () => {
                                   <>
                                     <button
                                       type="button"
-                                      className="icon-button"
+                                      className="button secondary small"
                                       onClick={() =>
                                         handleRestore(client._id)
                                       }
-                                      aria-label="Restore client"
                                     >
-                                      <Copy size={16} />
+                                      Restore
                                     </button>
                                     <button
                                       type="button"
-                                      className="icon-button danger-icon"
+                                      className="button danger small"
                                       onClick={() =>
                                         handleDelete(client._id)
                                       }
-                                      aria-label="Delete client"
                                     >
-                                      <Trash2 size={16} />
+                                      Delete
                                     </button>
                                   </>
                                 ) : (
                                   <>
                                     <button
                                       type="button"
-                                      className="icon-button"
+                                      className="button secondary small"
                                       onClick={() =>
                                         navigate(
                                           `/dashboard/clients/${client._id}/edit`
                                         )
                                       }
-                                      aria-label="Edit client"
                                     >
-                                      <Edit2 size={16} />
+                                      Edit
                                     </button>
                                     <button
                                       type="button"
-                                      className="icon-button warning-icon"
+                                      className="button danger small"
                                       onClick={() =>
                                         handleDelete(client._id)
                                       }
-                                      aria-label="Delete client"
                                     >
-                                      <Trash2 size={16} />
+                                      Delete
                                     </button>
                                   </>
                                 ))}
@@ -769,9 +760,7 @@ const ClientsList = () => {
                 </div>
               </>
             )}
-          </div>
-        </div>
-      </section>
+        </section>
 
       <BulkImportDialog
         open={showImportDialog}

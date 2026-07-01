@@ -16,7 +16,7 @@ const validateService = (data) => {
     return `Missing required fields: ${missingFields.join(", ")}`;
   }
 
-  const categories = ["GST", "Income Tax", "TDS", "ROC", "Audit"];
+  const categories = ["GST", "Income Tax", "TDS", "ROC", "Audit", "Payroll", "PF & ESI", "Registration", "Certification", "Advisory"];
   if (!categories.includes(data.serviceCategory)) {
     return `serviceCategory must be one of: ${categories.join(", ")}`;
   }

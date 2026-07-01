@@ -606,6 +606,11 @@ const ServiceDetails = () => {
                     <option value="TDS">TDS</option>
                     <option value="ROC">ROC</option>
                     <option value="Audit">Audit</option>
+                    <option value="Payroll">Payroll</option>
+                    <option value="PF & ESI">PF & ESI</option>
+                    <option value="Registration">Registration</option>
+                    <option value="Certification">Certification</option>
+                    <option value="Advisory">Advisory</option>
                   </select>
                   {validationErrors.serviceCategory && (
                     <p className="input-helper danger">{validationErrors.serviceCategory}</p>
