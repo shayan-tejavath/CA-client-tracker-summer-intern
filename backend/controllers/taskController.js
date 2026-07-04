@@ -1,6 +1,10 @@
 ﻿import mongoose from "mongoose";
 
 import Task from "../models/Task.js";
+import SubTask from "../models/SubTask.js";
+import TaskDocument from "../models/TaskDocument.js";
+import TaskActivity from "../models/TaskActivity.js";
+import TaskDocumentRequest from "../models/TaskDocumentRequest.js";
 import Client from "../models/Client.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
 
@@ -13,6 +17,7 @@ import {
 
 const allowedStatuses = ["Pending", "In Progress", "Completed", "Overdue"];
 const allowedPriorities = ["Low", "Medium", "High", "Critical"];
+const allowedRecurrenceTypes = ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"];
 
 const validateTaskPayload = (data, partial = false) => {
   const requiredFields = ["title", "client", "service", "assignedTo", "dueDate"];
@@ -32,6 +37,10 @@ const validateTaskPayload = (data, partial = false) => {
     return `Priority must be one of: ${allowedPriorities.join(", ")}`;
   }
 
+  if (data.recurrence && !allowedRecurrenceTypes.includes(data.recurrence)) {
+    return `recurrence must be one of: ${allowedRecurrenceTypes.join(", ")}`;
+  }
+
   if (data.dueDate && Number.isNaN(new Date(data.dueDate).getTime())) {
     return "dueDate must be a valid date";
   }
@@ -44,6 +53,8 @@ const taskPopulate = (query) =>
     .populate("client", "clientName pan gstin email mobile")
     .populate("service", "serviceCategory subService frequency")
     .populate("assignedTo", "name email role")
+    .populate("parentTask", "title dueDate status")
+    .populate("childTask", "title dueDate status")
     .populate("comments.author", "name email role");
 
 const getAssignedToId = (taskDoc) => {
@@ -54,6 +65,86 @@ const getAssignedToId = (taskDoc) => {
   return taskDoc.assignedTo.toString
     ? taskDoc.assignedTo.toString()
     : String(taskDoc.assignedTo);
+};
+
+const createTaskActivity = async ({ taskId, activity, userId, details = "" }) => {
+  if (!taskId || !userId) return null;
+
+  return TaskActivity.create({
+    task: taskId,
+    activity,
+    user: userId,
+    details: String(details).trim(),
+  });
+};
+
+const getNextDueDate = (dueDate, recurrenceType) => {
+  if (!dueDate || !recurrenceType) return null;
+
+  const currentDate = new Date(dueDate);
+  if (Number.isNaN(currentDate.getTime())) return null;
+
+  const nextDate = new Date(currentDate);
+
+  switch (recurrenceType) {
+    case "Daily":
+      nextDate.setDate(nextDate.getDate() + 1);
+      break;
+    case "Weekly":
+      nextDate.setDate(nextDate.getDate() + 7);
+      break;
+    case "Monthly":
+      nextDate.setMonth(nextDate.getMonth() + 1);
+      break;
+    case "Quarterly":
+      nextDate.setMonth(nextDate.getMonth() + 3);
+      break;
+    case "Yearly":
+      nextDate.setFullYear(nextDate.getFullYear() + 1);
+      break;
+    default:
+      return null;
+  }
+
+  return nextDate;
+};
+
+const createRecurringChildTask = async (parentTask, userId) => {
+  if (!parentTask || !parentTask.recurrence) return null;
+  if (parentTask.status !== "Completed") return null;
+  if (parentTask.childTask) return null;
+
+  const nextDueDate = getNextDueDate(parentTask.dueDate, parentTask.recurrence);
+  if (!nextDueDate) return null;
+
+  const childTask = await Task.create({
+    title: parentTask.title,
+    client: parentTask.client,
+    service: parentTask.service,
+    assignedTo: parentTask.assignedTo,
+    status: "Pending",
+    priority: parentTask.priority,
+    dueDate: nextDueDate,
+    description: parentTask.description || "",
+    recurrence: parentTask.recurrence,
+    parentTask: parentTask._id,
+    childTask: null,
+  });
+
+  await Task.findByIdAndUpdate(parentTask._id, { childTask: childTask._id });
+
+  try {
+    await createTaskActivity({
+      taskId: childTask._id,
+      activity: "Recurring Task Created",
+      userId,
+      details: parentTask.title,
+    });
+  } catch (activityError) {
+    console.error("Recurring task activity logging failed:", activityError.message);
+  }
+
+  return childTask;
 };
 
 export const getTasks = async (req, res, next) => {
@@ -157,10 +248,24 @@ export const createTask = async (req, res, next) => {
       priority: req.body.priority || "Medium",
       dueDate: req.body.dueDate,
       description: req.body.description || "",
+      recurrence: req.body.recurrence || null,
+      parentTask: req.body.parentTask || null,
+      childTask: req.body.childTask || null,
       comments: req.body.comments || [],
     });
 
     const createdTask = await taskPopulate(Task.findById(task._id));
+
+    try {
+      await createTaskActivity({
+        taskId: createdTask._id,
+        activity: "Task Created",
+        userId: req.user?._id,
+        details: createdTask.title,
+      });
+    } catch (activityError) {
+      console.error("Task activity logging failed:", activityError.message);
+    }
 
     try {
       const assignedToId = getAssignedToId(createdTask);
@@ -235,6 +340,22 @@ export const updateTask = async (req, res, next) => {
       Task.findById(updatedTask._id)
     );
 
+    let createdRecurringChild = null;
+    if (
+      req.body.status === "Completed" &&
+      task.status !== "Completed" &&
+      populatedUpdatedTask?.recurrence
+    ) {
+      try {
+        createdRecurringChild = await createRecurringChildTask(
+          populatedUpdatedTask,
+          req.user?._id
+        );
+      } catch (recurrenceError) {
+        console.error("Recurring task creation failed:", recurrenceError.message);
+      }
+    }
+
     /* ===========================================
        TASK REASSIGNED
     =========================================== */
@@ -244,6 +365,17 @@ export const updateTask = async (req, res, next) => {
       req.body.assignedTo.toString() !== task.assignedTo?.toString();
 
     if (assignedToChanged) {
+      try {
+        await createTaskActivity({
+          taskId: populatedUpdatedTask._id,
+          activity: "Employee Assigned",
+          userId: req.user?._id,
+          details: `Assigned to ${populatedUpdatedTask.assignedTo?.name || "employee"}`,
+        });
+      } catch (activityError) {
+        console.error("Task assignment activity logging failed:", activityError.message);
+      }
+
       try {
         const newAssignedToId = getAssignedToId(populatedUpdatedTask);
 
@@ -264,6 +396,17 @@ export const updateTask = async (req, res, next) => {
     =========================================== */
 
     if (req.body.status && req.body.status !== task.status) {
+      try {
+        await createTaskActivity({
+          taskId: populatedUpdatedTask._id,
+          activity: "Status Changed",
+          userId: req.user?._id,
+          details: `${task.status || "Pending"} → ${req.body.status}`,
+        });
+      } catch (activityError) {
+        console.error("Task status activity logging failed:", activityError.message);
+      }
+
       try {
         const assignedToId = getAssignedToId(populatedUpdatedTask);
 
@@ -312,6 +455,375 @@ export const deleteTask = async (req, res, next) => {
   }
 };
 
+const validateSubTaskPayload = (data, partial = false) => {
+  if (!partial && (!data.title || String(data.title).trim() === "")) {
+    return "Sub-task title is required";
+  }
+
+  if (data.completed !== undefined && typeof data.completed !== "boolean") {
+    return "completed must be a boolean";
+  }
+
+  return null;
+};
+
+const ensureTaskAccess = async (req, task) => {
+  if (!task) {
+    return { allowed: false, status: 404, message: "Task not found" };
+  }
+
+  if (req.user?.role === ROLES.Employee) {
+    if (task.assignedTo?.toString() !== req.user._id.toString()) {
+      return { allowed: false, status: 403, message: "Forbidden" };
+    }
+    return { allowed: true };
+  }
+
+  if (req.user?.role === ROLES.Client) {
+    const client = await Client.findOne({ email: req.user.email });
+    if (!client || task.client?.toString() !== client._id.toString()) {
+      return { allowed: false, status: 403, message: "Forbidden" };
+    }
+  }
+
+  return { allowed: true };
+};
+
+export const listSubTasks = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const subTasks = await SubTask.find({ task: taskId }).sort({ completed: 1, createdAt: 1 });
+    res.json(subTasks);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createSubTask = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const validationError = validateSubTaskPayload(req.body);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
+    const subTask = await SubTask.create({
+      task: taskId,
+      title: String(req.body.title).trim(),
+      description: req.body.description ? String(req.body.description).trim() : "",
+      completed: Boolean(req.body.completed),
+    });
+
+    res.status(201).json(subTask);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSubTask = async (req, res, next) => {
+  try {
+    const { taskId, subTaskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId) || !mongoose.Types.ObjectId.isValid(subTaskId)) {
+      return res.status(400).json({ message: "Invalid task or sub-task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const subTask = await SubTask.findOne({ _id: subTaskId, task: taskId });
+    if (!subTask) {
+      return res.status(404).json({ message: "Sub-task not found" });
+    }
+
+    const validationError = validateSubTaskPayload(req.body, true);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
+    const updatePayload = {};
+    if (req.body.title !== undefined) {
+      updatePayload.title = String(req.body.title).trim();
+    }
+    if (req.body.description !== undefined) {
+      updatePayload.description = String(req.body.description).trim();
+    }
+    if (req.body.completed !== undefined) {
+      updatePayload.completed = Boolean(req.body.completed);
+    }
+
+    const updatedSubTask = await SubTask.findByIdAndUpdate(subTaskId, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.json(updatedSubTask);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteSubTask = async (req, res, next) => {
+  try {
+    const { taskId, subTaskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId) || !mongoose.Types.ObjectId.isValid(subTaskId)) {
+      return res.status(400).json({ message: "Invalid task or sub-task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const subTask = await SubTask.findOne({ _id: subTaskId, task: taskId });
+    if (!subTask) {
+      return res.status(404).json({ message: "Sub-task not found" });
+    }
+
+    await subTask.deleteOne();
+    res.json({ message: "Sub-task deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listTaskActivities = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const activities = await TaskActivity.find({ task: taskId })
+      .populate("user", "name email role")
+      .sort({ createdAt: -1 });
+
+    res.json(activities);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listTaskDocuments = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const documents = await TaskDocument.find({ task: taskId }).sort({ createdAt: -1 });
+    res.json(documents);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadTaskDocument = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const document = await TaskDocument.create({
+      task: taskId,
+      fileName: req.file.filename,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      path: `/uploads/task-documents/${req.file.filename}`,
+    });
+
+    const request = await TaskDocumentRequest.findOne({ task: taskId }).sort({ createdAt: -1 });
+    if (request) {
+      request.status = "Uploaded";
+      request.uploadedBy = req.user?._id || null;
+      request.uploadedAt = new Date();
+      await request.save();
+    }
+
+    await createTaskActivity({
+      taskId,
+      activity: "Document Uploaded",
+      userId: req.user?._id,
+      details: req.file.originalname,
+    });
+
+    res.status(201).json(document);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTaskDocument = async (req, res, next) => {
+  try {
+    const { taskId, documentId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId) || !mongoose.Types.ObjectId.isValid(documentId)) {
+      return res.status(400).json({ message: "Invalid task or document ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const document = await TaskDocument.findOne({ _id: documentId, task: taskId });
+    if (!document) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    try {
+      await import("fs/promises").then(({ rm }) => rm(document.path.replace(/^\//, ""), { force: true }));
+    } catch (fileError) {
+      console.error("Task document cleanup failed:", fileError.message);
+    }
+
+    await document.deleteOne();
+    res.json({ message: "Document deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createTaskDocumentRequest = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const { requiredDocuments } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    const normalizedDocuments = Array.isArray(requiredDocuments)
+      ? requiredDocuments.map((document) => String(document).trim()).filter(Boolean)
+      : [];
+
+    if (!normalizedDocuments.length) {
+      return res.status(400).json({ message: "At least one document is required" });
+    }
+
+    const request = await TaskDocumentRequest.findOneAndUpdate(
+      { task: taskId },
+      {
+        task: taskId,
+        requiredDocuments: normalizedDocuments,
+        status: "Pending",
+        requestedBy: req.user?._id || null,
+        uploadedBy: null,
+        uploadedAt: null,
+        verifiedAt: null,
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json(request);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listTaskDocumentRequests = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await Task.findById(taskId);
+    const access = await ensureTaskAccess(req, task);
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const requests = await TaskDocumentRequest.find({ task: taskId }).sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateTaskDocumentRequestStatus = async (req, res, next) => {
+  try {
+    const { taskId, requestId } = req.params;
+    const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId) || !mongoose.Types.ObjectId.isValid(requestId)) {
+      return res.status(400).json({ message: "Invalid IDs" });
+    }
+
+    const request = await TaskDocumentRequest.findOne({ _id: requestId, task: taskId });
+    if (!request) {
+      return res.status(404).json({ message: "Document request not found" });
+    }
+
+    if (status === "Verified") {
+      request.status = "Verified";
+      request.verifiedAt = new Date();
+    } else if (status === "Uploaded") {
+      request.status = "Uploaded";
+      request.uploadedAt = request.uploadedAt || new Date();
+    } else {
+      request.status = "Pending";
+    }
+
+    await request.save();
+    res.json(request);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const addComment = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -347,6 +859,17 @@ export const addComment = async (req, res, next) => {
     const comment = { author: req.user._id, text: String(text).trim() };
     task.comments.push(comment);
     await task.save();
+
+    try {
+      await createTaskActivity({
+        taskId: task._id,
+        activity: "Comment Added",
+        userId: req.user?._id,
+        details: String(text).trim(),
+      });
+    } catch (activityError) {
+      console.error("Comment activity logging failed:", activityError.message);
+    }
 
     try {
       const assignedToId = task.assignedTo?.toString();

@@ -5,6 +5,7 @@ import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { usePermission } from "../../hooks/usePermission.js";
 import { getClientById } from "../../services/clientService.js";
 import { getServices } from "../../services/serviceService.js";
+import { getTasks } from "../../services/taskService.js";
 import "./client-details.css";
 
 const tabs = [
@@ -27,6 +28,7 @@ const ClientDetails = () => {
 
   const [client, setClient] = useState(null);
   const [services, setServices] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState("Details");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,13 +45,19 @@ const ClientDetails = () => {
         setLoading(true);
         setError("");
 
-        const [clientData, serviceData] = await Promise.all([
+        const [clientData, serviceData, taskData] = await Promise.all([
           getClientById(clientId),
           getServices(),
+          getTasks(),
         ]);
 
         setClient(clientData);
         setServices(Array.isArray(serviceData) ? serviceData : serviceData?.services || []);
+        setTasks(
+          Array.isArray(taskData)
+            ? taskData.filter((task) => String(task.client?._id || task.client) === String(clientId))
+            : []
+        );
       } catch (err) {
         setError(err.response?.data?.message || "Unable to load client details.");
       } finally {
@@ -145,13 +153,55 @@ const ClientDetails = () => {
 
   const getTaskCount = (type) => {
     if (!client) return 0;
-    if (Array.isArray(client.tasks)) {
-      return client.tasks.filter((task) => task.status === type).length;
-    }
-    if (type === "Pending") return client.pendingTaskCount ?? 0;
-    if (type === "In Progress") return client.inProgressTaskCount ?? 0;
-    if (type === "Completed") return client.completedTaskCount ?? 0;
-    return 0;
+    return tasks.filter((task) => task.status === type).length;
+  };
+
+  const groupedTasks = useMemo(() => {
+    const grouped = new Map();
+
+    tasks.forEach((task) => {
+      const serviceId = task.service?._id || task.service;
+      const serviceName =
+        task.service?.subService ||
+        task.service?.serviceCategory ||
+        task.service?.name ||
+        "General Service";
+      const groupKey = serviceId ? String(serviceId) : serviceName;
+
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, {
+          serviceId: serviceId ? String(serviceId) : null,
+          serviceName,
+          tasks: [],
+        });
+      }
+
+      grouped.get(groupKey).tasks.push(task);
+    });
+
+    return Array.from(grouped.values())
+      .map((group) => {
+        const totalCount = group.tasks.length;
+        const completedCount = group.tasks.filter((task) => String(task.status || "").toLowerCase() === "completed").length;
+        const progressPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+
+        return {
+          ...group,
+          totalCount,
+          completedCount,
+          progressPercent,
+          tasks: group.tasks.sort((a, b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0)),
+        };
+      })
+      .sort((a, b) => a.serviceName.localeCompare(b.serviceName));
+  }, [tasks]);
+
+  const getTaskStatusClass = (status) => {
+    const normalizedStatus = String(status || "Pending").toLowerCase();
+    if (normalizedStatus.includes("complete")) return "task-pill--success";
+    if (normalizedStatus.includes("progress")) return "task-pill--info";
+    if (normalizedStatus.includes("overdue")) return "task-pill--danger";
+    return "task-pill--neutral";
   };
 
   const getDocumentCount = () => {
@@ -429,8 +479,74 @@ const ClientDetails = () => {
       case "Tasks":
         return (
           <div className="panel-card">
-            <h2>Tasks</h2>
-            <p className="text-slate-300">Task breakdown and progress will appear here.</p>
+            <div className="section-header">
+              <h2>Tasks</h2>
+              <span className="badge badge-info">{tasks.length} task(s)</span>
+            </div>
+
+            {tasks.length > 0 ? (
+              <div className="client-task-groups">
+                {groupedTasks.map((group) => (
+                  <div key={group.serviceId || group.serviceName} className="client-task-group">
+                    <div className="client-task-group__header">
+                      <div>
+                        <h3>{group.serviceName}</h3>
+                        <p>
+                          {group.totalCount} task(s) • {group.completedCount} completed
+                        </p>
+                      </div>
+                      <div className="client-task-progress">
+                        <div className="client-task-progress__track">
+                          <div
+                            className="client-task-progress__bar"
+                            style={{ width: `${group.progressPercent}%` }}
+                          />
+                        </div>
+                        <span>{group.progressPercent}%</span>
+                      </div>
+                    </div>
+
+                    <div className="client-task-list">
+                      {group.tasks.map((task) => (
+                        <button
+                          key={task._id}
+                          type="button"
+                          className="client-task-row"
+                          onClick={() => navigate(`/dashboard/tasks/${task._id}`)}
+                        >
+                          <div className="client-task-row__main">
+                            <div className="client-task-row__title">
+                              <strong>{task.title || "Untitled task"}</strong>
+                              <span className={`task-pill ${getTaskStatusClass(task.status)}`}>
+                                {task.status || "Pending"}
+                              </span>
+                            </div>
+                            <div className="client-task-row__meta">
+                              <div className="client-task-metric">
+                                <span className="client-task-metric__label">Due Date</span>
+                                <span>{formatDate(task.dueDate)}</span>
+                              </div>
+                              <div className="client-task-metric">
+                                <span className="client-task-metric__label">Assigned Employee</span>
+                                <span>{task.assignedTo?.name || "Unassigned"}</span>
+                              </div>
+                              <div className="client-task-metric">
+                                <span className="client-task-metric__label">Priority</span>
+                                <span>{task.priority || "Medium"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-300" style={{ marginTop: 16 }}>
+                No tasks generated for this client yet.
+              </p>
+            )}
           </div>
         );
 

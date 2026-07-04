@@ -6,6 +6,7 @@ import {
   notifyClientCreated,
   notifyClientUpdated,
 } from "../services/notificationService.js";
+import { generateTasksFromTemplate } from "../services/workflow/templateService.js";
 
 const normalizeArrayField = (value) => {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -199,14 +200,26 @@ export const createClient = async (req, res, next) => {
 
       try {
         await Promise.all(
-          assignedServices.map((serviceId) =>
-            ServiceAssignment.create({
+          assignedServices.map(async (serviceId) => {
+            await ServiceAssignment.create({
               serviceId,
               clientId: client._id,
               assignedUsers,
               assignedBy: req.user?.name || req.user?.email || "System",
-            })
-          )
+            });
+
+            try {
+              await generateTasksFromTemplate({
+                clientId: client._id,
+                serviceId,
+                assignedBy: req.user?.name || req.user?.email || "System",
+                assignedTo: req.user?._id,
+                assignedUsers,
+              });
+            } catch (taskError) {
+              console.error("Task generation failed for assigned service:", taskError.message);
+            }
+          })
         );
       } catch (err) {
         console.error("Service Assignment Error", err);
