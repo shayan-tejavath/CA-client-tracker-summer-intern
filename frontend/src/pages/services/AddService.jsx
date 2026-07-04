@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { createService } from "../../services/serviceService.js";
 
-const SERVICE_CATEGORIES = ["GST", "Income Tax", "TDS", "ROC", "Audit"];
+const SERVICE_CATEGORIES = ["GST", "Income Tax", "TDS", "ROC", "Audit", "Payroll", "PF & ESI", "Registration", "Certification", "Advisory"];
 
 const initialState = {
   serviceCategory: SERVICE_CATEGORIES[0],

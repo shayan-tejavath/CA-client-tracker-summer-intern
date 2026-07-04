@@ -1,19 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { createClient } from "../../services/clientService.js";
+import { getServices } from "../../services/serviceService.js";
+import { getEmployees } from "../../services/employeeService.js";
 import "../../styles/add-client.css";
-
-const serviceOptions = [
-  "GST Filing",
-  "Income Tax Return",
-  "TDS Filing",
-  "ROC Compliance",
-  "Audit",
-  "Bookkeeping",
-  "Payroll",
-];
 
 const initialState = {
   clientName: "",
@@ -46,9 +39,7 @@ const initialState = {
   businessStartDate: "",
   industryType: "",
   annualTurnover: "",
-  relationshipManager: "",
-  assignedEmployees: "",
-  services: "",
+  assignedEmployees: [],
   tags: "",
   allowLogin: false,
   temporaryPassword: "",
@@ -113,22 +104,15 @@ const getGstinState = (gstin) => {
 };
 
 const validateClient = (data) => {
-  if (!data.clientName.trim())
-    return "Client name is required.";
+  if (!data.clientName.trim()) return "Client name is required.";
 
-  if (!data.pan.trim())
-    return "PAN is required.";
+  if (!data.pan.trim()) return "PAN is required.";
 
-  if (
-    !/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(
-      data.pan.trim()
-    )
-  ) {
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(data.pan.trim())) {
     return "PAN must be a valid format.";
   }
 
-  if (!data.gstin.trim())
-    return "GSTIN is required.";
+  if (!data.gstin.trim()) return "GSTIN is required.";
 
   if (
     !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(
@@ -138,26 +122,21 @@ const validateClient = (data) => {
     return "GSTIN must be a valid format.";
   }
 
-  if (!data.mobile.trim())
-    return "Mobile number is required.";
+  if (!data.mobile.trim()) return "Mobile number is required.";
 
-  if (
-    !/^[0-9]{10,15}$/.test(
-      data.mobile.trim()
-    )
-  ) {
+  if (!/^[0-9]{10,15}$/.test(data.mobile.trim())) {
     return "Mobile number must contain 10 to 15 digits.";
   }
 
-  if (!data.email.trim())
-    return "Email is required.";
+  if (!data.email.trim()) return "Email is required.";
 
   if (!/.+@.+\..+/.test(data.email.trim())) {
     return "Email must be valid.";
   }
 
-  if (!data.address.trim())
+  if (!data.address || !data.address.trim()) {
     return "Address is required.";
+  }
 
   return null;
 };
@@ -169,6 +148,36 @@ const AddClient = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const profileImageInputRef = useRef(null);
+  const [serviceOptions, setServiceOptions] = useState([]);
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [employees, setEmployees] = useState([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const svc = await getServices();
+        setServiceOptions(Array.isArray(svc) ? svc : []);
+      } catch (err) {
+        console.error(err);
+      }
+
+      try {
+        const emps = await getEmployees();
+        setEmployees(Array.isArray(emps) ? emps : []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    load();
+
+    if (!client.clientCode) {
+      const year = new Date().getFullYear();
+      const seq = String(Math.floor(Math.random() * 90000) + 10000);
+      setClient((c) => ({ ...c, clientCode: `CLT-${year}-${seq}` }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -253,55 +262,69 @@ const AddClient = () => {
     }
   };
 
-  const handleServiceToggle = (
-    service
-  ) => {
+  const handleServiceToggle = (service) => {
+    const id = service && service._id ? service._id : service;
+
     setClient((current) => {
-      const alreadySelected =
-        current.assignedServices.includes(
-          service
-        );
+      const alreadySelected = current.assignedServices.includes(id);
 
       return {
         ...current,
-        assignedServices:
-          alreadySelected
-            ? current.assignedServices.filter(
-                (item) =>
-                  item !== service
-              )
-            : [
-                ...current.assignedServices,
-                service,
-              ],
+        assignedServices: alreadySelected
+          ? current.assignedServices.filter((item) => item !== id)
+          : [...current.assignedServices, id],
       };
     });
+  };
+
+  const removeService = (serviceId) => {
+    setClient((current) => ({
+      ...current,
+      assignedServices: current.assignedServices.filter((id) => id !== serviceId),
+    }));
+  };
+
+  const getServiceNameById = (id) => {
+    const s = serviceOptions.find((x) => x._id === id);
+    return s ? s.subService || s.name || s.serviceCategory || "Unnamed Service" : id;
+  };
+
+  const handleAssignedEmployeesChange = (e) => {
+    const options = Array.from(e.target.selectedOptions || []).map((o) => o.value);
+    setClient((current) => ({ ...current, assignedEmployees: options }));
+  };
+
+  const handleResetForm = () => {
+    setClient(initialState);
+    const year = new Date().getFullYear();
+    const seq = String(Math.floor(Math.random() * 90000) + 10000);
+    setClient((c) => ({ ...c, clientCode: `CLT-${year}-${seq}` }));
   };
 
   const getRandomDigit = () => Math.floor(Math.random() * 10);
   const getRandomLetter = () => String.fromCharCode(65 + Math.floor(Math.random() * 26));
 
   const buildPan = () => {
-    return Array.from({ length: 5 }, getRandomLetter)
-      .join("") +
-      Array.from({ length: 4 }, getRandomDigit)
-        .join("") +
-      getRandomLetter();
+    return (
+      Array.from({ length: 5 }, getRandomLetter).join("") +
+      Array.from({ length: 4 }, getRandomDigit).join("") +
+      getRandomLetter()
+    );
   };
 
   const buildGstin = (pan) => {
-    const stateCode = "27"; // Maharashtra sample code
+    const stateCode = "27";
     const entityCode = getRandomDigit();
     const checksum = getRandomLetter();
     return `${stateCode}${pan}${entityCode}Z${checksum}`;
   };
 
   const buildTan = () => {
-    return Array.from({ length: 4 }, getRandomLetter)
-      .join("") +
-      Array.from({ length: 5 }, getRandomDigit)
-        .join("") +
-      getRandomLetter();
+    return (
+      Array.from({ length: 4 }, getRandomLetter).join("") +
+      Array.from({ length: 5 }, getRandomDigit).join("") +
+      getRandomLetter()
+    );
   };
 
   const handleAutoFillCredentials = () => {
@@ -339,50 +362,35 @@ const AddClient = () => {
       businessStartDate: "2023-04-01",
       industryType: "Accounting",
       annualTurnover: "10,00,000",
-      relationshipManager: "Pooja Mehta",
-      assignedServices: ["GST Filing", "TDS Filing"],
-      customServices: "",
-      status: "Active",
-      clientType: "Business",
+      assignedServices: serviceOptions.slice(0, 2).map((service) => service._id),
+      assignedEmployees: employees.slice(0, 2).map((emp) => emp._id),
     }));
 
-    toast.success("Client credentials auto-filled.");
+    toast.success("Sample client values applied.");
   };
 
-  const handleGstinAutoFill = () => {
-    const gstin = client.gstin.trim().toUpperCase();
-    const validGstin = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(gstin);
-
-    if (!validGstin) {
-      toast.error("Enter a valid GSTIN before autofill.");
-      return;
-    }
-
-    const state = getGstinState(gstin);
-
-    setClient((current) => ({
-      ...current,
-      gstin,
-      state: state || current.state,
-      country: "India",
-    }));
-
-    if (state) {
-      toast.success(`GSTIN auto-filled state: ${state}`);
-    } else {
-      toast.success("GSTIN autofill applied.");
-    }
-  };
-
-  const handleSubmit = async (
-    event
-  ) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
 
-    const validationError =
-      validateClient(client);
+    const address = [
+      client.addressLine1,
+      client.addressLine2,
+      client.city,
+      client.state,
+      client.pincode,
+      client.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const validationPayload = {
+      ...client,
+      address,
+    };
+
+    const validationError = validateClient(validationPayload);
 
     if (validationError) {
       setError(validationError);
@@ -392,13 +400,10 @@ const AddClient = () => {
     setLoading(true);
 
     try {
-      const customServicesArray =
-        client.customServices
-          .split(",")
-          .map((service) =>
-            service.trim()
-          )
-          .filter(Boolean);
+      const customServicesArray = (client.customServices || "")
+        .split(",")
+        .map((service) => service.trim())
+        .filter(Boolean);
 
       const {
         profileImage,
@@ -406,16 +411,19 @@ const AddClient = () => {
         profileImageFile,
         ...clientPayload
       } = client;
+
       let payload = {
         ...clientPayload,
-        assignedServices: [
-          ...client.assignedServices,
-          ...customServicesArray,
-        ],
+        address,
+        assignedServices: client.assignedServices,
+        assignedEmployees: client.assignedEmployees,
+        assignedManager: client.assignedManager,
+        customServices: customServicesArray,
       };
 
       if (profileImageFile) {
         const formData = new FormData();
+
         Object.entries(payload).forEach(([key, value]) => {
           if (value === undefined || value === null) return;
           if (Array.isArray(value)) {
@@ -424,22 +432,18 @@ const AddClient = () => {
             formData.append(key, value);
           }
         });
+
         formData.append("profileImage", profileImageFile, profileImageFile.name);
         payload = formData;
       }
 
       await createClient(payload);
 
-      toast.success(
-        "Client added successfully."
-      );
+      toast.success("Client added successfully.");
 
-      navigate(
-        "/dashboard/clients",
-        {
-          replace: true,
-        }
-      );
+      navigate("/dashboard/clients", {
+        replace: true,
+      });
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -460,24 +464,15 @@ const AddClient = () => {
       <section className="page-card add-client-page">
         <div className="page-header add-client-page__header">
           <div>
-            <p className="eyebrow">
-              Clients
-            </p>
-
+            <p className="eyebrow">Clients</p>
             <h1>Add client</h1>
-
             <p>
-              Create a complete client
-              profile with compliance and
-              service information.
+              Create a complete client profile with compliance and service information.
             </p>
           </div>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="add-client-form"
-        >
+        <form onSubmit={handleSubmit} className="add-client-form">
           <section className="form-section">
             <div className="section-head section-head--with-actions">
               <div>
@@ -494,10 +489,10 @@ const AddClient = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={handleGstinAutoFill}
+                  onClick={handleResetForm}
                   className="button secondary"
                 >
-                  Autofill from GSTIN
+                  Reset Form
                 </button>
               </div>
             </div>
@@ -507,7 +502,9 @@ const AddClient = () => {
                 <div className="profile-upload__head">
                   <div>
                     <p className="profile-upload__label">Photo</p>
-                    <p className="profile-upload__hint">Upload or edit the client photo used in profiles.</p>
+                    <p className="profile-upload__hint">
+                      Upload or edit the client photo used in profiles.
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -517,6 +514,7 @@ const AddClient = () => {
                     Change
                   </button>
                 </div>
+
                 <div
                   role="button"
                   tabIndex={0}
@@ -538,9 +536,11 @@ const AddClient = () => {
                     <span className="profile-upload__placeholder">📷</span>
                   )}
                 </div>
+
                 <p className="profile-upload__caption">
                   Click image to update photo
                 </p>
+
                 <input
                   id="profileImageInput"
                   ref={profileImageInputRef}
@@ -594,17 +594,6 @@ const AddClient = () => {
                     <option value="Archived">Archived</option>
                   </select>
                 </div>
-
-                <div className="field field--full">
-                  <label htmlFor="relationshipManager">Relationship Manager</label>
-                  <input
-                    id="relationshipManager"
-                    name="relationshipManager"
-                    value={client.relationshipManager}
-                    onChange={handleChange}
-                    placeholder="Relationship manager"
-                  />
-                </div>
               </div>
             </div>
           </section>
@@ -614,6 +603,7 @@ const AddClient = () => {
               <h2>Tax Details</h2>
               <p>Add PAN, GSTIN and other fiscal identifiers.</p>
             </div>
+
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="pan">PAN</label>
@@ -685,6 +675,7 @@ const AddClient = () => {
               <h2>Contact Details</h2>
               <p>Add phone, email and website details.</p>
             </div>
+
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="mobile">Primary Mobile</label>
@@ -752,6 +743,7 @@ const AddClient = () => {
               <h2>Address Details</h2>
               <p>Fill in the client&apos;s registered address information.</p>
             </div>
+
             <div className="form-grid">
               <div className="field field--full">
                 <label htmlFor="addressLine1">Address Line 1</label>
@@ -826,6 +818,7 @@ const AddClient = () => {
               <h2>Contact Person</h2>
               <p>Add the primary contact for this client.</p>
             </div>
+
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="contactPersonName">Contact Person Name</label>
@@ -890,6 +883,7 @@ const AddClient = () => {
               <h2>Business Information</h2>
               <p>Capture company details and financial metadata.</p>
             </div>
+
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="businessStartDate">Business Start Date</label>
@@ -933,33 +927,67 @@ const AddClient = () => {
             </div>
 
             <div className="field field--full field--spaced">
-              <label htmlFor="services">Selected Services</label>
+              <label htmlFor="serviceSearch">Search Services</label>
               <input
-                id="services"
-                name="services"
-                value={client.services}
-                onChange={handleChange}
-                placeholder="GST Filing, Audit"
+                id="serviceSearch"
+                type="text"
+                value={serviceQuery}
+                onChange={(e) => setServiceQuery(e.target.value)}
+                placeholder="Search services..."
               />
             </div>
 
             <div className="services-grid field--spaced">
-              {serviceOptions.map((service) => {
-                const isActive = client.assignedServices.includes(service);
-                return (
-                  <label
-                    key={service}
-                    className={`service-checkbox${isActive ? " service-checkbox--active" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={() => handleServiceToggle(service)}
-                    />
-                    <span>{service}</span>
-                  </label>
-                );
-              })}
+              {serviceOptions
+                .filter((service) => {
+                  if (!serviceQuery.trim()) return true;
+                  const q = serviceQuery.trim().toLowerCase();
+                  const name = (service.subService || service.name || service.serviceCategory || "").toLowerCase();
+                  return name.includes(q);
+                })
+                .map((service) => {
+                  const isActive = client.assignedServices.includes(service._id);
+
+                  return (
+                    <div
+                      key={service._id}
+                      className={`service-item${isActive ? " service-item--active" : ""}`}
+                    >
+                      <div className="service-meta">
+                        <strong>{service.subService || service.name}</strong>
+                        <div className="service-frequency">{service.frequency || ""}</div>
+                      </div>
+
+                      <div className="service-actions">
+                        <button
+                          type="button"
+                          className="button small"
+                          onClick={() => handleServiceToggle(service)}
+                        >
+                          {isActive ? "Remove" : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <div className="field field--full field--spaced">
+              <label>Selected Services</label>
+              <div className="selected-services">
+                {client.assignedServices.map((id) => (
+                  <span key={id} className="tag-badge">
+                    {getServiceNameById(id)}
+                    <button
+                      type="button"
+                      onClick={() => removeService(id)}
+                      className="tag-remove"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -968,27 +996,42 @@ const AddClient = () => {
               <h2>Team Assignment</h2>
               <p>Assign employees and managers for this client.</p>
             </div>
+
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="assignedEmployees">Assigned Employees</label>
-                <input
+                <select
                   id="assignedEmployees"
                   name="assignedEmployees"
+                  multiple
                   value={client.assignedEmployees}
-                  onChange={handleChange}
-                  placeholder="Employee IDs or names"
-                />
+                  onChange={handleAssignedEmployeesChange}
+                >
+                  {employees.map((emp) => (
+                    <option key={emp._id} value={emp._id}>
+                      {emp.fullName || emp.name || emp.email}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="field">
                 <label htmlFor="assignedManager">Assigned Manager</label>
-                <input
+                <select
                   id="assignedManager"
                   name="assignedManager"
                   value={client.assignedManager}
-                  onChange={handleChange}
-                  placeholder="Manager name"
-                />
+                  onChange={(e) =>
+                    setClient((c) => ({ ...c, assignedManager: e.target.value }))
+                  }
+                >
+                  <option value="">Select Manager</option>
+                  {employees.map((emp) => (
+                    <option key={emp._id} value={emp._id}>
+                      {emp.fullName || emp.name || emp.email}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>
@@ -998,6 +1041,7 @@ const AddClient = () => {
               <h2>Client Portal Settings</h2>
               <p>Control client access and portal credentials.</p>
             </div>
+
             <div className="form-grid">
               <label className="service-checkbox field--full">
                 <input
@@ -1045,11 +1089,7 @@ const AddClient = () => {
               />
             </div>
 
-            {error && (
-              <div className="form-alert form-alert--error">
-                {error}
-              </div>
-            )}
+            {error && <div className="form-alert form-alert--error">{error}</div>}
 
             <div className="form-actions">
               <button
@@ -1059,11 +1099,7 @@ const AddClient = () => {
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="button primary"
-                disabled={loading}
-              >
+              <button type="submit" className="button primary" disabled={loading}>
                 {loading ? "Saving..." : "Save client"}
               </button>
             </div>

@@ -14,7 +14,7 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
-  build-and-push:
+  build-and-puus-east-1
     runs-on: ubuntu-latest
     outputs:
       backend_image: ${{ steps.set_outputs.outputs.backend_image }}

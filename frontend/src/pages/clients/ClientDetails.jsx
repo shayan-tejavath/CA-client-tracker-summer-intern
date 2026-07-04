@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { usePermission } from "../../hooks/usePermission.js";
 import { getClientById } from "../../services/clientService.js";
+import { getServices } from "../../services/serviceService.js";
 import "./client-details.css";
 
 const tabs = [
@@ -25,6 +26,7 @@ const ClientDetails = () => {
   const { hasRole } = usePermission();
 
   const [client, setClient] = useState(null);
+  const [services, setServices] = useState([]);
   const [activeTab, setActiveTab] = useState("Details");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,8 +40,16 @@ const ClientDetails = () => {
   useEffect(() => {
     const loadClient = async () => {
       try {
-        const data = await getClientById(clientId);
-        setClient(data);
+        setLoading(true);
+        setError("");
+
+        const [clientData, serviceData] = await Promise.all([
+          getClientById(clientId),
+          getServices(),
+        ]);
+
+        setClient(clientData);
+        setServices(Array.isArray(serviceData) ? serviceData : serviceData?.services || []);
       } catch (err) {
         setError(err.response?.data?.message || "Unable to load client details.");
       } finally {
@@ -60,6 +70,78 @@ const ClientDetails = () => {
       day: "numeric",
     });
   };
+
+  const serviceLookup = useMemo(() => {
+    const map = new Map();
+
+    services.forEach((service) => {
+      if (!service?._id) return;
+      map.set(String(service._id), service);
+    });
+
+    return map;
+  }, [services]);
+
+  const resolvedAssignedServices = useMemo(() => {
+    if (!client) return [];
+
+    const rawServices = Array.isArray(client.assignedServices)
+      ? client.assignedServices
+      : Array.isArray(client.services)
+        ? client.services
+        : [];
+
+    return rawServices
+      .map((item) => {
+        if (!item) return null;
+
+        if (typeof item === "object") {
+          const id = item._id || "";
+          const label =
+            item.subService ||
+            item.name ||
+            item.serviceCategory ||
+            item.label ||
+            id;
+
+          return {
+            id: String(id || label),
+            label,
+            category: item.serviceCategory || "",
+            frequency: item.frequency || "",
+            description: item.description || "",
+          };
+        }
+
+        const raw = String(item);
+        const matched =
+          serviceLookup.get(raw) ||
+          services.find((service) => {
+            const labels = [
+              service.subService,
+              service.name,
+              service.serviceCategory,
+            ]
+              .filter(Boolean)
+              .map((value) => String(value).toLowerCase());
+
+            return labels.includes(raw.toLowerCase());
+          });
+
+        return {
+          id: raw,
+          label:
+            matched?.subService ||
+            matched?.name ||
+            matched?.serviceCategory ||
+            raw,
+          category: matched?.serviceCategory || "",
+          frequency: matched?.frequency || "",
+          description: matched?.description || "",
+        };
+      })
+      .filter(Boolean);
+  }, [client, serviceLookup, services]);
 
   const getTaskCount = (type) => {
     if (!client) return 0;
@@ -125,6 +207,7 @@ const ClientDetails = () => {
           <div className="client-hero-tags">
             <span className="client-badge">{client.clientType || "Business"}</span>
             {client.assignedManager && <span className="client-badge secondary">{client.assignedManager}</span>}
+            <span className="client-badge secondary">{resolvedAssignedServices.length} Service(s)</span>
           </div>
         </div>
       </div>
@@ -166,7 +249,9 @@ const ClientDetails = () => {
     <div className="recent-activity-card panel-card">
       <div className="section-header">
         <h2>Recent Activity</h2>
-        <a href="#" className="recent-activity-link">View all</a>
+        <a href="#" className="recent-activity-link">
+          View all
+        </a>
       </div>
       <div className="recent-activity-list">
         {[
@@ -225,7 +310,7 @@ const ClientDetails = () => {
           </div>
           <div className="info-item">
             <span>Address</span>
-            <strong>{client.addressLine1 || "—"}</strong>
+            <strong>{client.addressLine1 || client.address || "—"}</strong>
           </div>
           <div className="info-item">
             <span>City</span>
@@ -276,7 +361,11 @@ const ClientDetails = () => {
               <p className="toggle-row__hint">{option.hint}</p>
             </div>
             <label className="toggle-switch">
-              <input type="checkbox" checked={settings[option.key]} onChange={() => toggleSetting(option.key)} />
+              <input
+                type="checkbox"
+                checked={settings[option.key]}
+                onChange={() => toggleSetting(option.key)}
+              />
               <span className="toggle-slider" />
             </label>
           </div>
@@ -301,14 +390,34 @@ const ClientDetails = () => {
             {renderSettings()}
           </>
         );
+
       case "Services":
         return (
           <div className="panel-card">
-            <h2>Services</h2>
-            {client.assignedServices?.length > 0 ? (
-              <div className="flex flex-wrap gap-3">
-                {client.assignedServices.map((service) => (
-                  <span key={service} className="client-tag">{service}</span>
+            <div className="section-header">
+              <h2>Services</h2>
+              <span className="badge badge-info">
+                {resolvedAssignedServices.length} assigned
+              </span>
+            </div>
+
+            {resolvedAssignedServices.length > 0 ? (
+              <div className="services-grid" style={{ marginTop: 16 }}>
+                {resolvedAssignedServices.map((service) => (
+                  <div key={service.id} className="service-item service-item--active">
+                    <div className="service-meta">
+                      <strong>{service.label}</strong>
+                      <div className="service-frequency">{service.category || "—"}</div>
+                      {service.frequency && (
+                        <div className="service-frequency">{service.frequency}</div>
+                      )}
+                      {service.description && (
+                        <p style={{ marginTop: 8, color: "var(--text-secondary)", fontSize: 13 }}>
+                          {service.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -316,6 +425,7 @@ const ClientDetails = () => {
             )}
           </div>
         );
+
       case "Tasks":
         return (
           <div className="panel-card">
@@ -323,6 +433,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Task breakdown and progress will appear here.</p>
           </div>
         );
+
       case "Documents":
         return (
           <div className="panel-card">
@@ -330,6 +441,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Client documents and uploads live here.</p>
           </div>
         );
+
       case "Ledger":
         return (
           <div className="panel-card">
@@ -337,6 +449,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Ledger entries and transaction history.</p>
           </div>
         );
+
       case "Docs In-Out Register":
         return (
           <div className="panel-card">
@@ -344,6 +457,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Track inbound and outbound documents here.</p>
           </div>
         );
+
       case "Passwords":
         return (
           <div className="panel-card">
@@ -351,6 +465,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Secure credentials and login details.</p>
           </div>
         );
+
       case "Expenses":
         return (
           <div className="panel-card">
@@ -358,6 +473,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Expense records and approvals.</p>
           </div>
         );
+
       case "DSC":
         return (
           <div className="panel-card">
@@ -365,6 +481,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Digital signature certificate status.</p>
           </div>
         );
+
       case "Quotations":
         return (
           <div className="panel-card">
@@ -372,6 +489,7 @@ const ClientDetails = () => {
             <p className="text-slate-300">Create and manage client quotations.</p>
           </div>
         );
+
       default:
         return null;
     }
@@ -395,7 +513,13 @@ const ClientDetails = () => {
                 Edit Client
               </Link>
             )}
-            <button type="button" className="button secondary" onClick={() => navigate("/dashboard/clients")}>Back to Clients</button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => navigate("/dashboard/clients")}
+            >
+              Back to Clients
+            </button>
           </div>
         </div>
 

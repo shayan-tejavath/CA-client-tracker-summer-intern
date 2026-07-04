@@ -4,6 +4,9 @@ import Client from "../models/Client.js";
 import Permission from "../models/Permission.js";
 import { getPermissionsForRole } from "../constants/rbac.js";
 import generateToken from "../utils/generateToken.js";
+import {
+  notifyEmployeeWelcome,
+} from "../services/notificationService.js";
 
 const validRoles = [
   "SuperAdmin",
@@ -123,6 +126,19 @@ export const register = async (
       password: hashedPassword,
       role,
     });
+
+    if (internalRoles.includes(user.role)) {
+      try {
+        await notifyEmployeeWelcome({
+          user,
+        });
+      } catch (err) {
+        console.error(
+          "Welcome email failed:",
+          err.message
+        );
+      }
+    }
 
     // Generate permissions
     const permissions =

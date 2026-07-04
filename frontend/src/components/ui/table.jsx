@@ -1,27 +1,52 @@
-import React from "react";
+import * as React from "react";
 
-export const Table = ({ children, className = "", ...props }) => (
-  <table className={className} {...props}>{children}</table>
-);
+export function Table({ className = "", children, ...props }) {
+  return (
+    <table className={`w-full border-collapse ${className}`} {...props}>
+      {children}
+    </table>
+  );
+}
 
-export const TableHeader = ({ children, className = "", ...props }) => (
-  <thead className={className} {...props}>{children}</thead>
-);
+export function TableHeader({ className = "", children, ...props }) {
+  return (
+    <thead className={className} {...props}>
+      {children}
+    </thead>
+  );
+}
 
-export const TableBody = ({ children, className = "", ...props }) => (
-  <tbody className={className} {...props}>{children}</tbody>
-);
+export function TableBody({ className = "", children, ...props }) {
+  return (
+    <tbody className={className} {...props}>
+      {children}
+    </tbody>
+  );
+}
 
-export const TableRow = ({ children, className = "", ...props }) => (
-  <tr className={className} {...props}>{children}</tr>
-);
+export function TableRow({ className = "", children, ...props }) {
+  return (
+    <tr className={`border-b border-slate-200 ${className}`} {...props}>
+      {children}
+    </tr>
+  );
+}
 
-export const TableHead = ({ children, className = "", ...props }) => (
-  <th className={className} {...props}>{children}</th>
-);
+export function TableHead({ className = "", children, ...props }) {
+  return (
+    <th
+      className={`px-4 py-3 text-left text-sm font-semibold text-slate-700 ${className}`}
+      {...props}
+    >
+      {children}
+    </th>
+  );
+}
 
-export const TableCell = ({ children, className = "", ...props }) => (
-  <td className={className} {...props}>{children}</td>
-);
-
-export default Table;
+export function TableCell({ className = "", children, ...props }) {
+  return (
+    <td className={`px-4 py-3 text-sm text-slate-800 ${className}`} {...props}>
+      {children}
+    </td>
+  );
+}
