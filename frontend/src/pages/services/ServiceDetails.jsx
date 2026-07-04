@@ -14,6 +14,10 @@ import {
   bulkUpdateAssignments,
   removeClientFromService,
   bulkRemoveClientsFromService,
+  getWorkflowTemplates,
+  createWorkflowTemplate,
+  updateWorkflowTemplate,
+  deleteWorkflowTemplate,
 } from "../../services/serviceService.js";
 
 import "./service-details.css";
@@ -23,6 +27,7 @@ const tabs = [
   "Checklist",
   "Subtasks",
   "Custom Fields",
+  "Workflow",
   "Clients",
   "Supporting Files",
 ];
@@ -93,6 +98,12 @@ const ServiceDetails = () => {
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const [editingPrice, setEditingPrice] = useState(null);
   const [editingPackage, setEditingPackage] = useState(null);
+  const [workflowTemplates, setWorkflowTemplates] = useState([]);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSteps, setTemplateSteps] = useState([""]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [templateSaving, setTemplateSaving] = useState(false);
 
   const dragIndexRef = useRef(null);
 
@@ -174,6 +185,20 @@ const ServiceDetails = () => {
     refreshAvailableClients(service._id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service?._id, showAssignModal]);
+
+  useEffect(() => {
+    const loadWorkflowTemplates = async () => {
+      if (!service?._id) return;
+      try {
+        const templates = await getWorkflowTemplates(service._id);
+        setWorkflowTemplates(Array.isArray(templates) ? templates : []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadWorkflowTemplates();
+  }, [service?._id]);
 
   useEffect(() => {
     const handleClientsImported = () => {
@@ -281,6 +306,7 @@ const ServiceDetails = () => {
         package: "Standard",
         customPrice: null,
         assignedUsers: [],
+        workflowTemplateId: selectedTemplateId || undefined,
       });
 
       await refreshAssignments(service._id);
@@ -292,6 +318,101 @@ const ServiceDetails = () => {
       toast.error(err.response?.data?.message || "Unable to assign clients.");
     } finally {
       setAssignmentLoading(false);
+    }
+  };
+
+  const handleWorkflowTemplateSave = async (event) => {
+    event.preventDefault();
+    if (!service?._id) return;
+
+    const cleanedSteps = templateSteps.map((step) => step.trim()).filter(Boolean);
+    if (!templateName.trim() || cleanedSteps.length === 0) {
+      toast.error("Add a template name and at least one task step.");
+      return;
+    }
+
+    setTemplateSaving(true);
+    try {
+      const payload = {
+        name: templateName.trim(),
+        taskDefinitions: cleanedSteps.map((step, index) => ({ title: step, order: index + 1 })),
+      };
+
+      const template = editingTemplateId
+        ? await updateWorkflowTemplate(service._id, editingTemplateId, payload)
+        : await createWorkflowTemplate(service._id, payload);
+
+      setWorkflowTemplates((current) => {
+        if (editingTemplateId) {
+          return current.map((item) => (item._id === template._id ? template : item));
+        }
+        return [template, ...current];
+      });
+
+      setTemplateName("");
+      setTemplateSteps([""]);
+      setSelectedTemplateId(template._id);
+      setEditingTemplateId(null);
+      toast.success(editingTemplateId ? "Workflow template updated." : "Workflow template created.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Unable to save template.");
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const handleTemplateStepChange = (index, value) => {
+    setTemplateSteps((current) => {
+      const next = [...current];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addTemplateStep = () => setTemplateSteps((current) => [...current, ""]);
+  const removeTemplateStep = (index) => {
+    setTemplateSteps((current) => (current.length === 1 ? [""] : current.filter((_, itemIndex) => itemIndex !== index)));
+  };
+  const moveTemplateStep = (index, direction) => {
+    setTemplateSteps((current) => {
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= current.length) return current;
+
+      const next = [...current];
+      const item = next[index];
+      next[index] = next[targetIndex];
+      next[targetIndex] = item;
+      return next;
+    });
+  };
+
+  const startEditingTemplate = (template) => {
+    setEditingTemplateId(template._id);
+    setTemplateName(template.name || "");
+    setTemplateSteps((template.taskDefinitions || []).map((step) => step.title || ""));
+  };
+
+  const cancelTemplateEdit = () => {
+    setEditingTemplateId(null);
+    setTemplateName("");
+    setTemplateSteps([""]);
+  };
+
+  const handleDeleteWorkflowTemplate = async (templateId) => {
+    if (!window.confirm("Delete this workflow template?")) return;
+
+    try {
+      await deleteWorkflowTemplate(service._id, templateId);
+      setWorkflowTemplates((current) => current.filter((template) => template._id !== templateId));
+      if (selectedTemplateId === templateId) {
+        setSelectedTemplateId("");
+      }
+      if (editingTemplateId === templateId) {
+        cancelTemplateEdit();
+      }
+      toast.success("Workflow template deleted.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Unable to delete template.");
     }
   };
 
@@ -1138,6 +1259,139 @@ const ServiceDetails = () => {
     </div>
   );
 
+  const renderWorkflowSettingsTab = () => (
+    <div className="service-panel-grid">
+      <div className="service-panel-card">
+        <div className="settings-card-header">
+          <div>
+            <h2>Workflow templates</h2>
+            <p className="section-description">
+              Create reusable task sequences for this service and pick one when assigning clients.
+            </p>
+          </div>
+        </div>
+
+        <form className="service-settings-form" onSubmit={handleWorkflowTemplateSave}>
+          <div className="field-grid">
+            <label>
+              Template name
+              <input
+                type="text"
+                value={templateName}
+                onChange={(event) => setTemplateName(event.target.value)}
+                placeholder="e.g. GST Registration Starter"
+              />
+            </label>
+          </div>
+
+          <div className="settings-section">
+            <div className="section-description">Task steps</div>
+            {templateSteps.map((step, index) => (
+              <div key={`step-${index}`} className="panel-row">
+                <input
+                  type="text"
+                  value={step}
+                  onChange={(event) => handleTemplateStepChange(index, event.target.value)}
+                  placeholder={`Task step ${index + 1}`}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    onClick={() => moveTemplateStep(index, "up")}
+                    disabled={index === 0}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    onClick={() => moveTemplateStep(index, "down")}
+                    disabled={index === templateSteps.length - 1}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    onClick={() => removeTemplateStep(index)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="button secondary" onClick={addTemplateStep}>
+                Add another step
+              </button>
+              {editingTemplateId && (
+                <button type="button" className="button secondary" onClick={cancelTemplateEdit}>
+                  Cancel edit
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="settings-actions">
+            <button type="submit" className="button primary" disabled={templateSaving}>
+              {templateSaving ? "Saving..." : editingTemplateId ? "Update template" : "Save template"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="service-panel-card">
+        <div className="settings-card-header">
+          <div>
+            <h2>Available templates</h2>
+            <p className="section-description">Choose a template when assigning this service to clients.</p>
+          </div>
+        </div>
+
+        {workflowTemplates.length === 0 ? (
+          <p className="text-muted">No workflow templates created yet.</p>
+        ) : (
+          <div className="service-list">
+            {workflowTemplates.map((template) => (
+              <div key={template._id} className="service-list-item">
+                <div>
+                  <p className="field-label">{template.name}</p>
+                  <p className="field-value">
+                    {(template.taskDefinitions || []).map((step) => step.title).join(" → ")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`button small ${selectedTemplateId === template._id ? "primary" : "secondary"}`}
+                    onClick={() => setSelectedTemplateId(template._id)}
+                  >
+                    {selectedTemplateId === template._id ? "Selected" : "Select"}
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    onClick={() => startEditingTemplate(template)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="button danger small"
+                    onClick={() => handleDeleteWorkflowTemplate(template._id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const renderClientsTab = () => (
     <>
       {showAssignModal && (
@@ -1155,6 +1409,23 @@ const ServiceDetails = () => {
             </div>
 
             <div className="modal-body">
+              <div className="settings-section">
+                <label>
+                  Workflow template
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(event) => setSelectedTemplateId(event.target.value)}
+                  >
+                    <option value="">No template</option>
+                    {workflowTemplates.map((template) => (
+                      <option key={template._id} value={template._id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
               {availableClients.length === 0 ? (
                 <p className="text-muted">All clients are already assigned to this service.</p>
               ) : (
@@ -1582,6 +1853,8 @@ const ServiceDetails = () => {
         return renderCustomFieldsTab();
       case "Clients":
         return renderClientsTab();
+      case "Workflow":
+        return renderWorkflowSettingsTab();
       case "Supporting Files":
         return renderSupportingFilesTab();
       default:

@@ -44,6 +44,21 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Due date is required"],
     },
+    recurrence: {
+      type: String,
+      enum: ["None", "Daily", "Weekly", "Monthly", "Quarterly", "Yearly"],
+      default: "None",
+    },
+    parentTask: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Task",
+      default: null,
+    },
+    childTask: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Task",
+      default: null,
+    },
     comments: {
       type: [commentSchema],
       default: [],

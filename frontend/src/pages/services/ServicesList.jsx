@@ -186,6 +186,13 @@ const ServicesList = () => {
             <div className="page-tools">
               <button
                 type="button"
+                className="button secondary"
+                onClick={() => navigate("/dashboard/services/workflow-templates")}
+              >
+                Manage templates
+              </button>
+              <button
+                type="button"
                 className="button primary"
                 onClick={() => navigate("/dashboard/services/add")}
               >

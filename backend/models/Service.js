@@ -22,6 +22,11 @@ const serviceSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    workflowTemplate: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "WorkflowTemplate",
+      default: null,
+    },
   },
   {
     timestamps: true,
