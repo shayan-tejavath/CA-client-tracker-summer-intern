@@ -1,4 +1,5 @@
 import WorkflowTemplate from "../../models/WorkflowTemplate.js";
+import Service from "../../models/Service.js";
 import Task from "../../models/Task.js";
 
 export const generateTasksFromTemplate = async ({
@@ -22,11 +23,25 @@ export const generateTasksFromTemplate = async ({
     template = await WorkflowTemplate.findById(templateId).lean();
   }
 
+  // If no explicit templateId provided or the provided template doesn't belong to the service,
+  // prefer the service's configured `workflowTemplate` reference. Fall back to the first active
+  // template for the service if none is configured.
   if (!template || String(template.service) !== String(serviceId)) {
-    template = await WorkflowTemplate.findOne({
-      service: serviceId,
-      isActive: true,
-    }).lean();
+    const service = await Service.findById(serviceId).lean();
+
+    if (service && service.workflowTemplate) {
+      const svcTpl = await WorkflowTemplate.findById(service.workflowTemplate).lean();
+      if (svcTpl && String(svcTpl.service) === String(serviceId) && svcTpl.isActive) {
+        template = svcTpl;
+      }
+    }
+
+    if (!template) {
+      template = await WorkflowTemplate.findOne({
+        service: serviceId,
+        isActive: true,
+      }).lean();
+    }
   }
 
   if (!template || !template.isActive) {

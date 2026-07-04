@@ -183,6 +183,11 @@ export const updateService = async (req, res, next) => {
         subService: req.body.subService,
         frequency: req.body.frequency,
         description: req.body.description || "",
+        workflowTemplate: mongoose.Types.ObjectId.isValid(req.body.workflowTemplateId)
+          ? req.body.workflowTemplateId
+          : req.body.workflowTemplateId === null
+          ? null
+          : undefined,
       },
       { new: true, runValidators: true }
     );

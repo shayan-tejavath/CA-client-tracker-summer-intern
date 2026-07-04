@@ -46,6 +46,37 @@ const validateClientData = (data) => {
   return null;
 };
 
+const createServiceAssignmentWithTasks = async ({
+  clientId,
+  serviceId,
+  assignedUsers = [],
+  assignedBy,
+  assignedTo,
+  templateId,
+}) => {
+  const assignment = await ServiceAssignment.create({
+    serviceId,
+    clientId,
+    assignedUsers,
+    assignedBy,
+  });
+
+  try {
+    await generateTasksFromTemplate({
+      clientId,
+      serviceId,
+      assignedBy,
+      assignedTo,
+      assignedUsers,
+      templateId,
+    });
+  } catch (taskError) {
+    console.error("Task generation failed for assigned service:", taskError.message);
+  }
+
+  return assignment;
+};
+
 // GET CLIENTS
 export const getClients = async (req, res, next) => {
   try {
@@ -197,29 +228,20 @@ export const createClient = async (req, res, next) => {
 
     if (assignedServices.length > 0) {
       const assignedUsers = assignedEmployees.length ? assignedEmployees : [];
+      const assignedBy = req.user?.name || req.user?.email || "System";
+      const assignedTo = req.user?._id;
 
       try {
         await Promise.all(
-          assignedServices.map(async (serviceId) => {
-            await ServiceAssignment.create({
-              serviceId,
+          assignedServices.map((serviceId) =>
+            createServiceAssignmentWithTasks({
               clientId: client._id,
+              serviceId,
               assignedUsers,
-              assignedBy: req.user?.name || req.user?.email || "System",
-            });
-
-            try {
-              await generateTasksFromTemplate({
-                clientId: client._id,
-                serviceId,
-                assignedBy: req.user?.name || req.user?.email || "System",
-                assignedTo: req.user?._id,
-                assignedUsers,
-              });
-            } catch (taskError) {
-              console.error("Task generation failed for assigned service:", taskError.message);
-            }
-          })
+              assignedBy,
+              assignedTo,
+            })
+          )
         );
       } catch (err) {
         console.error("Service Assignment Error", err);
@@ -320,13 +342,17 @@ export const updateClient = async (req, res, next) => {
       await ServiceAssignment.deleteMany({ clientId: id });
 
       if (assignedServices.length > 0) {
+        const assignedBy = req.user?.name || req.user?.email || "System";
+        const assignedTo = req.user?._id;
+
         await Promise.all(
           assignedServices.map((serviceId) =>
-            ServiceAssignment.create({
-              serviceId,
+            createServiceAssignmentWithTasks({
               clientId: id,
+              serviceId,
               assignedUsers: assignedEmployees,
-              assignedBy: req.user?.name || req.user?.email || "System",
+              assignedBy,
+              assignedTo,
             })
           )
         );

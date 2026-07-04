@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { usePermission } from "../../hooks/usePermission.js";
 import { getClientById } from "../../services/clientService.js";
-import { getServices } from "../../services/serviceService.js";
+import { getServices, getWorkflowTemplates } from "../../services/serviceService.js";
 import { getTasks } from "../../services/taskService.js";
 import "./client-details.css";
 
@@ -28,6 +28,7 @@ const ClientDetails = () => {
 
   const [client, setClient] = useState(null);
   const [services, setServices] = useState([]);
+  const [templatesMap, setTemplatesMap] = useState(new Map());
   const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState("Details");
   const [loading, setLoading] = useState(true);
@@ -58,6 +59,31 @@ const ClientDetails = () => {
             ? taskData.filter((task) => String(task.client?._id || task.client) === String(clientId))
             : []
         );
+        // load workflow templates for assigned services
+        try {
+          const assignedServiceIds = (Array.isArray(clientData.assignedServices)
+            ? clientData.assignedServices.map((s) => (s && s._id ? String(s._id) : String(s)))
+            : []);
+
+          const map = new Map();
+          await Promise.all(
+            assignedServiceIds.map(async (svcId) => {
+              if (!svcId) return;
+              try {
+                const tpl = await getWorkflowTemplates(svcId);
+                const arr = Array.isArray(tpl) ? tpl : [];
+                // prefer service-specific template selection: pick first active
+                const chosen = arr.find((t) => t.isActive) || arr[0] || null;
+                if (chosen) map.set(String(svcId), chosen);
+              } catch (e) {
+                // ignore
+              }
+            })
+          );
+          setTemplatesMap(map);
+        } catch (e) {
+          // ignore template load errors
+        }
       } catch (err) {
         setError(err.response?.data?.message || "Unable to load client details.");
       } finally {
@@ -491,18 +517,39 @@ const ClientDetails = () => {
                     <div className="client-task-group__header">
                       <div>
                         <h3>{group.serviceName}</h3>
-                        <p>
-                          {group.totalCount} task(s) • {group.completedCount} completed
-                        </p>
+                          <p>
+                            {group.totalCount} task(s) • {group.completedCount} completed
+                          </p>
+                          {group.serviceId && templatesMap.get(group.serviceId) && (
+                            <p style={{ color: "var(--text-secondary)", marginTop: 6 }}>
+                              <strong>Workflow steps:</strong>{' '}
+                              {(templatesMap.get(group.serviceId).taskDefinitions || []).map((s) => s.title).join(' → ')}
+                            </p>
+                          )}
                       </div>
-                      <div className="client-task-progress">
-                        <div className="client-task-progress__track">
-                          <div
-                            className="client-task-progress__bar"
-                            style={{ width: `${group.progressPercent}%` }}
-                          />
+                      <div className="client-task-progress" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontFamily: 'monospace', fontSize: 14 }} aria-hidden>
+                          {(() => {
+                            const total = group.totalCount || 0;
+                            const completed = group.completedCount || 0;
+                            const blocks = 5;
+                            const filled = total === 0 ? 0 : Math.round((completed / total) * blocks);
+                            const empty = Math.max(0, blocks - filled);
+                            return (
+                              Array.from({ length: filled }).map((_, i) => (
+                                <span key={`f-${i}`} style={{ color: 'var(--primary)', marginRight: 4 }}>█</span>
+                              ))
+                            ).concat(
+                              Array.from({ length: empty }).map((_, i) => (
+                                <span key={`e-${i}`} style={{ color: 'var(--muted)', marginRight: 4 }}>░</span>
+                              ))
+                            );
+                          })()}
                         </div>
-                        <span>{group.progressPercent}%</span>
+
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                          {group.completedCount} of {group.totalCount} task(s) completed
+                        </div>
                       </div>
                     </div>
 

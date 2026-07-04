@@ -55,6 +55,7 @@ import AddService from "./pages/services/AddService.jsx";
 
 import EditService from "./pages/services/EditService.jsx";
 import ServiceDetails from "./pages/services/ServiceDetails.jsx";
+import WorkflowTemplatesPage from "./pages/services/WorkflowTemplatesPage.jsx";
 
 
 
@@ -320,6 +321,20 @@ function App() {
             }
           />
 
+          <Route
+            path="/dashboard/services/workflow-templates"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                ]}
+              >
+                <WorkflowTemplatesPage />
+              </ProtectedRoute>
+            }
+          />
 
 
           {/* TASKS */}
