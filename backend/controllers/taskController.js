@@ -13,6 +13,7 @@ import {
   notifyTaskStatusUpdated,
   notifyTaskCompleted,
   notifyTaskCommentAdded,
+  notifyClientDocumentUploaded,
 } from "../services/notificationService.js";
 
 const allowedStatuses = ["Pending", "In Progress", "Completed", "Overdue"];
@@ -694,6 +695,27 @@ export const uploadTaskDocument = async (req, res, next) => {
       details: req.file.originalname,
     });
 
+    if (req.user?.role === ROLES.Client && task.assignedTo) {
+      try {
+        const populatedTask = await Task.findById(taskId)
+          .populate("assignedTo", "name email role")
+          .populate("client", "clientName");
+
+        await notifyClientDocumentUploaded({
+          userId: populatedTask?.assignedTo?._id || task.assignedTo,
+          task: populatedTask || task,
+          document,
+          client: populatedTask?.client,
+          sender: req.user?._id,
+        });
+      } catch (notificationError) {
+        console.error(
+          "Task document upload notification failed:",
+          notificationError.message
+        );
+      }
+    }
+
     res.status(201).json(document);
   } catch (error) {
     next(error);
@@ -788,6 +810,109 @@ export const listTaskDocumentRequests = async (req, res, next) => {
 
     const requests = await TaskDocumentRequest.find({ task: taskId }).sort({ createdAt: -1 });
     res.json(requests);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listAllTaskDocumentRequests = async (req, res, next) => {
+  try {
+    const {
+      clientId,
+      status,
+      search,
+      page = 1,
+      limit = 100,
+    } = req.query;
+
+    const taskFilter = {};
+
+    if (req.user?.role === ROLES.Employee) {
+      taskFilter.assignedTo = req.user._id;
+    }
+
+    if (req.user?.role === ROLES.Client) {
+      const client = await Client.findOne({ email: req.user.email });
+      if (!client) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      taskFilter.client = client._id;
+    } else if (clientId && mongoose.Types.ObjectId.isValid(clientId)) {
+      taskFilter.client = clientId;
+    }
+
+    if (search) {
+      taskFilter.title = new RegExp(search, "i");
+    }
+
+    const taskIds = await Task.find(taskFilter).select("_id");
+    const requestFilter = {
+      task: { $in: taskIds.map((task) => task._id) },
+    };
+
+    if (status && status !== "All") {
+      requestFilter.status = status;
+    }
+
+    const currentPage = Number(page);
+    const pageSize = Number(limit);
+    const skip = (currentPage - 1) * pageSize;
+
+    const [requests, total] = await Promise.all([
+      TaskDocumentRequest.find(requestFilter)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .populate({
+          path: "task",
+          select: "title client assignedTo status dueDate",
+          populate: [
+            { path: "client", select: "clientName email mobile" },
+            { path: "assignedTo", select: "name email role" },
+          ],
+        })
+        .populate("requestedBy", "name role")
+        .populate("uploadedBy", "name role"),
+      TaskDocumentRequest.countDocuments(requestFilter),
+    ]);
+
+    const documentCounts = await TaskDocument.aggregate([
+      {
+        $match: {
+          task: { $in: requests.map((request) => request.task?._id).filter(Boolean) },
+        },
+      },
+      { $group: { _id: "$task", count: { $sum: 1 } } },
+    ]);
+
+    const countIndex = documentCounts.reduce((acc, item) => {
+      acc[item._id.toString()] = item.count;
+      return acc;
+    }, {});
+
+    res.json({
+      requests: requests.map((request) => ({
+        _id: request._id,
+        task: request.task,
+        requestedBy: request.requestedBy,
+        uploadedBy: request.uploadedBy,
+        requiredDocuments: request.requiredDocuments,
+        status: request.status,
+        uploadedAt: request.uploadedAt,
+        verifiedAt: request.verifiedAt,
+        createdAt: request.createdAt,
+        updatedAt: request.updatedAt,
+        documentCount: request.task?._id
+          ? countIndex[request.task._id.toString()] || 0
+          : 0,
+      })),
+      pagination: {
+        total,
+        currentPage,
+        totalPages: Math.ceil(total / pageSize),
+        limit: pageSize,
+      },
+    });
   } catch (error) {
     next(error);
   }

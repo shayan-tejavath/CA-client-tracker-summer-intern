@@ -566,6 +566,52 @@ export const notifyTaskCommentAdded = async ({
 };
 
 /* ==========================================================
+   CLIENT DOCUMENT UPLOADED
+========================================================== */
+
+export const notifyClientDocumentUploaded = async ({
+  userId,
+  task,
+  document,
+  client,
+  sender = null,
+}) => {
+  const clientName = client?.clientName || "Client";
+  const documentName =
+    document?.originalFileName ||
+    document?.originalName ||
+    document?.fileName ||
+    "document";
+  const taskTitle = task?.title || "task";
+
+  return createNotification({
+    title: "Client Document Uploaded",
+    message: `${clientName} uploaded ${documentName} for ${taskTitle}.`,
+    recipient: userId,
+    recipientRole: "Employee",
+    sender,
+    type: "Document",
+    priority: "High",
+    entityType: "Task",
+    entityId: task?._id || null,
+    actionUrl: task?._id ? `/dashboard/tasks/${task._id}` : "",
+    icon: "file",
+    channels: {
+      inApp: true,
+      email: true,
+      sms: false,
+      whatsapp: false,
+    },
+    metadata: {
+      taskId: task?._id,
+      documentId: document?._id,
+      clientId: client?._id,
+      event: "client_document_uploaded",
+    },
+  });
+};
+
+/* ==========================================================
    GET USER NOTIFICATIONS
 ========================================================== */
 
@@ -720,6 +766,7 @@ export default {
   notifyTaskStatusUpdated,
   notifyTaskCompleted,
   notifyTaskCommentAdded,
+  notifyClientDocumentUploaded,
   getUserNotifications,
   getUnreadCount,
   markNotificationRead,

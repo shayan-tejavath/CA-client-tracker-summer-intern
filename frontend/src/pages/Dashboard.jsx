@@ -7,6 +7,11 @@ import {
   FaCheckCircle,
   FaClock,
   FaExclamationTriangle,
+  FaFileAlt,
+  FaSignature,
+  FaFolderOpen,
+  FaBell,
+  FaDownload,
 } from "react-icons/fa";
 
 import { useNavigate } from "react-router-dom";
@@ -180,6 +185,40 @@ const Dashboard = () => {
         { label: "Overdue Tasks", value: summary.overdueTasks },
       ]
     : [];
+
+  const documentsDashboard = summary?.documentsDashboard || {};
+
+  const documentsDscModules = [
+    {
+      title: "Doc. In-Out",
+      subtitle: "Register",
+      value: documentsDashboard.totalDocuments || 0,
+      meta: `${documentsDashboard.pendingReviewDocuments || 0} pending review`,
+      icon: FaFileAlt,
+      color: "#2563EB",
+      action: () => navigate("/dashboard/documents/in-out"),
+    },
+    {
+      title: "DSC Management",
+      subtitle: "Renewals",
+      value: documentsDashboard.dscExpiringSoon || 0,
+      meta: `${documentsDashboard.dscExpired || 0} expired certificates`,
+      icon: FaSignature,
+      color: "#7C3AED",
+      action: () => navigate("/dashboard/documents/dsc"),
+    },
+    {
+      title: "Doc. Collection",
+      subtitle: "Requests",
+      value: documentsDashboard.pendingDocumentRequests || 0,
+      meta: `${documentsDashboard.uploadedDocumentRequests || 0} uploaded by clients`,
+      icon: FaFolderOpen,
+      color: "#0891B2",
+      action: () => navigate("/dashboard/documents/collection"),
+    },
+  ];
+
+  const recentDocumentRequests = documentsDashboard.recentRequests || [];
 
   return (
     <DashboardLayout>
@@ -408,6 +447,134 @@ const Dashboard = () => {
                   </div>
                 </div>
               </article>
+            </section>
+
+            <section className="page-card documents-dsc-panel">
+              <div className="documents-dsc-header">
+                <div>
+                  <span className="eyebrow">Documents &amp; DSC</span>
+                  <div className="card-title">Control center</div>
+                  <div className="card-description">
+                    Track document movement, DSC renewal work, and client upload requests from one place.
+                  </div>
+                </div>
+
+                <div className="documents-dsc-header-actions">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => navigate("/dashboard/documents/in-out")}
+                  >
+                    <FaDownload size={14} />
+                    Documents
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => navigate("/dashboard/documents/dsc")}
+                  >
+                    + Renewal Task
+                  </button>
+                </div>
+              </div>
+
+              <div className="documents-dsc-grid">
+                {documentsDscModules.map((module) => {
+                  const Icon = module.icon;
+
+                  return (
+                    <button
+                      key={module.title}
+                      type="button"
+                      className="documents-dsc-module"
+                      onClick={module.action}
+                    >
+                      <span className="documents-dsc-icon" style={{ color: module.color }}>
+                        <Icon size={20} />
+                      </span>
+                      <span className="documents-dsc-copy">
+                        <span className="documents-dsc-subtitle">{module.subtitle}</span>
+                        <strong>{module.title}</strong>
+                        <span>{module.meta}</span>
+                      </span>
+                      <span className="documents-dsc-value">{module.value}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="documents-dsc-automation">
+                <div>
+                  <div className="documents-dsc-automation-title">
+                    <FaBell size={15} />
+                    DSC renewal watch
+                  </div>
+                  <p>
+                    Renewal work is surfaced {documentsDashboard.renewalWindowDays || 30} days before certificate expiry so it can be assigned as a task.
+                  </p>
+                </div>
+                <span className="badge badge-outline">
+                  {documentsDashboard.dscExpiringSoon || 0} due soon
+                </span>
+              </div>
+
+              <div className="documents-dsc-requests">
+                <div className="card-header">
+                  <div className="card-title">Recent Document Collection</div>
+                  <div className="card-description">
+                    Client requests with task owner and upload status.
+                  </div>
+                </div>
+
+                {recentDocumentRequests.length === 0 ? (
+                  <div className="documents-dsc-empty">No document requests found.</div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Client</th>
+                          <th>Task</th>
+                          <th>Assigned To</th>
+                          <th>Documents</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentDocumentRequests.map((request) => (
+                          <tr key={request._id}>
+                            <td>{request.clientName}</td>
+                            <td>
+                              {request.taskId ? (
+                                <button
+                                  type="button"
+                                  className="table-link-button"
+                                  onClick={() => navigate(`/dashboard/tasks/${request.taskId}`)}
+                                >
+                                  {request.taskTitle}
+                                </button>
+                              ) : (
+                                request.taskTitle
+                              )}
+                            </td>
+                            <td>{request.assignedTo}</td>
+                            <td>
+                              {(request.requestedDocuments || []).length
+                                ? request.requestedDocuments.join(", ")
+                                : "Documents requested"}
+                            </td>
+                            <td>
+                              <span className={`badge document-status-${String(request.status || "pending").toLowerCase()}`}>
+                                {request.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </section>
 
             <section className="page-card">

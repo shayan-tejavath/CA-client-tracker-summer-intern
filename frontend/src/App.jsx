@@ -79,6 +79,12 @@ import DocumentsList from "./pages/documents/DocumentsList.jsx";
 
 import UploadDocument from "./pages/documents/UploadDocument.jsx";
 
+import DocumentsInOutRegister from "./pages/documents/DocumentsInOutRegister.jsx";
+
+import DscManagement from "./pages/documents/DscManagement.jsx";
+
+import DocumentCollection from "./pages/documents/DocumentCollection.jsx";
+
 
 
 // DASHBOARD PAGES
@@ -415,6 +421,13 @@ function App() {
           <Route
             path="/dashboard/documents"
             element={
+              <Navigate to="/dashboard/documents/in-out" replace />
+            }
+          />
+
+          <Route
+            path="/dashboard/documents/in-out"
+            element={
               <ProtectedRoute
                 allowedRoles={[
                   "SuperAdmin",
@@ -424,7 +437,41 @@ function App() {
                   "Client",
                 ]}
               >
-                <DocumentsList />
+                <DocumentsInOutRegister />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/documents/dsc"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                  "Client",
+                ]}
+              >
+                <DscManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/documents/collection"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                  "Client",
+                ]}
+              >
+                <DocumentCollection />
               </ProtectedRoute>
             }
           />

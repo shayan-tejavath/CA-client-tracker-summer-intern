@@ -3,8 +3,10 @@ import mongoose from "mongoose";
 
 import Document from "../models/Document.js";
 import Client from "../models/Client.js";
+import Task from "../models/Task.js";
 
 import { ROLES } from "../middleware/roleMiddleware.js";
+import { notifyClientDocumentUploaded } from "../services/notificationService.js";
 
 
 
@@ -130,6 +132,122 @@ export const uploadDocument = async (
 
         expiryDate:
           req.body.expiryDate || null,
+
+        movementType:
+          req.body.movementType || "Received",
+
+        returnStatus:
+          req.body.returnStatus || "Pending Return",
+
+        returnDate:
+          req.body.returnDate || null,
+
+        location:
+          req.body.location || "",
+
+        notes:
+          req.body.notes || req.body.description || "",
+      });
+
+    const createdDocument =
+      await documentPopulate(
+        Document.findById(document._id)
+      );
+
+    if (
+      req.user?.role === ROLES.Client &&
+      req.body.task &&
+      mongoose.Types.ObjectId.isValid(req.body.task)
+    ) {
+      try {
+        const relatedTask =
+          await Task.findById(req.body.task)
+            .populate("assignedTo", "name email role")
+            .populate("client", "clientName");
+
+        const assigneeId =
+          relatedTask?.assignedTo?._id ||
+          relatedTask?.assignedTo;
+
+        if (assigneeId) {
+          await notifyClientDocumentUploaded({
+            userId: assigneeId,
+            task: relatedTask,
+            document: createdDocument,
+            client: relatedTask.client || createdDocument.client,
+            sender: req.user?._id,
+          });
+        }
+      } catch (notificationError) {
+        console.error(
+          "Document upload notification failed:",
+          notificationError.message
+        );
+      }
+    }
+
+    res.status(201).json(
+      createdDocument
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createDocumentRegisterEntry = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const validationError =
+      validateDocumentPayload(req.body);
+
+    if (validationError) {
+      return res.status(400).json({
+        message: validationError,
+      });
+    }
+
+    const document =
+      await Document.create({
+        fileName:
+          req.body.fileName ||
+          req.body.originalFileName ||
+          req.body.docType ||
+          "Document entry",
+        originalFileName:
+          req.body.originalFileName ||
+          req.body.docType ||
+          "Document entry",
+        filePath: "",
+        fileType: "",
+        fileSize: 0,
+        category:
+          req.body.category || "Other",
+        uploadedBy: req.user._id,
+        client: req.body.client,
+        task: req.body.task || null,
+        description:
+          req.body.description || "",
+        tags: req.body.tags
+          ? String(req.body.tags)
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          : [],
+        movementType:
+          req.body.movementType || "Received",
+        returnStatus:
+          req.body.returnStatus || "Pending Return",
+        returnDate:
+          req.body.returnDate || null,
+        location:
+          req.body.location || "",
+        notes:
+          req.body.notes || "",
+        expiryDate:
+          req.body.expiryDate || null,
       });
 
     const createdDocument =
@@ -163,6 +281,9 @@ export const getDocuments = async (
       includeArchived,
       page = 1,
       limit = 10,
+      movementType,
+      dateFrom,
+      dateTo,
     } = req.query;
 
     const filter = {};
@@ -212,6 +333,20 @@ export const getDocuments = async (
     // CATEGORY FILTER
     if (category) {
       filter.category = category;
+    }
+
+    if (movementType) {
+      filter.movementType = movementType;
+    }
+
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDate;
+      }
     }
 
     // SEARCH FILTER
@@ -399,6 +534,30 @@ export const updateDocument =
               )
               .filter(Boolean)
           : document.tags,
+
+        expiryDate:
+          req.body.expiryDate ??
+          document.expiryDate,
+
+        movementType:
+          req.body.movementType ||
+          document.movementType,
+
+        returnStatus:
+          req.body.returnStatus ||
+          document.returnStatus,
+
+        returnDate:
+          req.body.returnDate ??
+          document.returnDate,
+
+        location:
+          req.body.location ??
+          document.location,
+
+        notes:
+          req.body.notes ??
+          document.notes,
       };
 
       const updatedDocument =

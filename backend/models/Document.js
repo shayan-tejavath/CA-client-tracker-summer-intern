@@ -4,8 +4,8 @@ const documentSchema = new mongoose.Schema(
   {
     fileName: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     originalFileName: {
@@ -16,8 +16,8 @@ const documentSchema = new mongoose.Schema(
 
     filePath: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     fileType: {
@@ -42,6 +42,11 @@ const documentSchema = new mongoose.Schema(
         "Audit",
         "Compliance",
         "Bank Statement",
+        "Digital Signature",
+        "DSC",
+        "ROC",
+        "TDS",
+        "Income Tax",
         "Other",
       ],
       default: "Other",
@@ -91,6 +96,45 @@ const documentSchema = new mongoose.Schema(
     isArchived: {
       type: Boolean,
       default: false,
+    },
+
+    isConfidential: {
+      type: Boolean,
+      default: false,
+    },
+
+    expiryDate: {
+      type: Date,
+      default: null,
+    },
+
+    movementType: {
+      type: String,
+      enum: ["Received", "Given"],
+      default: "Received",
+    },
+
+    returnStatus: {
+      type: String,
+      enum: ["Pending Return", "Returned", "Not Returnable"],
+      default: "Pending Return",
+    },
+
+    returnDate: {
+      type: Date,
+      default: null,
+    },
+
+    location: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    notes: {
+      type: String,
+      trim: true,
+      default: "",
     },
   },
   {

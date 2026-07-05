@@ -94,6 +94,18 @@ export const uploadDocument =
     return response.data;
   };
 
+export const createDocumentRegisterEntry =
+  async (documentData) => {
+
+    const response =
+      await api.post(
+        "/documents/register",
+        documentData
+      );
+
+    return response.data;
+  };
+
 
 
 // ========================================
@@ -178,4 +190,18 @@ export const getDocumentDownloadUrl =
     if (!filePath) return "#";
 
     return `http://localhost:5000/${filePath}`;
+  };
+
+export const getDocumentRequests =
+  async (filters = {}) => {
+
+    const response =
+      await api.get(
+        "/tasks/document-requests",
+        {
+          params: filters,
+        }
+      );
+
+    return response.data;
   };

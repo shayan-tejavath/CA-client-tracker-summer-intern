@@ -10,6 +10,9 @@ on:
         required: false
         default: 'false'
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   build-and-puus-east-1
     runs-on: ubuntu-latest
@@ -30,7 +33,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Get AWS Account ID
         id: account
@@ -38,7 +41,7 @@ jobs:
 
       - name: ECR Login
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
       - name: Create ECR repos (safe)
         run: |
@@ -48,7 +51,7 @@ jobs:
       - name: Build and push backend image
         id: backend_build
         run: |
-          BACKEND_IMAGE=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/ca-backend:${GITHUB_SHA::8}
+          BACKEND_IMAGE=${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/ca-backend:${GITHUB_SHA::8}
           docker build -t ca-backend ./backend
           docker tag ca-backend:latest $BACKEND_IMAGE
           docker push $BACKEND_IMAGE
@@ -57,7 +60,7 @@ jobs:
       - name: Build and push frontend image (optional)
         id: frontend_build
         run: |
-          FRONTEND_IMAGE=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/ca-frontend:${GITHUB_SHA::8}
+          FRONTEND_IMAGE=${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/ca-frontend:${GITHUB_SHA::8}
           if [ -f frontend/Dockerfile ]; then
             docker build -t ca-frontend ./frontend
             docker tag ca-frontend:latest $FRONTEND_IMAGE
@@ -86,7 +89,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -133,7 +136,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
