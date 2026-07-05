@@ -39,13 +39,34 @@ export const getAssignedClients = async (serviceId, { page = 1, limit = 10, sear
   return response.data;
 };
 
-export const assignClientsToService = async (serviceId, { clientIds, package: pkg, customPrice, assignedUsers }) => {
+export const assignClientsToService = async (serviceId, { clientIds, package: pkg, customPrice, assignedUsers, workflowTemplateId }) => {
   const response = await api.post(`/services/${serviceId}/assign-clients`, {
     clientIds,
     package: pkg,
     customPrice,
     assignedUsers,
+    workflowTemplateId,
   });
+  return response.data;
+};
+
+export const getWorkflowTemplates = async (serviceId) => {
+  const response = await api.get(`/workflow/${serviceId}/templates`);
+  return response.data;
+};
+
+export const createWorkflowTemplate = async (serviceId, templateData) => {
+  const response = await api.post(`/workflow/${serviceId}/templates`, templateData);
+  return response.data;
+};
+
+export const updateWorkflowTemplate = async (serviceId, templateId, templateData) => {
+  const response = await api.put(`/workflow/${serviceId}/templates/${templateId}`, templateData);
+  return response.data;
+};
+
+export const deleteWorkflowTemplate = async (serviceId, templateId) => {
+  const response = await api.delete(`/workflow/${serviceId}/templates/${templateId}`);
   return response.data;
 };
 

@@ -6,6 +6,7 @@ import {
   notifyServiceAssigned,
   notifyClient,
 } from "../services/notificationService.js";
+import { generateTasksFromTemplate } from "../services/workflow/templateService.js";
 
 const validateService = (data) => {
   const requiredFields = ["serviceCategory", "subService", "frequency"];
@@ -182,6 +183,11 @@ export const updateService = async (req, res, next) => {
         subService: req.body.subService,
         frequency: req.body.frequency,
         description: req.body.description || "",
+        workflowTemplate: mongoose.Types.ObjectId.isValid(req.body.workflowTemplateId)
+          ? req.body.workflowTemplateId
+          : req.body.workflowTemplateId === null
+          ? null
+          : undefined,
       },
       { new: true, runValidators: true }
     );
@@ -314,6 +320,7 @@ export const assignClientsToService = async (req, res, next) => {
       package: packageType,
       customPrice,
       assignedUsers,
+      workflowTemplateId,
     } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(serviceId)) {
@@ -352,6 +359,19 @@ export const assignClientsToService = async (req, res, next) => {
       });
 
       assignments.push(assignment);
+
+      try {
+        await generateTasksFromTemplate({
+          clientId,
+          serviceId,
+          assignedBy: req.user?.name || req.user?.email || "System",
+          templateId: workflowTemplateId,
+          assignedTo: req.user?._id,
+          assignedUsers: assignedUsers || [],
+        });
+      } catch (templateError) {
+        console.error("Workflow template generation failed:", templateError.message);
+      }
 
       try {
         await notifyServiceAssigned({
