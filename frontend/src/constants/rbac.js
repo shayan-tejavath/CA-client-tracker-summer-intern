@@ -246,11 +246,31 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.TASK_LIST,
   },
   {
-    name: "Documents",
-    path: "/dashboard/documents",
+    name: "Documents & DSC",
+    path: "/dashboard/documents/in-out",
     icon: "documents",
     requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CLIENT],
     requiredPermission: PERMISSIONS.DOCUMENT_LIST,
+    children: [
+      {
+        name: "Doc. In-Out",
+        path: "/dashboard/documents/in-out",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CLIENT],
+        requiredPermission: PERMISSIONS.DOCUMENT_LIST,
+      },
+      {
+        name: "DSC Management",
+        path: "/dashboard/documents/dsc",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CLIENT],
+        requiredPermission: PERMISSIONS.DOCUMENT_LIST,
+      },
+      {
+        name: "Doc. Collection",
+        path: "/dashboard/documents/collection",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CLIENT],
+        requiredPermission: PERMISSIONS.DOCUMENT_LIST,
+      },
+    ],
   },
   {
     name: "Reports",

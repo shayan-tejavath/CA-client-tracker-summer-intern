@@ -16,6 +16,7 @@ import {
   listTaskActivities,
   createTaskDocumentRequest,
   listTaskDocumentRequests,
+  listAllTaskDocumentRequests,
   updateTaskDocumentRequestStatus,
 } from "../controllers/taskController.js";
 import protect from "../middleware/authMiddleware.js";
@@ -30,12 +31,13 @@ const router = express.Router();
 router.use(protect);
 router.get("/", authorizeRoles(...taskViewRoles), getTasks);
 router.post("/", authorizeRoles(...taskManageRoles), createTask);
+router.get("/document-requests", authorizeRoles(...taskViewRoles), listAllTaskDocumentRequests);
 router.get("/:taskId/subtasks", authorizeRoles(...taskViewRoles), listSubTasks);
 router.post("/:taskId/subtasks", authorizeRoles(...taskUpdateRoles), createSubTask);
 router.put("/:taskId/subtasks/:subTaskId", authorizeRoles(...taskUpdateRoles), updateSubTask);
 router.delete("/:taskId/subtasks/:subTaskId", authorizeRoles(...taskUpdateRoles), deleteSubTask);
 router.get("/:taskId/documents", authorizeRoles(...taskViewRoles), listTaskDocuments);
-router.post("/:taskId/documents", authorizeRoles(...taskUpdateRoles), taskDocumentUpload.single("file"), uploadTaskDocument);
+router.post("/:taskId/documents", authorizeRoles(...taskViewRoles), taskDocumentUpload.single("file"), uploadTaskDocument);
 router.delete("/:taskId/documents/:documentId", authorizeRoles(...taskUpdateRoles), deleteTaskDocument);
 router.get("/:taskId/document-requests", authorizeRoles(...taskViewRoles), listTaskDocumentRequests);
 router.post("/:taskId/document-requests", authorizeRoles(...taskViewRoles), createTaskDocumentRequest);

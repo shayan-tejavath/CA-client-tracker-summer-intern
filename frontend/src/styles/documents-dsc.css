@@ -1,0 +1,375 @@
+.practive-page {
+  min-height: 100%;
+  background: #f5faf8;
+  color: #172033;
+  padding: 22px 28px 40px;
+}
+
+.practive-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.practive-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.practive-back {
+  border: 0;
+  background: transparent;
+  color: #172033;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.practive-title h1 {
+  margin: 0;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.practive-actions,
+.practive-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.practive-btn {
+  min-height: 38px;
+  border-radius: 7px;
+  border: 1px solid #dbe7f4;
+  background: #fff;
+  color: #1e5f9f;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 18px rgba(17, 42, 80, 0.04);
+}
+
+.practive-btn.primary {
+  background: #1f78d1;
+  color: #fff;
+  border-color: #1f78d1;
+}
+
+.practive-btn.icon {
+  width: 42px;
+  padding: 0;
+  color: #256ea8;
+}
+
+.practive-filter-card {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 18px 45px rgba(31, 120, 209, 0.06);
+  margin-bottom: 26px;
+}
+
+.practive-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
+  gap: 22px;
+  align-items: end;
+}
+
+.practive-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.practive-field label {
+  color: #182236;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.practive-input,
+.practive-select,
+.practive-textarea {
+  width: 100%;
+  min-height: 39px;
+  border: 1px solid #d9e2ec;
+  border-radius: 7px;
+  background: #fff;
+  color: #1f2937;
+  padding: 9px 12px;
+  font-size: 14px;
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.02);
+}
+
+.practive-textarea {
+  min-height: 66px;
+  resize: vertical;
+}
+
+.practive-table-card {
+  background: #fff;
+  border-radius: 9px;
+  padding: 30px;
+  box-shadow: 0 10px 35px rgba(17, 42, 80, 0.05);
+  border: 1px solid #edf2f7;
+}
+
+.practive-table-scroll {
+  overflow-x: auto;
+}
+
+.practive-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.practive-table th {
+  height: 36px;
+  color: #8a94a6;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  border-bottom: 1px solid #edf2f7;
+  white-space: nowrap;
+}
+
+.practive-table td {
+  height: 47px;
+  border-bottom: 1px solid #eef2f6;
+  color: #192233;
+  font-size: 14px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.practive-table tr:hover td {
+  background: #fbfdff;
+}
+
+.practive-link {
+  color: #1672b9;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+}
+
+.practive-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #1f78d1;
+}
+
+.practive-avatar {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #233245, #5b6b7d);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.practive-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 27px;
+  border-radius: 5px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.practive-status.pending,
+.practive-status.open {
+  color: #c08017;
+  background: #fff7e6;
+}
+
+.practive-status.uploaded,
+.practive-status.returned,
+.practive-status.renewed {
+  color: #166534;
+  background: #eaf8ef;
+}
+
+.practive-status.verified,
+.practive-status.closed {
+  color: #047857;
+  background: #dff7eb;
+}
+
+.practive-status.rejected,
+.practive-status.expired {
+  color: #b91c1c;
+  background: #fee8e8;
+}
+
+.practive-empty {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+  border: 1px dashed #d8e3ef;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.practive-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.52);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 74px 18px;
+}
+
+.practive-modal {
+  width: min(500px, 100%);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.24);
+}
+
+.practive-modal.wide {
+  width: min(640px, 100%);
+}
+
+.practive-modal-header {
+  min-height: 69px;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.practive-modal-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.practive-modal-close {
+  border: 0;
+  background: transparent;
+  color: #7b8494;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+}
+
+.practive-modal-body {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+}
+
+.practive-modal-body .full {
+  grid-column: 1 / -1;
+}
+
+.practive-modal-footer {
+  border-top: 1px solid #e5e7eb;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.practive-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.practive-doc-list {
+  display: grid;
+  gap: 0;
+}
+
+.practive-doc-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed #cfd8e3;
+}
+
+.practive-doc-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.practive-doc-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1100px) {
+  .practive-filter-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .practive-page {
+    padding: 18px 14px 32px;
+  }
+
+  .practive-titlebar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .practive-actions,
+  .practive-row-actions {
+    width: 100%;
+  }
+
+  .practive-btn {
+    flex: 1;
+  }
+
+  .practive-filter-grid,
+  .practive-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .practive-table-card {
+    padding: 14px;
+  }
+}

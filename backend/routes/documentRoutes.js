@@ -2,6 +2,7 @@
 
 import {
   uploadDocument,
+  createDocumentRegisterEntry,
   getDocuments,
   getDocumentById,
   updateDocument,
@@ -53,6 +54,17 @@ router.post(
   ),
   upload.single("file"),
   uploadDocument
+);
+
+router.post(
+  "/register",
+  authorizeRoles(
+    ROLES.SuperAdmin,
+    ROLES.Partner,
+    ROLES.Manager,
+    ROLES.Employee
+  ),
+  createDocumentRegisterEntry
 );
 
 
