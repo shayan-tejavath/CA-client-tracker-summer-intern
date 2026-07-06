@@ -278,6 +278,44 @@ export const SIDEBAR_MENU = [
     icon: "reports",
     requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
     requiredPermission: PERMISSIONS.REPORTS_VIEW,
+    children: [
+      {
+        name: "Overview",
+        path: "/dashboard/reports",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Task Reports",
+        path: "/dashboard/reports/tasks",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Service Reports",
+        path: "/dashboard/reports/services",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Client Reports",
+        path: "/dashboard/reports/clients",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Employee Timelog",
+        path: "/dashboard/reports/employees",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Export Center",
+        path: "/dashboard/reports/export",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+    ],
   },
   {
     name: "Admin",

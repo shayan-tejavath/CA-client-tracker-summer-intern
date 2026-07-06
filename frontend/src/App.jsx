@@ -89,7 +89,6 @@ import DocumentCollection from "./pages/documents/DocumentCollection.jsx";
 
 // DASHBOARD PAGES
 
-import Reports from "./pages/dashboard/Reports.jsx";
 
 import AdminPanel from "./pages/dashboard/AdminPanel.jsx";
 
@@ -103,6 +102,14 @@ import UserRolesList from "./pages/users/UserRolesList.jsx";
 
 import UserRoleForm from "./pages/users/UserRoleForm.jsx";
 
+//Reports 
+
+import Reports from "./pages/dashboard/Reports";
+import TaskReports from "./pages/dashboard/reports/TaskReports";
+import ServiceReports from "./pages/dashboard/reports/ServiceReports";
+import ClientReports from "./pages/dashboard/reports/ClientReports";
+import EmployeeReports from "./pages/dashboard/reports/EmployeeReports";
+import ExportCenter from "./pages/dashboard/reports/ExportCenter";
 
 
 // ROUTE PROTECTION
@@ -502,17 +509,56 @@ function App() {
           <Route
             path="/dashboard/reports"
             element={
-              <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                ]}
-              >
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
                 <Reports />
               </ProtectedRoute>
             }
           />
 
+          <Route
+            path="/dashboard/reports/tasks"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <TaskReports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/reports/services"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <ServiceReports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/reports/clients"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <ClientReports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/reports/employees"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <EmployeeReports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/reports/export"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+                <ExportCenter />
+              </ProtectedRoute>
+            }
+          />
 
 
           {/* ADMIN */}

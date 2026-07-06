@@ -1,21 +1,39 @@
-const UMS_URL = (process.env.UMS_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
-const UMS_API_KEY = process.env.UMS_API_KEY || "test-api-key-12345";
-
 export const sendEmailViaUMS = async ({
   to,
   subject,
   body,
   metadata = {},
 }) => {
+  const UMS_URL = (
+    process.env.UMS_URL || "http://127.0.0.1:3000"
+  ).replace(/\/$/, "");
+
+  const UMS_API_KEY =
+    process.env.UMS_API_KEY || "test-api-key-12345";
+
+  console.log("=================================");
+  console.log("UMS_URL:", UMS_URL);
+  console.log("UMS_API_KEY:", UMS_API_KEY);
+  console.log("=================================");
+
   if (!to || !subject || !body) {
-    throw new Error("UMS email requires to, subject, and body");
+    throw new Error(
+      "UMS email requires to, subject, and body"
+    );
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    15000
+  );
 
   try {
-    const response = await fetch(`${UMS_URL}/v1/messages`, {
+    const endpoint = `${UMS_URL}/v1/messages`;
+
+    console.log("Sending UMS request to:", endpoint);
+
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -32,11 +50,15 @@ export const sendEmailViaUMS = async ({
     });
 
     let data = null;
+
     try {
       data = await response.json();
     } catch {
       data = null;
     }
+
+    console.log("UMS Response Status:", response.status);
+    console.log("UMS Response Data:", data);
 
     if (!response.ok) {
       const message =
