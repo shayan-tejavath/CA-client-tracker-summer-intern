@@ -68,6 +68,12 @@ export const PERMISSIONS = {
   SERVICE_DELETE: "service:delete",
   SERVICE_LIST: "service:list",
 
+  // Invoice Management
+  INVOICE_CREATE: "invoice:create",
+  INVOICE_READ: "invoice:read",
+  INVOICE_UPDATE: "invoice:update",
+  INVOICE_DELETE: "invoice:delete",
+
   // Dashboard & Reports
   DASHBOARD_VIEW: "dashboard:view",
   REPORTS_VIEW: "reports:view",
@@ -153,6 +159,12 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.DOCUMENT_DELETE,
     PERMISSIONS.DOCUMENT_LIST,
 
+    // Invoice management
+    PERMISSIONS.INVOICE_CREATE,
+    PERMISSIONS.INVOICE_READ,
+    PERMISSIONS.INVOICE_UPDATE,
+    PERMISSIONS.INVOICE_DELETE,
+
     // Service (read-only)
     PERMISSIONS.SERVICE_READ,
     PERMISSIONS.SERVICE_LIST,
@@ -171,6 +183,12 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.DOCUMENT_UPLOAD,
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.DOCUMENT_LIST,
+
+    // Invoice management
+    PERMISSIONS.INVOICE_CREATE,
+    PERMISSIONS.INVOICE_READ,
+    PERMISSIONS.INVOICE_UPDATE,
+    PERMISSIONS.INVOICE_DELETE,
 
     // Service (read-only)
     PERMISSIONS.SERVICE_READ,

@@ -1,14 +1,17 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { usePermission } from "../hooks/usePermission.js";
 
 const ProtectedRoute = ({
   children,
   allowedRoles = [],
+  requiredPermission,
 }) => {
   const {
     user,
     initializing,
   } = useAuth();
+  const { hasPermission } = usePermission();
 
   const location = useLocation();
 
@@ -56,6 +59,25 @@ const ProtectedRoute = ({
 
           <p className="text-slate-400">
             You do not have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    requiredPermission &&
+    !hasPermission(requiredPermission)
+  ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <div className="bg-slate-900 border border-slate-700 p-10 rounded-2xl text-center">
+          <h1 className="text-3xl font-bold mb-4 text-red-400">
+            Unauthorized Access
+          </h1>
+
+          <p className="text-slate-400">
+            You do not have sufficient permissions to view this page.
           </p>
         </div>
       </div>
