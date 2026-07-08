@@ -16,6 +16,7 @@ import {
   FaTasks,
   FaChartBar,
   FaUserCog,
+  FaFileInvoiceDollar,
 } from "react-icons/fa";
 
 const roles = [
@@ -55,6 +56,16 @@ const permissionGroups = [
     permissions: [
       { key: PERMISSIONS.TASK_ASSIGN, label: "Assign Tasks" },
       { key: PERMISSIONS.TASK_UPDATE, label: "Update Tasks" },
+    ],
+  },
+  {
+    title: "Invoice Management",
+    icon: <FaFileInvoiceDollar />,
+    permissions: [
+      { key: PERMISSIONS.INVOICE_CREATE, label: "Create invoices" },
+      { key: PERMISSIONS.INVOICE_READ, label: "View invoices" },
+      { key: PERMISSIONS.INVOICE_UPDATE, label: "Edit invoices" },
+      { key: PERMISSIONS.INVOICE_DELETE, label: "Delete invoices" },
     ],
   },
   {

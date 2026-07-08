@@ -15,6 +15,7 @@ import {
   AuthProvider,
   useAuth,
 } from "./context/AuthContext.jsx";
+import { PERMISSIONS } from "./constants/rbac.js";
 
 
 
@@ -56,6 +57,7 @@ import AddService from "./pages/services/AddService.jsx";
 import EditService from "./pages/services/EditService.jsx";
 import ServiceDetails from "./pages/services/ServiceDetails.jsx";
 import WorkflowTemplatesPage from "./pages/services/WorkflowTemplatesPage.jsx";
+import InvoiceDashboardPage from "./pages/invoices/InvoiceDashboardPage.jsx";
 
 
 
@@ -338,6 +340,59 @@ function App() {
                 ]}
               >
                 <WorkflowTemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* INVOICES */}
+
+          <Route
+            path="/dashboard/invoices"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+                requiredPermission={PERMISSIONS.INVOICE_READ}
+              >
+                <InvoiceDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/invoices/new"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+                requiredPermission={PERMISSIONS.INVOICE_CREATE}
+              >
+                <InvoiceDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/invoices/:invoiceId"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+                requiredPermission={PERMISSIONS.INVOICE_READ}
+              >
+                <InvoiceDashboardPage />
               </ProtectedRoute>
             }
           />
