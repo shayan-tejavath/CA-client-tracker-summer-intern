@@ -27,6 +27,16 @@ const serviceSchema = new mongoose.Schema(
       ref: "WorkflowTemplate",
       default: null,
     },
+    servicePrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    gstPercentage: {
+      type: Number,
+      default: 18,
+    },
   },
   {
     timestamps: true,

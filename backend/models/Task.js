@@ -68,6 +68,22 @@ const taskSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    billableAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    billingStatus: {
+      type: String,
+      enum: ["Unbilled", "Partially Billed", "Billed"],
+      default: "Unbilled",
+    },
+
+    invoiceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Invoice",
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -11,6 +11,8 @@ const initialState = {
   subService: "",
   frequency: "Monthly",
   description: "",
+  servicePrice: 0,
+  gstPercentage: 18,
 };
 
 const validateService = (data) => {
@@ -98,6 +100,28 @@ const AddService = () => {
               onChange={handleChange}
               placeholder="Monthly, Quarterly, Yearly"
               required
+            />
+          </label>
+          <label>
+            Service Price
+            <input
+              type="number"
+              name="servicePrice"
+              value={service.servicePrice}
+              onChange={handleChange}
+              min="0"
+              required
+            />
+          </label>
+
+          <label>
+            GST %
+            <input
+              type="number"
+              name="gstPercentage"
+              value={service.gstPercentage}
+              onChange={handleChange}
+              min="0"
             />
           </label>
 

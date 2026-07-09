@@ -61,6 +61,8 @@ const EditTask = () => {
           status: taskData.status || "Pending",
           dueDate: taskData.dueDate ? new Date(taskData.dueDate).toISOString().split("T")[0] : "",
           description: taskData.description || "",
+          billableAmount:
+          taskData.billableAmount || 0,
         });
       } catch (err) {
         setError(err.response?.data?.message || "Unable to load task details.");
@@ -241,6 +243,18 @@ const EditTask = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="create-task-field">
+                    <label>Billable Amount</label>
+
+                    <input
+                      type="number"
+                      name="billableAmount"
+                      value={task.billableAmount}
+                      onChange={handleChange}
+                      disabled={isEmployee}
+                      className="create-task-input"
+                    />
                   </div>
 
                   <div className="create-task-field">

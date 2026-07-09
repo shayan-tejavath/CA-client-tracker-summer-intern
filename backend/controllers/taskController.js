@@ -249,6 +249,7 @@ export const createTask = async (req, res, next) => {
       priority: req.body.priority || "Medium",
       dueDate: req.body.dueDate,
       description: req.body.description || "",
+      billableAmount:req.body.billableAmount || 0,
       recurrence: req.body.recurrence || null,
       parentTask: req.body.parentTask || null,
       childTask: req.body.childTask || null,

@@ -17,6 +17,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import workflowTemplateRoutes from "./routes/workflowTemplateRoutes.js";
+import invoiceRoutes from "./routes/invoiceRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import { initializeTaskReminderScheduler } from "./services/taskReminderScheduler.js";
@@ -101,6 +102,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/workflow", workflowTemplateRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/invoices", invoiceRoutes);
 app.use(errorMiddleware);
 
 initializeTaskReminderScheduler();

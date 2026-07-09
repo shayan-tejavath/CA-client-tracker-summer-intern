@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  ReceiptText,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext.jsx";
@@ -26,6 +27,7 @@ const ICON_MAP = {
   clients: Users,
   services: BriefcaseBusiness,
   tasks: ClipboardList,
+  invoices: ReceiptText,
   documents: FolderOpen,
   reports: BarChart3,
   admin: Shield,

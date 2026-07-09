@@ -28,14 +28,15 @@ const CreateTask = () => {
   const [employees, setEmployees] = useState([]);
   const [services, setServices] = useState([]);
   const [task, setTask] = useState({
-    title: "",
-    client: "",
-    service: "",
-    assignedTo: "",
-    status: "Pending",
-    priority: "Medium",
-    dueDate: "",
-    description: "",
+      title: "",
+      client: "",
+      service: "",
+      assignedTo: "",
+      status: "Pending",
+      priority: "Medium",
+      dueDate: "",
+      description: "",
+      billableAmount: 0,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +91,9 @@ const CreateTask = () => {
       setSaving(false);
     }
   };
+  const selectedService = services.find(
+    (service) => service._id === task.service
+  );
 
   return (
     <DashboardLayout>
@@ -174,14 +178,27 @@ const CreateTask = () => {
 
                   <div className="create-task-field">
                     <label htmlFor="service">Service</label>
-                    <select
-                      id="service"
-                      name="service"
-                      value={task.service}
-                      onChange={handleChange}
-                      required
-                      className="create-task-select"
-                    >
+                      <select
+                        id="service"
+                        name="service"
+                        value={task.service}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+
+                          const selected = services.find(
+                            (service) => service._id === selectedId
+                          );
+
+                          setTask((prev) => ({
+                            ...prev,
+                            service: selectedId,
+                            billableAmount:
+                              selected?.servicePrice || 0,
+                          }));
+                        }}
+                        required
+                        className="create-task-select"
+                      >
                       <option value="">Select service</option>
                       {services.map((service) => (
                         <option key={service._id} value={service._id}>
@@ -189,6 +206,17 @@ const CreateTask = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="create-task-field">
+                    <label>Billable Amount</label>
+
+                    <input
+                      type="number"
+                      name="billableAmount"
+                      value={task.billableAmount}
+                      onChange={handleChange}
+                      className="create-task-input"
+                    />
                   </div>
 
                   <div className="create-task-field">

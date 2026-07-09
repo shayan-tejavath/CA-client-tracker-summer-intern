@@ -115,12 +115,12 @@ import ExportCenter from "./pages/dashboard/reports/ExportCenter";
 // ROUTE PROTECTION
 
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
-
-
-
 import "react-toastify/dist/ReactToastify.css";
 
-
+//Invoices
+import Invoices from "./pages/dashboard/Invoices";
+import InvoiceForm from "./pages/dashboard/billing/InvoiceForm";
+import InvoiceView from "./pages/dashboard/billing/InvoiceView";
 
 const DashboardRoute = ({ children }) => {
   const { user } = useAuth();
@@ -628,6 +628,21 @@ function App() {
                 <UserRoleForm />
               </ProtectedRoute>
             }
+          />
+
+          {/* INVOICES */}
+          <Route
+            path="/dashboard/invoices"
+            element={<Invoices />}
+          />
+
+          <Route
+            path="/dashboard/invoices/create"
+            element={<InvoiceForm />}
+          />
+          <Route
+            path="/dashboard/invoices/view/:id"
+            element={<InvoiceView />}
           />
 
 

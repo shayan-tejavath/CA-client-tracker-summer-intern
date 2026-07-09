@@ -325,6 +325,16 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.ADMIN_PANEL_ACCESS,
   },
   {
+    name: "Invoices",
+    path: "/dashboard/invoices",
+    icon: "invoices",
+    requiredRoles: [
+      "SuperAdmin",
+      "Partner",
+      "Manager",
+    ],
+  },
+  {
     name: "Users",
     path: "/dashboard/users",
     icon: "users",
