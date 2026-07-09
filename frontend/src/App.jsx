@@ -122,6 +122,9 @@ import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 
+//Receipts
+import ReceiptDashboardPage from "./pages/receipts/ReceiptDashboardPage.jsx";
+import ReceiptPage from "./pages/receipts/ReceiptPage.jsx";
 
 
 const DashboardRoute = ({ children }) => {
@@ -698,6 +701,33 @@ function App() {
                 ]}
               >
                 <PermissionMatrix />
+              </ProtectedRoute>
+            }
+          />
+          {/* RECEIPTS */}
+          <Route
+            path="/dashboard/receipts"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <ReceiptDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/receipts/new"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <ReceiptPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/receipts/:receiptId"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <ReceiptPage />
               </ProtectedRoute>
             }
           />

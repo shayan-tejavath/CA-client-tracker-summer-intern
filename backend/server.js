@@ -19,6 +19,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import workflowTemplateRoutes from "./routes/workflowTemplateRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import invoiceRoutes from "./routes/invoiceRoutes.js";
+import receiptRoutes from "./routes/receiptRoutes.js";
 import { initializeTaskReminderScheduler } from "./services/taskReminderScheduler.js";
 import { sendEmailViaUMS } from "./services/umsService.js";
 
@@ -101,6 +103,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/workflow", workflowTemplateRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/receipts", receiptRoutes);
 app.use(errorMiddleware);
 
 initializeTaskReminderScheduler();
