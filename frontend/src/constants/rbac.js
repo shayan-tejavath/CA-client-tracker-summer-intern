@@ -311,6 +311,21 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.REPORTS_VIEW,
   },
   {
+    name: "Attendance",
+    path: "/dashboard/attendance",
+    icon: "admin",
+    requiredRoles: [ROLES.SUPER_ADMIN],
+    requiredPermission: PERMISSIONS.ADMIN_SETTINGS,
+    children: [
+      {
+        name: "Manage Attendance",
+        path: "/dashboard/attendance",
+        requiredRoles: [ROLES.SUPER_ADMIN],
+        requiredPermission: PERMISSIONS.ADMIN_SETTINGS,
+      },
+    ],
+  },
+  {
     name: "Admin",
     path: "/dashboard/admin",
     icon: "admin",
