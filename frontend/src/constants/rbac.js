@@ -270,6 +270,13 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.INVOICE_READ,
   },
   {
+    name: "Receipts",
+    path: "/dashboard/receipts",
+    icon: "invoices",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER],
+    requiredPermission: PERMISSIONS.REPORTS_VIEW,
+  },
+  {
     name: "Tasks",
     path: "/dashboard/tasks",
     icon: "tasks",
