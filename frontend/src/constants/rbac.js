@@ -270,11 +270,24 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.INVOICE_READ,
   },
   {
+    name: "Quotations",
+    path: "/dashboard/quotations",
+    icon: "invoices",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE],
+    requiredPermission: PERMISSIONS.INVOICE_READ,
+  },
+  {
     name: "Receipts",
     path: "/dashboard/receipts",
     icon: "invoices",
     requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER],
     requiredPermission: PERMISSIONS.REPORTS_VIEW,
+  },
+  {
+    name: "Expenses",
+    path: "/dashboard/expenses",
+    icon: "invoices",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER],
   },
   {
     name: "Tasks",

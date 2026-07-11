@@ -125,6 +125,12 @@ import "react-toastify/dist/ReactToastify.css";
 //Receipts
 import ReceiptDashboardPage from "./pages/receipts/ReceiptDashboardPage.jsx";
 import ReceiptPage from "./pages/receipts/ReceiptPage.jsx";
+import QuotationManagementPage from "./pages/quotations/QuotationManagementPage.jsx";
+import ExpenseManagementPage from "./pages/expenses/ExpenseManagementPage.jsx";
+import NewExpensePage from "./pages/expenses/NewExpensePage.jsx";
+import ExpenseDetailsPage from "./pages/expenses/ExpenseDetailsPage.jsx";
+import EditExpensePage from "./pages/expenses/EditExpensePage.jsx";
+import ExpenseDashboardPage from "./pages/expenses/ExpenseDashboardPage.jsx";
 
 
 const DashboardRoute = ({ children }) => {
@@ -407,6 +413,56 @@ function App() {
             }
           />
 
+
+          {/* QUOTATIONS */}
+
+          <Route
+            path="/dashboard/quotations"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+              >
+                <QuotationManagementPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/quotations/new"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+              >
+                <QuotationManagementPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/quotations/:quotationId"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                  "Partner",
+                  "Manager",
+                  "Employee",
+                ]}
+              >
+                <QuotationManagementPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* TASKS */}
 
@@ -705,6 +761,47 @@ function App() {
             }
           />
           {/* RECEIPTS */}
+          <Route
+            path="/dashboard/expenses"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <ExpenseManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/expenses/new"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <NewExpensePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/expenses/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <ExpenseDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/expenses/:expenseId"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <ExpenseDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/expenses/:expenseId/edit"
+            element={
+              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner", "Manager"]}>
+                <EditExpensePage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/dashboard/receipts"
             element={

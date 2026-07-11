@@ -540,6 +540,48 @@
   line-height: 1.6;
 }
 
+.quotation-table-wrapper {
+  overflow-x: auto;
+}
+
+.quotation-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.quotation-table th,
+.quotation-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.quotation-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.quotation-actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quotation-actions-cell .button {
+  min-width: 88px;
+}
+
+@media (max-width: 900px) {
+  .quotation-table th,
+  .quotation-table td {
+    padding: 12px 10px;
+  }
+}
+
 .client-task-groups {
   display: grid;
   gap: 16px;

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const invoiceItemSchema = new mongoose.Schema(
+const quotationItemSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -12,12 +12,12 @@ const invoiceItemSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
-    sac: {
-      type: String,
-      trim: true,
-      default: "",
+    quantity: {
+      type: Number,
+      default: 1,
+      min: 0,
     },
-    amount: {
+    unitPrice: {
       type: Number,
       default: 0,
       min: 0,
@@ -27,34 +27,25 @@ const invoiceItemSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    gst: {
+    gstPercentage: {
       type: Number,
       default: 0,
       min: 0,
     },
-    totalAmount: {
+    amount: {
       type: Number,
       default: 0,
       min: 0,
-    },
-    selected: {
-      type: Boolean,
-      default: true,
-    },
-    type: {
-      type: String,
-      enum: ["task", "expense", "manual", "package"],
-      default: "manual",
     },
   },
   { _id: false }
 );
 
-const invoiceSchema = new mongoose.Schema(
+const quotationSchema = new mongoose.Schema(
   {
-    invoiceNo: {
+    quotationNumber: {
       type: String,
-      required: [true, "Invoice number is required"],
+      required: [true, "Quotation number is required"],
       unique: true,
       trim: true,
     },
@@ -65,37 +56,37 @@ const invoiceSchema = new mongoose.Schema(
       trim: true,
     },
 
-    client: {
+    clientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: [true, "Client is required"],
     },
 
-    quotationId: {
+    invoiceId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Quotation",
+      ref: "Invoice",
       default: null,
     },
 
-    invoiceDate: {
+    quotationDate: {
       type: Date,
-      required: [true, "Invoice date is required"],
+      required: [true, "Quotation date is required"],
       default: Date.now,
     },
 
-    dueDate: {
+    validityDate: {
       type: Date,
-      required: [true, "Due date is required"],
+      required: [true, "Validity date is required"],
     },
 
-    paymentTerm: {
+    status: {
       type: String,
-      trim: true,
-      default: "NET 15",
+      enum: ["Draft", "Sent", "Accepted", "Rejected"],
+      default: "Draft",
     },
 
     items: {
-      type: [invoiceItemSchema],
+      type: [quotationItemSchema],
       default: [],
     },
 
@@ -105,49 +96,31 @@ const invoiceSchema = new mongoose.Schema(
       min: 0,
     },
 
-    discountAmount: {
+    gstPercentage: {
       type: Number,
       default: 0,
       min: 0,
     },
 
-    taxAmount: {
+    gstAmount: {
       type: Number,
       default: 0,
       min: 0,
     },
 
-    grandTotal: {
+    totalAmount: {
       type: Number,
       default: 0,
       min: 0,
-    },
-
-    paidAmount: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    balanceAmount: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    status: {
-      type: String,
-      enum: [
-        "Draft",
-        "Unpaid",
-        "Partially Paid",
-        "Paid",
-        "Overdue"
-        ],
-      default: "Unpaid",
     },
 
     notes: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    termsAndConditions: {
       type: String,
       trim: true,
       default: "",
@@ -158,5 +131,5 @@ const invoiceSchema = new mongoose.Schema(
   }
 );
 
-const Invoice = mongoose.model("Invoice", invoiceSchema);
-export default Invoice;
+const Quotation = mongoose.model("Quotation", quotationSchema);
+export default Quotation;
