@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarDays,
@@ -23,6 +23,9 @@ import {
 import { toast } from "react-toastify";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
+import { getClients } from "../../services/clientService.js";
+import { getTasks } from "../../services/taskService.js";
+import invoiceService from "../../services/invoiceService.js";
 import "../../styles/invoices.css";
 
 const billingEntities = [
@@ -100,126 +103,6 @@ const billingEntities = [
   },
 ];
 
-const clients = [
-  {
-    id: "anil",
-    name: "Anil Sharma",
-    code: "#A1344",
-    group: "Rahul",
-    address: [
-      "B-10, B-Wing, Orchid Residency, Shastri Nagar",
-      "B-10, B-Wing, Orchid Residency, Shastri Nagar",
-      "Mumbai - 400050",
-      "Maharashtra",
-    ],
-    mobile: "9024570899",
-    email: "practiveteam@gmail.com",
-  },
-  {
-    id: "acp",
-    name: "ACP & SK Ltd",
-    code: "#12/7",
-    group: "",
-    address: ["Science City Road", "Ahmedabad - 380060", "Gujarat"],
-    mobile: "9099988877",
-    email: "finance@acpsk.test",
-  },
-  {
-    id: "auto-prime",
-    name: "Auto Prime",
-    code: "#AP45",
-    group: "Rahul",
-    address: ["Industrial Area", "Vadodara - 390001", "Gujarat"],
-    mobile: "9888881111",
-    email: "billing@autoprime.test",
-  },
-  {
-    id: "mohan",
-    name: "Mohan Singh",
-    code: "#M07",
-    group: "Rahul",
-    address: ["Civil Lines", "Jaipur - 302006", "Rajasthan"],
-    mobile: "9870011100",
-    email: "mohan@example.test",
-  },
-  {
-    id: "madhav",
-    name: "Madhav Dave",
-    code: "#MD20",
-    group: "",
-    address: ["Paldi", "Ahmedabad - 380007", "Gujarat"],
-    mobile: "9000090000",
-    email: "madhav@example.test",
-  },
-];
-
-const unbilledItems = {
-  anil: [
-    { id: "task-1", type: "task", title: "Accounting (2011-12)", status: "Hold", amount: 0, discount: 0, gst: 18, selected: false },
-    { id: "task-2", type: "task", title: "Abcd Loan (Apr-Sep - 2018)", status: "Pending", amount: 0, discount: 0, gst: 18, selected: false },
-    { id: "task-3", type: "task", title: "ITR (2024-25)", status: "Pending", amount: 1000, discount: 0, gst: 18, selected: false },
-    { id: "task-4", type: "task", title: "GSTR 3B (Apr - 2025)", status: "Completed", amount: 1000, discount: 0, gst: 18, selected: true },
-    { id: "pkg-1", type: "package", title: "TDS Package (2024-25)", status: "", amount: 12, discount: 0, gst: 0, selected: false },
-    { id: "pkg-2", type: "package", title: "Composition Package (2024-25)", status: "", amount: 122, discount: 0, gst: 18, selected: false },
-    { id: "pkg-3", type: "package", title: "GST Package (2025-26)", status: "", amount: 12000, discount: 0, gst: 18, selected: false },
-    { id: "pkg-4", type: "package", title: "TDS Package (2025-26)", status: "", amount: 12, discount: 0, gst: 0, selected: false },
-  ],
-  acp: [
-    { id: "acp-1", type: "package", title: "GST Package (2024-25)", status: "Completed", amount: 12000, discount: 0, gst: 18, selected: true },
-    { id: "acp-2", type: "task", title: "TDS Return Q4", status: "Pending", amount: 5000, discount: 0, gst: 18, selected: false },
-  ],
-  "auto-prime": [
-    { id: "auto-1", type: "package", title: "GST Package (2023-24)", status: "Completed", amount: 12000, discount: 0, gst: 18, selected: true },
-    { id: "auto-2", type: "task", title: "Ledger Review", status: "Pending", amount: 1298, discount: 0, gst: 18, selected: false },
-  ],
-  mohan: [
-    { id: "mohan-1", type: "task", title: "Annual Filing", status: "Completed", amount: 1298, discount: 0, gst: 18, selected: true },
-    { id: "mohan-2", type: "expense", title: "Government fees reimbursement", status: "", amount: 531, discount: 0, gst: 0, selected: false },
-  ],
-  madhav: [
-    { id: "madhav-1", type: "task", title: "Income Tax Consultation", status: "Completed", amount: 1298, discount: 0, gst: 18, selected: true },
-  ],
-};
-
-const unbilledExpenses = {
-  anil: [
-    { id: "exp-1", date: "28-06-2024", name: "Stationary", amount: 750 },
-    { id: "exp-2", date: "13-11-2024", name: "Tax paid", amount: 1000 },
-    { id: "exp-3", date: "27-01-2025", name: "Legal Exp.", amount: 100 },
-  ],
-  acp: [
-    { id: "exp-4", date: "10-02-2025", name: "ROC filing fee", amount: 2200 },
-  ],
-  "auto-prime": [
-    { id: "exp-5", date: "18-03-2025", name: "Courier", amount: 350 },
-    { id: "exp-6", date: "21-03-2025", name: "Challan paid", amount: 1500 },
-  ],
-  mohan: [],
-  madhav: [],
-};
-
-const invoiceRows = [
-  { id: "b430-1", title: "GST Package - 2024-25", sac: "-", amount: 12000, gst: 18 },
-  { id: "b430-2", title: "GST Package - 2023-24", sac: "-", amount: 12000, gst: 18 },
-  { id: "b430-3", title: "Composition Package - 2024-25", sac: "-", amount: 12000, gst: 18 },
-  { id: "b430-4", title: "Test - 2024-25", sac: "-", amount: 100, gst: 0 },
-];
-
-const invoices = [
-  { id: "B430", date: "04-02-2025", dueDate: "19-02-2025", entityId: "primary", clientId: "anil", amount: 42580, status: "Unpaid", rows: invoiceRows },
-  { id: "B429", date: "01-02-2025", dueDate: "16-02-2025", entityId: "primary", clientId: "auto-prime", amount: 1298, status: "Unpaid" },
-  { id: "B428", date: "01-02-2025", dueDate: "01-02-2025", entityId: "primary", clientId: "anil", amount: 1298, status: "Unpaid" },
-  { id: "B427", date: "31-01-2025", dueDate: "15-02-2025", entityId: "primary", clientId: "mohan", amount: 531, status: "Unpaid" },
-  { id: "B426", date: "31-01-2025", dueDate: "15-02-2025", entityId: "primary", clientId: "mohan", amount: 1298, status: "Unpaid" },
-  { id: "100", date: "31-01-2025", dueDate: "15-02-2025", entityId: "secondary", clientId: "acp", amount: 5000, status: "Unpaid" },
-  { id: "099", date: "31-01-2025", dueDate: "15-02-2025", entityId: "secondary", clientId: "acp", amount: 500, status: "Unpaid" },
-  { id: "B425", date: "31-01-2025", dueDate: "31-01-2025", entityId: "primary", clientId: "madhav", amount: 1298, status: "Unpaid" },
-  { id: "4545", date: "16-05-2025", dueDate: "31-05-2025", entityId: "primary", clientId: "acp", amount: 590, status: "Unpaid" },
-  { id: "6598", date: "12-05-2025", dueDate: "27-05-2025", entityId: "primary", clientId: "anil", amount: 5900, status: "Unpaid" },
-  { id: "1234", date: "04-04-2025", dueDate: "19-04-2025", entityId: "primary", clientId: "anil", amount: 1416, status: "Partial" },
-  { id: "101", date: "01-03-2025", dueDate: "16-03-2025", entityId: "secondary", clientId: "anil", amount: 500, status: "Partial" },
-];
-
 const paymentTerms = [
   { id: "NET 7", days: 7 },
   { id: "NET 15", days: 15 },
@@ -227,20 +110,25 @@ const paymentTerms = [
 ];
 
 const formatCurrency = (amount) =>
-  `\u20b9${Number(amount || 0).toLocaleString("en-IN", {
+  `₹${Number(amount || 0).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
-const formatInputDate = (date) => date.toISOString().slice(0, 10);
+const formatInputDate = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
+};
 
 const displayDate = (value) => {
   if (!value) return "";
-  if (value.includes("-") && value.split("-")[0].length === 4) {
-    const [year, month, day] = value.split("-");
+  const str = String(value);
+  if (str.includes("-") && str.split("-")[0].length === 4) {
+    const [year, month, day] = str.split("-");
     return `${day}-${month}-${year}`;
   }
-  return value;
+  return str;
 };
 
 const addDays = (dateValue, days) => {
@@ -256,16 +144,19 @@ const rowTotal = (row) => {
   return taxable + (taxable * Number(row.gst || 0)) / 100;
 };
 
-const amountInWords = (amount) => {
-  if (amount === 42580) return "Forty Two Thousands Five Hundred and Eighty Rupees only.";
-  return `${formatCurrency(amount)} only.`;
-};
+const amountInWords = (amount) => `${formatCurrency(amount)} only.`;
 
-const getClient = (id) => clients.find((client) => client.id === id) || clients[0];
-const getEntity = (id) => billingEntities.find((entity) => entity.id === id) || billingEntities[0];
+const getEntity = (id) =>
+  billingEntities.find((entity) => entity.id === id) || billingEntities[0];
 
 const IconButton = ({ label, children, ...props }) => (
-  <button type="button" className="invoice-icon-button" aria-label={label} title={label} {...props}>
+  <button
+    type="button"
+    className="invoice-icon-button"
+    aria-label={label}
+    title={label}
+    {...props}
+  >
     {children}
   </button>
 );
@@ -276,31 +167,73 @@ const StatusBadge = ({ status }) => (
   </span>
 );
 
-const InvoicesList = () => {
-  const navigate = useNavigate();
+const InvoicesList = ({ invoices, loading, navigate }) => {
   const [query, setQuery] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
 
   const filteredInvoices = useMemo(() => {
     const normalized = query.trim().toLowerCase();
+    const now = new Date();
 
     return invoices.filter((invoice) => {
-      const client = getClient(invoice.clientId);
-      const entity = getEntity(invoice.entityId);
-      if (clientFilter && invoice.clientId !== clientFilter) return false;
+      const invoiceDate = invoice.invoiceDate ? new Date(invoice.invoiceDate) : null;
+      const clientName = invoice.client?.clientName || invoice.clientName || "";
+      const clientCode = invoice.client?.clientCode || "";
+      const billingEntity = invoice.billingEntity || "";
+      const invoiceNo = invoice.invoiceNo || "";
+
+      if (clientFilter) {
+        const filterValue = String(clientFilter).toLowerCase();
+        const matchesClient =
+          clientName.toLowerCase() === filterValue ||
+          clientCode.toLowerCase() === filterValue;
+        if (!matchesClient) return false;
+      }
+
+      if (dateFilter === "month" && invoiceDate) {
+        const isThisMonth =
+          invoiceDate.getMonth() === now.getMonth() &&
+          invoiceDate.getFullYear() === now.getFullYear();
+        if (!isThisMonth) return false;
+      }
+
+      if (dateFilter === "quarter" && invoiceDate) {
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        const invoiceQuarter = Math.floor(invoiceDate.getMonth() / 3);
+        const isThisQuarter =
+          currentQuarter === invoiceQuarter &&
+          invoiceDate.getFullYear() === now.getFullYear();
+        if (!isThisQuarter) return false;
+      }
+
       if (!normalized) return true;
 
-      return [invoice.id, client.name, entity.name, invoice.status]
-        .some((value) => value.toLowerCase().includes(normalized));
+      return [invoiceNo, clientName, clientCode, billingEntity, invoice.status]
+        .some((value) => String(value || "").toLowerCase().includes(normalized));
     });
-  }, [clientFilter, query]);
+  }, [clientFilter, dateFilter, invoices, query]);
+
+  const uniqueClients = useMemo(
+    () => [
+      ...new Set(
+        invoices
+          .map((invoice) => invoice.client?.clientName || invoice.clientName)
+          .filter(Boolean)
+      ),
+    ],
+    [invoices]
+  );
 
   return (
     <DashboardLayout>
       <div className="invoices-page">
         <div className="invoice-breadcrumb">
-          <button type="button" onClick={() => navigate("/dashboard")} aria-label="Back to dashboard">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            aria-label="Back to dashboard"
+          >
             <ArrowLeft size={20} />
           </button>
           <h1>Invoices</h1>
@@ -311,7 +244,10 @@ const InvoicesList = () => {
             <label>Date</label>
             <div className="invoice-control-shell">
               <CalendarDays size={18} />
-              <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+              <select
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+              >
                 <option value="all">All Time</option>
                 <option value="month">This Month</option>
                 <option value="quarter">This Quarter</option>
@@ -328,7 +264,7 @@ const InvoicesList = () => {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search invoice no., client, billing entity"
+                placeholder="Search invoice no. or client"
               />
             </div>
           </div>
@@ -336,10 +272,15 @@ const InvoicesList = () => {
           <div className="invoice-field">
             <label>Client</label>
             <div className="invoice-control-shell">
-              <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)}>
+              <select
+                value={clientFilter}
+                onChange={(event) => setClientFilter(event.target.value)}
+              >
                 <option value="">Select...</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>{client.name}</option>
+                {uniqueClients.map((clientName) => (
+                  <option key={clientName} value={clientName}>
+                    {clientName}
+                  </option>
                 ))}
               </select>
               <ChevronDown size={16} />
@@ -347,10 +288,20 @@ const InvoicesList = () => {
           </div>
 
           <div className="invoice-filter-actions">
-            <IconButton label="Create invoice" onClick={() => navigate("/dashboard/invoices/new")}>
+            <IconButton
+              label="Create invoice"
+              onClick={() => navigate("/dashboard/invoices/new")}
+            >
               <Plus size={20} />
             </IconButton>
-            <IconButton label="Reset filters" onClick={() => { setQuery(""); setClientFilter(""); setDateFilter("all"); }}>
+            <IconButton
+              label="Reset filters"
+              onClick={() => {
+                setQuery("");
+                setClientFilter("");
+                setDateFilter("all");
+              }}
+            >
               <RefreshCw size={18} />
             </IconButton>
             <IconButton label="Apply filters">
@@ -361,66 +312,116 @@ const InvoicesList = () => {
 
         <section className="invoice-table-panel">
           <div className="invoice-list-actions">
-            <button type="button" className="invoice-secondary-button" onClick={() => toast.info("Invoice export prepared.")}>
+            <button
+              type="button"
+              className="invoice-secondary-button"
+              onClick={() => toast.info("Export is ready for the next integration step.")}
+            >
               <Download size={16} />
               Export
             </button>
-            <button type="button" className="invoice-primary-button" onClick={() => navigate("/dashboard/invoices/new")}>
+            <button
+              type="button"
+              className="invoice-primary-button"
+              onClick={() => navigate("/dashboard/invoices/new")}
+            >
               <Plus size={16} />
               New
             </button>
           </div>
 
-          <div className="invoice-table-scroll">
-            <table className="invoice-table">
-              <thead>
-                <tr>
-                  <th><input type="checkbox" aria-label="Select all invoices" /></th>
-                  <th>Date</th>
-                  <th>Billing Entity</th>
-                  <th>Invoice No.</th>
-                  <th>Client</th>
-                  <th>Due Date</th>
-                  <th>Total Amount</th>
-                  <th>Status</th>
-                  <th aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td><input type="checkbox" aria-label={`Select invoice ${invoice.id}`} /></td>
-                    <td>{invoice.date}</td>
-                    <td>{getEntity(invoice.entityId).name}</td>
-                    <td>
-                      <button type="button" className="invoice-link" onClick={() => navigate(`/dashboard/invoices/${invoice.id}`)}>
-                        {invoice.id}
-                      </button>
-                    </td>
-                    <td>{getClient(invoice.clientId).name}</td>
-                    <td>{invoice.dueDate}</td>
-                    <td>{formatCurrency(invoice.amount)}</td>
-                    <td><StatusBadge status={invoice.status} /></td>
-                    <td>
-                      <button type="button" className="invoice-row-menu" aria-label={`Invoice ${invoice.id} actions`}>
-                        <MoreVertical size={18} />
-                      </button>
-                    </td>
+          {loading ? (
+            <div className="invoice-empty-row" style={{ padding: "24px", textAlign: "center" }}>
+              <p>Loading invoices...</p>
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="invoice-empty-row" style={{ padding: "24px", textAlign: "center" }}>
+              <p>No invoices created yet.</p>
+              <button
+                type="button"
+                className="invoice-primary-button"
+                onClick={() => navigate("/dashboard/invoices/new")}
+              >
+                Create your first invoice
+              </button>
+            </div>
+          ) : (
+            <div className="invoice-table-scroll">
+              <table className="invoice-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <input type="checkbox" aria-label="Select all invoices" />
+                    </th>
+                    <th>Date</th>
+                    <th>Billing Entity</th>
+                    <th>Invoice No.</th>
+                    <th>Client</th>
+                    <th>Due Date</th>
+                    <th>Total Amount</th>
+                    <th>Status</th>
+                    <th aria-label="Actions" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredInvoices.map((invoice) => (
+                    <tr key={invoice._id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select invoice ${invoice.invoiceNo}`}
+                        />
+                      </td>
+                      <td>{displayDate(formatInputDate(invoice.invoiceDate))}</td>
+                      <td>{invoice.billingEntity || "Primary"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="invoice-link"
+                          onClick={() => navigate(`/dashboard/invoices/${invoice._id}`)}
+                        >
+                          {invoice.invoiceNo}
+                        </button>
+                      </td>
+                      <td>{invoice.client?.clientName || "Client"}</td>
+                      <td>{displayDate(formatInputDate(invoice.dueDate))}</td>
+                      <td>{formatCurrency(invoice.grandTotal)}</td>
+                      <td>
+                        <StatusBadge status={invoice.status} />
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="invoice-row-menu"
+                          aria-label={`Invoice ${invoice.invoiceNo} actions`}
+                        >
+                          <MoreVertical size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     </DashboardLayout>
   );
 };
 
-const NewInvoice = () => {
-  const navigate = useNavigate();
-  const today = formatInputDate(new Date("2025-05-18"));
+const NewInvoice = ({
+  invoices,
+  setInvoices,
+  navigate,
+  location,
+}) => {
+  const today = formatInputDate(new Date());
+  const editInvoice = location.state?.invoiceToEdit || null;
+
+  const [clients, setClients] = useState([]);
   const [entityId, setEntityId] = useState("primary");
+  const [clientName, setClientName] = useState("");
   const [clientId, setClientId] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(today);
@@ -428,14 +429,67 @@ const NewInvoice = () => {
   const [rows, setRows] = useState([]);
   const [expensePickerOpen, setExpensePickerOpen] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState([]);
+  const [tasksForClient, setTasksForClient] = useState([]);
+
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const response = await getClients();
+        const list = Array.isArray(response) ? response : response?.clients || [];
+        setClients(list);
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.response?.data?.message || "Unable to load clients.");
+      }
+    };
+
+    loadClients();
+  }, []);
+
+  useEffect(() => {
+    if (!editInvoice) return;
+
+    const matchedEntity =
+      billingEntities.find(
+        (entity) =>
+          entity.name.toLowerCase() ===
+          String(editInvoice.billingEntity || "").toLowerCase()
+      ) || billingEntities[0];
+
+    setEntityId(matchedEntity.id);
+    setClientName(editInvoice.client?.clientName || editInvoice.clientName || "");
+    setClientId(editInvoice.client?._id || editInvoice.clientId || "");
+    setInvoiceNo(editInvoice.invoiceNo || editInvoice.id || "");
+    setInvoiceDate(
+      editInvoice.invoiceDate
+        ? formatInputDate(editInvoice.invoiceDate)
+        : today
+    );
+    setPaymentTerm(editInvoice.paymentTerm || "NET 15");
+    setRows(editInvoice.items || editInvoice.rows || []);
+  }, [editInvoice, today]);
 
   const term = paymentTerms.find((item) => item.id === paymentTerm) || paymentTerms[1];
   const dueDate = addDays(invoiceDate, term.days);
-  const currentExpenses = clientId ? unbilledExpenses[clientId] || [] : [];
+
+  const currentExpenses = useMemo(() => {
+    return tasksForClient
+      .filter((task) => task.status === "Completed" || task.status === "Pending")
+      .slice(0, 5)
+      .map((task, index) => ({
+        id: task._id || `exp-${index}`,
+        date: displayDate(formatInputDate(task.dueDate || new Date())),
+        name: task.title || task.service?.subService || "Task expense",
+        amount: Number(task.service?.servicePrice || 0),
+      }));
+  }, [tasksForClient]);
 
   const totals = useMemo(() => {
     const selectedRows = rows.filter((row) => row.selected || row.manual);
-    const subtotal = selectedRows.reduce((sum, row) => sum + Math.max(Number(row.amount || 0) - Number(row.discount || 0), 0), 0);
+    const subtotal = selectedRows.reduce(
+      (sum, row) => sum + Math.max(Number(row.amount || 0) - Number(row.discount || 0), 0),
+      0
+    );
     const tax = selectedRows.reduce((sum, row) => {
       const taxable = Math.max(Number(row.amount || 0) - Number(row.discount || 0), 0);
       return sum + (taxable * Number(row.gst || 0)) / 100;
@@ -451,9 +505,83 @@ const NewInvoice = () => {
     };
   }, [rows]);
 
-  const handleClientChange = (value) => {
-    setClientId(value);
-    setRows((unbilledItems[value] || []).map((row) => ({ ...row, description: "" })));
+  const resolveClient = (value) => {
+    const matched =
+      clients.find(
+        (client) =>
+          client.clientName === value ||
+          client.clientCode === value
+      ) || null;
+
+    setClientId(matched?._id || "");
+    return matched;
+  };
+
+  const loadTasksForClient = async (clientMongoId) => {
+    if (!clientMongoId) {
+      setTasksForClient([]);
+      return;
+    }
+
+    try {
+      const response = await getTasks();
+      const list = Array.isArray(response) ? response : response?.tasks || response?.data || [];
+      const filtered = list.filter((task) => {
+        const taskClientId = task.client?._id || task.client;
+        return String(taskClientId) === String(clientMongoId);
+      });
+
+      setTasksForClient(filtered);
+
+      if (filtered.length > 0) {
+        setRows(
+          filtered.map((task) => ({
+            id: task._id,
+            type: "task",
+            title: task.title || task.service?.subService || "Task",
+            sac: task.service?.sac || "-",
+            description: task.description || "",
+            amount: Number(task.service?.servicePrice || 0),
+            discount: 0,
+            gst: Number(task.service?.gstPercentage || 18),
+            selected: false,
+            status: task.status || "",
+          }))
+        );
+      } else {
+        setRows([
+          {
+            id: `manual-${Date.now()}`,
+            type: "manual",
+            title: "Manual item",
+            sac: "",
+            description: "",
+            amount: "",
+            discount: "",
+            gst: 18,
+            selected: true,
+            manual: true,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "Unable to load tasks for client.");
+      setTasksForClient([]);
+    }
+  };
+
+  const handleClientChange = async (value) => {
+    setClientName(value);
+    const matched = resolveClient(value);
+
+    if (matched?._id) {
+      await loadTasksForClient(matched._id);
+    } else {
+      setTasksForClient([]);
+      setRows([]);
+    }
+
     setSelectedExpenses([]);
   };
 
@@ -489,7 +617,7 @@ const NewInvoice = () => {
         type: "expense",
         title: expense.name,
         sac: "",
-        description: `Reimbursement for expense dated ${expense.date}`,
+        description: `Reimbursement for ${expense.date}`,
         amount: expense.amount,
         discount: 0,
         gst: 0,
@@ -505,60 +633,103 @@ const NewInvoice = () => {
     setRows((current) => current.filter((row) => row.id !== rowId));
   };
 
-  const saveInvoice = () => {
-    if (!clientId) {
-      toast.error("Select a client before saving the invoice.");
+  const saveInvoice = async () => {
+    if (!clientName) {
+      toast.error("Enter or select a client before saving the invoice.");
       return;
     }
 
-    toast.success("Invoice generated. Auto email and WhatsApp will be sent if configured.");
-    navigate(`/dashboard/invoices/${invoiceNo || "B430"}`);
+    const matchedClient = clientId
+      ? clients.find((client) => client._id === clientId)
+      : resolveClient(clientName);
+
+    if (!matchedClient?._id) {
+      toast.error("Select a valid client from the list.");
+      return;
+    }
+
+    const selectedRows = rows.filter((row) => row.selected || row.manual);
+    if (selectedRows.length === 0) {
+      toast.error("Add at least one invoice item.");
+      return;
+    }
+
+    const payload = {
+      invoiceNo: invoiceNo.trim(),
+      billingEntity: getEntity(entityId).name,
+      client: matchedClient._id,
+      invoiceDate,
+      dueDate,
+      paymentTerm,
+      items: selectedRows.map((row) => ({
+        title: row.title || row.description || "Item",
+        description: row.description || "",
+        sac: row.sac || "",
+        amount: Number(row.amount || 0),
+        discount: Number(row.discount || 0),
+        gst: Number(row.gst || 0),
+        selected: row.selected !== false,
+        type: row.type || "manual",
+      })),
+      notes: "",
+    };
+
+    try {
+      if (editInvoice?._id) {
+        const updated = await invoiceService.updateInvoice(editInvoice._id, payload);
+
+        setInvoices((current) =>
+          current.map((invoice) => (invoice._id === updated._id ? updated : invoice))
+        );
+
+        toast.success("Invoice updated. Share and print actions are ready.");
+        navigate(`/dashboard/invoices/${updated._id}`);
+      } else {
+        const created = await invoiceService.createInvoice(payload);
+
+        setInvoices((current) => [created, ...current]);
+
+        toast.success("Invoice draft created. Share and print actions are now available.");
+        navigate(`/dashboard/invoices/${created._id}`);
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to save invoice.");
+    }
   };
 
   return (
     <DashboardLayout>
       <div className="invoices-page">
         <div className="invoice-breadcrumb">
-          <button type="button" onClick={() => navigate("/dashboard/invoices")} aria-label="Back to invoices">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/invoices")}
+            aria-label="Back to invoices"
+          >
             <ArrowLeft size={20} />
           </button>
-          <button type="button" className="invoice-crumb-link" onClick={() => navigate("/dashboard/invoices")}>
+          <button
+            type="button"
+            className="invoice-crumb-link"
+            onClick={() => navigate("/dashboard/invoices")}
+          >
             Invoices
           </button>
           <span>/</span>
-          <h1>New Invoice</h1>
+          <h1>{editInvoice ? "Edit Invoice" : "New Invoice"}</h1>
         </div>
 
         <section className="invoice-form-panel">
           <div className="invoice-form-grid">
             <div className="invoice-field">
-              <label>Billing Entity <span>*</span></label>
+              <label>
+                Billing Entity <span>*</span>
+              </label>
               <div className="invoice-control-shell">
                 <select value={entityId} onChange={(event) => setEntityId(event.target.value)}>
                   {billingEntities.map((entity) => (
-                    <option key={entity.id} value={entity.id}>{entity.name}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} />
-              </div>
-            </div>
-
-            <div className="invoice-field">
-              <label>Date <span>*</span></label>
-              <div className="invoice-control-shell">
-                <CalendarDays size={18} />
-                <input type="date" value={invoiceDate} onChange={(event) => setInvoiceDate(event.target.value)} />
-              </div>
-            </div>
-
-            <div className="invoice-field">
-              <label>Client <span>*</span></label>
-              <div className="invoice-control-shell">
-                <select value={clientId} onChange={(event) => handleClientChange(event.target.value)}>
-                  <option value="">Select client...</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name} {client.code}
+                    <option key={entity.id} value={entity.id}>
+                      {entity.name}
                     </option>
                   ))}
                 </select>
@@ -567,18 +738,61 @@ const NewInvoice = () => {
             </div>
 
             <div className="invoice-field">
-              <label>Invoice No. <span>*</span></label>
-              <input value={invoiceNo} onChange={(event) => setInvoiceNo(event.target.value)} placeholder="B431" />
+              <label>
+                Date <span>*</span>
+              </label>
+              <div className="invoice-control-shell">
+                <CalendarDays size={18} />
+                <input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(event) => setInvoiceDate(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="invoice-field">
+              <label>
+                Client <span>*</span>
+              </label>
+              <div className="invoice-control-shell">
+                <input
+                  value={clientName}
+                  onChange={(event) => handleClientChange(event.target.value)}
+                  placeholder="Type or select a client"
+                  list="client-list"
+                />
+                <datalist id="client-list">
+                  {clients.map((client) => (
+                    <option key={client._id} value={client.clientName} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
+            <div className="invoice-field">
+              <label>
+                Invoice No. <span>*</span>
+              </label>
+              <input
+                value={invoiceNo}
+                onChange={(event) => setInvoiceNo(event.target.value)}
+                placeholder="INV-001"
+              />
             </div>
 
             <div className="invoice-field invoice-form-spacer" />
 
             <div className="invoice-field">
-              <label>Payment Term <span>*</span></label>
+              <label>
+                Payment Term <span>*</span>
+              </label>
               <div className="invoice-control-shell">
                 <select value={paymentTerm} onChange={(event) => setPaymentTerm(event.target.value)}>
                   {paymentTerms.map((item) => (
-                    <option key={item.id} value={item.id}>{item.id}</option>
+                    <option key={item.id} value={item.id}>
+                      {item.id}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown size={16} />
@@ -588,7 +802,9 @@ const NewInvoice = () => {
             <div className="invoice-field invoice-form-spacer" />
 
             <div className="invoice-field">
-              <label>Due Date <span>*</span></label>
+              <label>
+                Due Date <span>*</span>
+              </label>
               <div className="invoice-control-shell invoice-control-shell--disabled">
                 <CalendarDays size={18} />
                 <input value={displayDate(dueDate)} readOnly />
@@ -599,9 +815,18 @@ const NewInvoice = () => {
           <div className="invoice-items-heading">
             <h2>Invoice Items</h2>
             <div className="invoice-legend">
-              <span><i className="legend-task" />Task</span>
-              <span><i className="legend-expense" />Expense</span>
-              <span><i className="legend-package" />Package</span>
+              <span>
+                <i className="legend-task" />
+                Task
+              </span>
+              <span>
+                <i className="legend-expense" />
+                Expense
+              </span>
+              <span>
+                <i className="legend-package" />
+                Package
+              </span>
             </div>
           </div>
 
@@ -641,7 +866,15 @@ const NewInvoice = () => {
                           ) : (
                             <strong>{row.title}</strong>
                           )}
-                          {row.status && <span className={`invoice-mini-status invoice-mini-status--${row.status.toLowerCase()}`}>{row.status}</span>}
+                          {row.status && (
+                            <span
+                              className={`invoice-mini-status invoice-mini-status--${String(
+                                row.status
+                              ).toLowerCase()}`}
+                            >
+                              {row.status}
+                            </span>
+                          )}
                         </div>
                         <div className="invoice-item-subgrid">
                           {row.manual && (
@@ -716,7 +949,11 @@ const NewInvoice = () => {
               {clientId && currentExpenses.length > 0 && (
                 <div className="invoice-expense-callout">
                   <p>{currentExpenses.length} expenses is not billed</p>
-                  <button type="button" className="invoice-soft-button" onClick={() => setExpensePickerOpen(true)}>
+                  <button
+                    type="button"
+                    className="invoice-soft-button"
+                    onClick={() => setExpensePickerOpen(true)}
+                  >
                     <Plus size={16} />
                     Add Expenses
                   </button>
@@ -724,11 +961,18 @@ const NewInvoice = () => {
               )}
             </div>
 
-            <TotalsPanel totals={totals} splitTax={getEntity(entityId).address.includes("Gujarat")} />
+            <TotalsPanel
+              totals={totals}
+              splitTax={getEntity(entityId).address.includes("Gujarat")}
+            />
           </div>
 
           <div className="invoice-form-actions">
-            <button type="button" className="invoice-secondary-button" onClick={() => navigate("/dashboard/invoices")}>
+            <button
+              type="button"
+              className="invoice-secondary-button"
+              onClick={() => navigate("/dashboard/invoices")}
+            >
               Cancel
             </button>
             <button type="button" className="invoice-primary-button" onClick={saveInvoice}>
@@ -740,7 +984,12 @@ const NewInvoice = () => {
 
         {expensePickerOpen && (
           <div className="invoice-modal-backdrop" role="presentation">
-            <section className="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title">
+            <section
+              className="invoice-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="expense-modal-title"
+            >
               <div className="invoice-modal-header">
                 <h2 id="expense-modal-title">Unbilled Expenses</h2>
                 <IconButton label="Close expenses" onClick={() => setExpensePickerOpen(false)}>
@@ -751,7 +1000,9 @@ const NewInvoice = () => {
               <table className="invoice-expense-table">
                 <thead>
                   <tr>
-                    <th><input type="checkbox" aria-label="Select all expenses" /></th>
+                    <th>
+                      <input type="checkbox" aria-label="Select all expenses" />
+                    </th>
                     <th>Date</th>
                     <th>Expense</th>
                     <th>Amount</th>
@@ -783,8 +1034,16 @@ const NewInvoice = () => {
               </table>
 
               <div className="invoice-modal-actions">
-                <button type="button" className="invoice-primary-button" onClick={addExpenses}>Add</button>
-                <button type="button" className="invoice-secondary-button" onClick={() => setExpensePickerOpen(false)}>Cancel</button>
+                <button type="button" className="invoice-primary-button" onClick={addExpenses}>
+                  Add
+                </button>
+                <button
+                  type="button"
+                  className="invoice-secondary-button"
+                  onClick={() => setExpensePickerOpen(false)}
+                >
+                  Cancel
+                </button>
               </div>
             </section>
           </div>
@@ -796,64 +1055,140 @@ const NewInvoice = () => {
 
 const TotalsPanel = ({ totals, splitTax }) => (
   <aside className="invoice-totals-panel">
-    <div><span>Subtotal</span><strong>{formatCurrency(totals.subtotal)}</strong></div>
-    <div><span>Discount</span><strong>{formatCurrency(totals.discount)}</strong></div>
+    <div>
+      <span>Subtotal</span>
+      <strong>{formatCurrency(totals.subtotal)}</strong>
+    </div>
+    <div>
+      <span>Discount</span>
+      <strong>{formatCurrency(totals.discount)}</strong>
+    </div>
     {splitTax ? (
       <>
-        <div><span>CGST</span><strong>{formatCurrency(totals.tax / 2)}</strong></div>
-        <div><span>SGST</span><strong>{formatCurrency(totals.tax / 2)}</strong></div>
+        <div>
+          <span>CGST</span>
+          <strong>{formatCurrency(totals.tax / 2)}</strong>
+        </div>
+        <div>
+          <span>SGST</span>
+          <strong>{formatCurrency(totals.tax / 2)}</strong>
+        </div>
       </>
     ) : (
-      <div><span>IGST</span><strong>{formatCurrency(totals.tax)}</strong></div>
+      <div>
+        <span>IGST</span>
+        <strong>{formatCurrency(totals.tax)}</strong>
+      </div>
     )}
-    <div><span>Round Off</span><strong>{formatCurrency(totals.roundOff)}</strong></div>
-    <div className="invoice-total-final"><span>Total Amount</span><strong>{formatCurrency(totals.total)}</strong></div>
+    <div>
+      <span>Round Off</span>
+      <strong>{formatCurrency(totals.roundOff)}</strong>
+    </div>
+    <div className="invoice-total-final">
+      <span>Total Amount</span>
+      <strong>{formatCurrency(totals.total)}</strong>
+    </div>
   </aside>
 );
 
-const InvoiceView = () => {
-  const navigate = useNavigate();
-  const { invoiceId } = useParams();
+const InvoiceView = ({
+  invoices,
+  setInvoices,
+  navigate,
+  invoiceId,
+}) => {
   const [shareOpen, setShareOpen] = useState(false);
+  const [invoice, setInvoice] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const invoice =
-    invoices.find((item) => item.id === invoiceId) ||
-    {
-      ...invoices[0],
-      id: invoiceId || invoices[0].id,
-      date: "18-05-2025",
-      dueDate: "02-06-2025",
+  useEffect(() => {
+    const loadInvoice = async () => {
+      try {
+        setLoading(true);
+        const data = await invoiceService.getInvoiceById(invoiceId);
+        setInvoice(data);
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Unable to load invoice.");
+      } finally {
+        setLoading(false);
+      }
     };
-  const entity = getEntity(invoice.entityId);
-  const client = getClient(invoice.clientId);
-  const rows = invoice.rows || invoiceRows;
-  const subtotal = rows.reduce((sum, row) => sum + row.amount, 0);
-  const gst = rows.reduce((sum, row) => sum + (row.amount * row.gst) / 100, 0);
-  const total = subtotal + gst;
+
+    loadInvoice();
+  }, [invoiceId]);
+
+  const entity = getEntity(invoice?.billingEntity || "primary");
+  const rows = invoice?.items || [];
+  const subtotal =
+    invoice?.subtotal ??
+    rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const gst =
+    invoice?.taxAmount ??
+    rows.reduce((sum, row) => {
+      const taxable = Math.max(Number(row.amount || 0) - Number(row.discount || 0), 0);
+      return sum + (taxable * Number(row.gst || 0)) / 100;
+    }, 0);
+  const total = invoice?.grandTotal ?? subtotal + gst;
 
   const notify = (message) => {
     toast.success(message);
     setShareOpen(false);
   };
 
+  const handleDelete = async () => {
+    if (!invoice?._id) return;
+
+    try {
+      await invoiceService.deleteInvoice(invoice._id);
+      setInvoices((current) => current.filter((item) => item._id !== invoice._id));
+      toast.info("Invoice removed from the list.");
+      navigate("/dashboard/invoices");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Unable to delete invoice.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="invoices-page">
+          <div className="invoice-empty-row" style={{ padding: "24px", textAlign: "center" }}>
+            Loading invoice...
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="invoices-page">
         <div className="invoice-view-toolbar">
           <div className="invoice-breadcrumb">
-            <button type="button" onClick={() => navigate("/dashboard/invoices")} aria-label="Back to invoices">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/invoices")}
+              aria-label="Back to invoices"
+            >
               <ArrowLeft size={20} />
             </button>
-            <button type="button" className="invoice-crumb-link" onClick={() => navigate("/dashboard/invoices")}>
+            <button
+              type="button"
+              className="invoice-crumb-link"
+              onClick={() => navigate("/dashboard/invoices")}
+            >
               Invoices
             </button>
             <span>/</span>
-            <h1>#{invoice.id}</h1>
+            <h1>#{invoice?.invoiceNo || invoiceId}</h1>
           </div>
 
           <div className="invoice-view-actions">
             <div className="invoice-share-wrap">
-              <IconButton label="Share invoice" onClick={() => setShareOpen((current) => !current)}>
+              <IconButton
+                label="Share invoice"
+                onClick={() => setShareOpen((current) => !current)}
+              >
                 <Share2 size={18} />
               </IconButton>
               {shareOpen && (
@@ -873,9 +1208,23 @@ const InvoiceView = () => {
                 </div>
               )}
             </div>
-            <button type="button" className="invoice-warn-button">Cancel</button>
-            <button type="button" className="invoice-secondary-button" onClick={() => navigate("/dashboard/invoices/new")}>Edit</button>
-            <button type="button" className="invoice-danger-button">Delete</button>
+            <button type="button" className="invoice-warn-button">
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="invoice-secondary-button"
+              onClick={() =>
+                navigate("/dashboard/invoices/new", {
+                  state: { invoiceToEdit: invoice },
+                })
+              }
+            >
+              Edit
+            </button>
+            <button type="button" className="invoice-danger-button" onClick={handleDelete}>
+              Delete
+            </button>
             <button type="button" className="invoice-primary-button" onClick={() => window.print()}>
               <Printer size={16} />
               Print
@@ -891,7 +1240,9 @@ const InvoiceView = () => {
                 <span>{entity.logoText}</span>
               </div>
               <h2>{entity.company}</h2>
-              {entity.address.map((line) => <p key={line}>{line}</p>)}
+              {entity.address.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
               <p>Mobile: {entity.mobile}</p>
               <p>Email: {entity.email}</p>
               <p className="invoice-gstin">GSTIN: {entity.gstin}</p>
@@ -902,15 +1253,22 @@ const InvoiceView = () => {
           <section className="invoice-doc-client">
             <div>
               <p>To:</p>
-              <strong>{client.name}</strong>
-              {client.address.map((line) => <p key={line}>{line}</p>)}
-              <p>Mobile: {client.mobile}</p>
-              <p>Email: {client.email}</p>
+              <strong>{invoice?.client?.clientName || "Client"}</strong>
+              <p>Invoice will be populated from your connected client records.</p>
             </div>
             <dl>
-              <div><dt>Invoice No.:</dt><dd>{invoice.id}</dd></div>
-              <div><dt>Invoice Date:</dt><dd>{invoice.date}</dd></div>
-              <div><dt>Due Date:</dt><dd>{invoice.dueDate}</dd></div>
+              <div>
+                <dt>Invoice No.:</dt>
+                <dd>{invoice?.invoiceNo || "—"}</dd>
+              </div>
+              <div>
+                <dt>Invoice Date:</dt>
+                <dd>{displayDate(formatInputDate(invoice?.invoiceDate))}</dd>
+              </div>
+              <div>
+                <dt>Due Date:</dt>
+                <dd>{displayDate(formatInputDate(invoice?.dueDate))}</dd>
+              </div>
             </dl>
           </section>
 
@@ -927,15 +1285,15 @@ const InvoiceView = () => {
             </thead>
             <tbody>
               {rows.map((row) => {
-                const tax = (row.amount * row.gst) / 100;
+                const tax = (Number(row.amount || 0) * Number(row.gst || 0)) / 100;
                 return (
-                  <tr key={row.id}>
-                    <td>{row.title}</td>
-                    <td>{row.sac}</td>
+                  <tr key={row.id || `${row.title}-${row.description}`}>
+                    <td>{row.title || row.description || "Item"}</td>
+                    <td>{row.sac || "—"}</td>
                     <td>{formatCurrency(row.amount)}</td>
                     <td>{row.gst}%</td>
                     <td>{formatCurrency(tax)}</td>
-                    <td>{formatCurrency(row.amount + tax)}</td>
+                    <td>{formatCurrency(Number(row.amount || 0) + tax)}</td>
                   </tr>
                 );
               })}
@@ -966,12 +1324,32 @@ const InvoiceView = () => {
             </div>
 
             <div className="invoice-summary">
-              <div><span>Subtotal:</span><strong>{formatCurrency(subtotal)}</strong></div>
-              <div><span>IGST:</span><strong>{formatCurrency(gst)}</strong></div>
-              <div className="invoice-summary-total"><span>Total:</span><strong>{formatCurrency(total)}</strong></div>
-              <div><span>Received:</span><strong>{formatCurrency(0)}</strong></div>
-              <div><span>Balance:</span><strong>{formatCurrency(total)}</strong></div>
-              <div><span>Current Ledger Balance:</span><strong>{formatCurrency(81939)}</strong></div>
+              <div>
+                <span>Subtotal:</span>
+                <strong>{formatCurrency(subtotal)}</strong>
+              </div>
+              <div>
+                <span>IGST:</span>
+                <strong>{formatCurrency(gst)}</strong>
+              </div>
+              <div className="invoice-summary-total">
+                <span>Total:</span>
+                <strong>{formatCurrency(total)}</strong>
+              </div>
+              <div>
+                <span>Received:</span>
+                <strong>{formatCurrency(invoice?.paidAmount || 0)}</strong>
+              </div>
+              <div>
+                <span>Balance:</span>
+                <strong>
+                  {formatCurrency(invoice?.balanceAmount ?? total - Number(invoice?.paidAmount || 0))}
+                </strong>
+              </div>
+              <div>
+                <span>Current Ledger Balance:</span>
+                <strong>{formatCurrency(81939)}</strong>
+              </div>
               <div className="invoice-signature">
                 <span>For {entity.company}</span>
               </div>
@@ -984,12 +1362,58 @@ const InvoiceView = () => {
 };
 
 const InvoicesPage = () => {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { invoiceId } = useParams();
-  const path = window.location.pathname;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const path = location.pathname;
 
-  if (path.endsWith("/new")) return <NewInvoice />;
-  if (invoiceId) return <InvoiceView />;
-  return <InvoicesList />;
+  useEffect(() => {
+    const loadInvoices = async () => {
+      try {
+        setLoading(true);
+        const response = await invoiceService.getInvoices();
+        const list = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response)
+            ? response
+            : [];
+        setInvoices(list);
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.response?.data?.message || "Unable to load invoices.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInvoices();
+  }, []);
+
+  if (path.endsWith("/new")) {
+    return (
+      <NewInvoice
+        invoices={invoices}
+        setInvoices={setInvoices}
+        navigate={navigate}
+        location={location}
+      />
+    );
+  }
+
+  if (invoiceId) {
+    return (
+      <InvoiceView
+        invoices={invoices}
+        setInvoices={setInvoices}
+        navigate={navigate}
+        invoiceId={invoiceId}
+      />
+    );
+  }
+
+  return <InvoicesList invoices={invoices} loading={loading} navigate={navigate} />;
 };
 
 export default InvoicesPage;

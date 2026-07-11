@@ -270,6 +270,26 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.INVOICE_READ,
   },
   {
+    name: "Quotations",
+    path: "/dashboard/quotations",
+    icon: "invoices",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE],
+    requiredPermission: PERMISSIONS.INVOICE_READ,
+  },
+  {
+    name: "Receipts",
+    path: "/dashboard/receipts",
+    icon: "invoices",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER],
+    requiredPermission: PERMISSIONS.REPORTS_VIEW,
+  },
+  {
+    name: "Expenses",
+    path: "/dashboard/expenses",
+    icon: "invoices",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER],
+  },
+  {
     name: "Tasks",
     path: "/dashboard/tasks",
     icon: "tasks",
@@ -309,6 +329,44 @@ export const SIDEBAR_MENU = [
     icon: "reports",
     requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
     requiredPermission: PERMISSIONS.REPORTS_VIEW,
+    children: [
+      {
+        name: "Overview",
+        path: "/dashboard/reports",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Task Reports",
+        path: "/dashboard/reports/tasks",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Service Reports",
+        path: "/dashboard/reports/services",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Client Reports",
+        path: "/dashboard/reports/clients",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Employee Timelog",
+        path: "/dashboard/reports/employees",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+      {
+        name: "Export Center",
+        path: "/dashboard/reports/export",
+        requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
+        requiredPermission: PERMISSIONS.REPORTS_VIEW,
+      },
+    ],
   },
   {
     name: "Attendance",

@@ -1,9 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { usePermission } from "../../hooks/usePermission.js";
 import { getClientById } from "../../services/clientService.js";
+import quotationService from "../../services/quotationService.js";
 import { getServices, getWorkflowTemplates } from "../../services/serviceService.js";
 import { getTasks } from "../../services/taskService.js";
 import "./client-details.css";
@@ -30,6 +32,8 @@ const ClientDetails = () => {
   const [services, setServices] = useState([]);
   const [templatesMap, setTemplatesMap] = useState(new Map());
   const [tasks, setTasks] = useState([]);
+  const [quotations, setQuotations] = useState([]);
+  const [quotationsLoading, setQuotationsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Details");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,10 +50,11 @@ const ClientDetails = () => {
         setLoading(true);
         setError("");
 
-        const [clientData, serviceData, taskData] = await Promise.all([
+        const [clientData, serviceData, taskData, quotationResponse] = await Promise.all([
           getClientById(clientId),
           getServices(),
           getTasks(),
+          quotationService.getQuotations({ clientId, limit: 50 }),
         ]);
 
         setClient(clientData);
@@ -58,6 +63,15 @@ const ClientDetails = () => {
           Array.isArray(taskData)
             ? taskData.filter((task) => String(task.client?._id || task.client) === String(clientId))
             : []
+        );
+        setQuotations(
+          Array.isArray(quotationResponse?.data)
+            ? quotationResponse.data
+            : Array.isArray(quotationResponse)
+              ? quotationResponse
+              : Array.isArray(quotationResponse?.quotations)
+                ? quotationResponse.quotations
+                : []
         );
         // load workflow templates for assigned services
         try {
@@ -88,6 +102,7 @@ const ClientDetails = () => {
         setError(err.response?.data?.message || "Unable to load client details.");
       } finally {
         setLoading(false);
+        setQuotationsLoading(false);
       }
     };
 
@@ -450,6 +465,42 @@ const ClientDetails = () => {
     </div>
   );
 
+  const handleDeleteQuotation = async (quotationId) => {
+    if (!quotationId) return;
+    const confirmed = window.confirm("Are you sure you want to delete this quotation?");
+    if (!confirmed) return;
+
+    try {
+      await quotationService.deleteQuotation(quotationId);
+      setQuotations((current) => current.filter((quotation) => quotation._id !== quotationId));
+      toast.info("Quotation removed from the client list.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Unable to delete quotation.");
+    }
+  };
+
+  const handleViewQuotation = (quotation) => {
+    if (!quotation?._id) return;
+    navigate(`/dashboard/quotations/${quotation._id}`);
+  };
+
+  const handleDownloadQuotation = async (quotation) => {
+    if (!quotation?._id) return;
+
+    try {
+      const blob = await quotationService.downloadQuotationPdf(quotation._id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${quotation.quotationNumber || "quotation"}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("Quotation PDF downloaded.");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Unable to download quotation PDF.");
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "Details":
@@ -648,8 +699,66 @@ const ClientDetails = () => {
       case "Quotations":
         return (
           <div className="panel-card">
-            <h2>Quotations</h2>
-            <p className="text-slate-300">Create and manage client quotations.</p>
+            <div className="section-header">
+              <h2>Quotations</h2>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => navigate("/dashboard/quotations/new", { state: { clientContext: client } })}
+              >
+                New Quotation
+              </button>
+            </div>
+
+            {quotationsLoading ? (
+              <p className="text-slate-300" style={{ marginTop: 16 }}>Loading quotations...</p>
+            ) : quotations.length === 0 ? (
+              <div style={{ marginTop: 16 }}>
+                <p className="text-slate-300">No quotations created for this client yet.</p>
+              </div>
+            ) : (
+              <div className="quotation-table-wrapper" style={{ marginTop: 16 }}>
+                <table className="quotation-table">
+                  <thead>
+                    <tr>
+                      <th>Quotation No.</th>
+                      <th>Date</th>
+                      <th>Total Amount</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotations.map((quotation) => (
+                      <tr key={quotation._id}>
+                        <td>{quotation.quotationNumber || "—"}</td>
+                        <td>{formatDate(quotation.quotationDate)}</td>
+                        <td>{quotation.totalAmount ? `₹${Number(quotation.totalAmount).toLocaleString("en-IN")}` : "₹0"}</td>
+                        <td>{quotation.status || "Draft"}</td>
+                        <td className="quotation-actions-cell">
+                          <button type="button" className="button secondary" onClick={() => handleViewQuotation(quotation)}>
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            className="button secondary"
+                            onClick={() => navigate("/dashboard/quotations/new", { state: { quotationToEdit: quotation, clientContext: client } })}
+                          >
+                            Edit
+                          </button>
+                          <button type="button" className="button secondary" onClick={() => handleDownloadQuotation(quotation)}>
+                            Download PDF
+                          </button>
+                          <button type="button" className="button danger" onClick={() => handleDeleteQuotation(quotation._id)}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
 

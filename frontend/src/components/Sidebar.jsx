@@ -41,6 +41,7 @@ const Sidebar = () => {
   const location = useLocation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState({});
 
   const userRole = user?.role;
 
@@ -106,27 +107,57 @@ const Sidebar = () => {
               if (child.requiredPermission && !hasPermission(child.requiredPermission)) return false;
               return true;
             });
+
             const isGroupActive =
               visibleChildren.length > 0 &&
               visibleChildren.some((child) => location.pathname.startsWith(child.path));
 
+            const isExpanded = expandedMenus[item.path] || isGroupActive;
+
             return (
               <div key={item.path} className="sidebar-item-group">
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    isActive || isGroupActive ? "sidebar-link active" : "sidebar-link"
-                  }
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Icon size={19} strokeWidth={2} />
-                  <span>{item.name}</span>
-                  {visibleChildren.length > 0 && (
-                    <ChevronRight className="sidebar-chevron" size={16} />
-                  )}
-                </NavLink>
+                  {visibleChildren.length > 0 ? (
+                    <div
+                      className={
+                        isGroupActive || isExpanded
+                          ? "sidebar-link active"
+                          : "sidebar-link"
+                      }
+                      onClick={() =>
+                        setExpandedMenus((prev) => ({
+                          ...prev,
+                          [item.path]: !prev[item.path],
+                        }))
+                      }
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Icon size={19} strokeWidth={2} />
 
-                {visibleChildren.length > 0 && isGroupActive && (
+                      <span>{item.name}</span>
+
+                      <ChevronRight
+                        className="sidebar-chevron"
+                        size={16}
+                        style={{
+                          transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                          transition: "0.2s ease",
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        isActive ? "sidebar-link active" : "sidebar-link"
+                      }
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <Icon size={19} strokeWidth={2} />
+                      <span>{item.name}</span>
+                    </NavLink>
+                  )}
+
+                {visibleChildren.length > 0 && isExpanded && (
                   <div className="sidebar-submenu">
                     {visibleChildren.map((child) => (
                       <NavLink
