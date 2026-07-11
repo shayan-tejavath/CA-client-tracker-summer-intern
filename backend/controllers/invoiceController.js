@@ -250,6 +250,7 @@ export const createInvoice = async (req, res, next) => {
       invoiceNo,
       billingEntity,
       client,
+      quotationId,
       invoiceDate,
       dueDate,
       paymentTerm = "NET 15",
@@ -301,6 +302,7 @@ export const createInvoice = async (req, res, next) => {
       invoiceNo: normalizedInvoiceNo,
       billingEntity: billingEntity.trim(),
       client,
+      quotationId: quotationId && mongoose.Types.ObjectId.isValid(quotationId) ? quotationId : null,
       invoiceDate: new Date(invoiceDate),
       dueDate: new Date(dueDate),
       paymentTerm,
@@ -347,6 +349,7 @@ export const updateInvoice = async (req, res, next) => {
       invoiceNo,
       billingEntity,
       client,
+      quotationId,
       invoiceDate,
       dueDate,
       paymentTerm,
@@ -359,6 +362,10 @@ export const updateInvoice = async (req, res, next) => {
 
     if (invoiceNo !== undefined) invoice.invoiceNo = String(invoiceNo).trim();
     if (billingEntity !== undefined) invoice.billingEntity = String(billingEntity).trim();
+
+    if (quotationId !== undefined) {
+      invoice.quotationId = quotationId && mongoose.Types.ObjectId.isValid(quotationId) ? quotationId : null;
+    }
 
     if (client !== undefined) {
       if (!mongoose.Types.ObjectId.isValid(client)) {
