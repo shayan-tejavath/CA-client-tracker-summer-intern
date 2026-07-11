@@ -114,6 +114,12 @@ import EmployeeReports from "./pages/dashboard/reports/EmployeeReports";
 import ExportCenter from "./pages/dashboard/reports/ExportCenter";
 
 
+// ATTENDANCE
+
+import Attendance from "./pages/attendance/Attendance.jsx";
+
+
+
 // ROUTE PROTECTION
 
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
@@ -828,6 +834,25 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+
+
+          {/* ATTENDANCE */}
+
+          <Route
+            path="/dashboard/attendance"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "SuperAdmin",
+                ]}
+              >
+                <Attendance />
+              </ProtectedRoute>
+            }
+          />
+
+
 
 
 
