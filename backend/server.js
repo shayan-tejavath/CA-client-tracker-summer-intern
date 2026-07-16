@@ -24,6 +24,7 @@ import invoiceRoutes from "./routes/invoiceRoutes.js";
 import receiptRoutes from "./routes/receiptRoutes.js";
 import quotationRoutes from "./routes/quotationRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
+import todoRoutes from "./routes/todoRoutes.js";
 import { initializeTaskReminderScheduler } from "./services/taskReminderScheduler.js";
 import { sendEmailViaUMS } from "./services/umsService.js";
 
@@ -111,6 +112,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/receipts", receiptRoutes);
 app.use("/api/quotations", quotationRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/todos", todoRoutes);
 app.use(errorMiddleware);
 
 initializeTaskReminderScheduler();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,7 +16,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-import { useAuth } from "../context/AuthContext.jsx";
 import { usePermission } from "../hooks/usePermission.js";
 import { SIDEBAR_MENU } from "../constants/rbac.js";
 
@@ -33,27 +32,60 @@ const ICON_MAP = {
   admin: Shield,
   users: Users,
   userRoles: UserCog,
+  todo: ClipboardList,
+};
+
+const MENU_ACCESS = {
+  "/dashboard": ["dashboard:view"],
+
+  "/dashboard/todos": ["todo:read", "todo:create", "todo:update", "todo:delete", "todo:assign"],
+
+  "/dashboard/clients": ["client:read", "client:create", "client:update", "client:delete"],
+  "/dashboard/services": ["service:read", "service:create", "service:update", "service:delete"],
+  "/dashboard/invoices": ["invoice:read", "invoice:create", "invoice:update", "invoice:delete"],
+  "/dashboard/quotations": ["invoice:read", "invoice:create", "invoice:update", "invoice:delete"],
+  "/dashboard/receipts": ["reports:view", "invoice:read"],
+  "/dashboard/expenses": ["expense:read", "expense:create", "expense:update", "expense:delete"],
+  "/dashboard/tasks": ["task:read", "task:create", "task:update", "task:delete"],
+
+  "/dashboard/documents/in-out": ["document:read", "document:upload", "document:update", "document:delete"],
+  "/dashboard/documents/dsc": ["document:read", "document:upload", "document:update", "document:delete"],
+  "/dashboard/documents/collection": ["document:read", "document:upload", "document:update", "document:delete"],
+
+  "/dashboard/reports": ["reports:view"],
+  "/dashboard/reports/tasks": ["reports:view"],
+  "/dashboard/reports/services": ["reports:view"],
+  "/dashboard/reports/clients": ["reports:view"],
+  "/dashboard/reports/employees": ["reports:view"],
+  "/dashboard/reports/export": ["reports:view"],
+
+  "/dashboard/attendance": ["admin:settings"],
+  "/dashboard/admin": ["admin:access"],
+  "/dashboard/users": ["user:list"],
+  "/dashboard/user-roles": ["admin:settings"],
+  "/dashboard/permissions": ["admin:settings"],
 };
 
 const Sidebar = () => {
-  const { user } = useAuth();
-  const { hasPermission } = usePermission();
+  const { hasAnyPermission } = usePermission();
   const location = useLocation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
 
-  const userRole = user?.role;
+  const canAccessPath = (path) => {
+    const requiredPermissions = MENU_ACCESS[path];
+    if (!requiredPermissions) return true;
+    return hasAnyPermission(requiredPermissions);
+  };
 
-  const visibleMenuItems = SIDEBAR_MENU.filter((item) => {
-    if (!item.requiredRoles.includes(userRole)) return false;
-
-    if (item.requiredPermission && !hasPermission(item.requiredPermission)) {
-      return false;
-    }
-
-    return true;
-  });
+  const visibleMenuItems = useMemo(() => {
+    return SIDEBAR_MENU.filter((item) => {
+      const selfVisible = canAccessPath(item.path);
+      const childVisible = (item.children || []).some((child) => canAccessPath(child.path));
+      return selfVisible || childVisible;
+    });
+  }, [hasAnyPermission]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -102,11 +134,7 @@ const Sidebar = () => {
         <nav className="sidebar-nav" id="sidebar-navigation">
           {visibleMenuItems.map((item) => {
             const Icon = ICON_MAP[item.icon];
-            const visibleChildren = (item.children || []).filter((child) => {
-              if (!child.requiredRoles.includes(userRole)) return false;
-              if (child.requiredPermission && !hasPermission(child.requiredPermission)) return false;
-              return true;
-            });
+            const visibleChildren = (item.children || []).filter((child) => canAccessPath(child.path));
 
             const isGroupActive =
               visibleChildren.length > 0 &&
@@ -116,46 +144,41 @@ const Sidebar = () => {
 
             return (
               <div key={item.path} className="sidebar-item-group">
-                  {visibleChildren.length > 0 ? (
-                    <div
-                      className={
-                        isGroupActive || isExpanded
-                          ? "sidebar-link active"
-                          : "sidebar-link"
-                      }
-                      onClick={() =>
-                        setExpandedMenus((prev) => ({
-                          ...prev,
-                          [item.path]: !prev[item.path],
-                        }))
-                      }
-                      style={{ cursor: "pointer" }}
-                    >
-                      <Icon size={19} strokeWidth={2} />
+                {visibleChildren.length > 0 ? (
+                  <div
+                    className={isGroupActive || isExpanded ? "sidebar-link active" : "sidebar-link"}
+                    onClick={() =>
+                      setExpandedMenus((prev) => ({
+                        ...prev,
+                        [item.path]: !prev[item.path],
+                      }))
+                    }
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Icon size={19} strokeWidth={2} />
+                    <span>{item.name}</span>
 
-                      <span>{item.name}</span>
-
-                      <ChevronRight
-                        className="sidebar-chevron"
-                        size={16}
-                        style={{
-                          transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                          transition: "0.2s ease",
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        isActive ? "sidebar-link active" : "sidebar-link"
-                      }
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      <Icon size={19} strokeWidth={2} />
-                      <span>{item.name}</span>
-                    </NavLink>
-                  )}
+                    <ChevronRight
+                      className="sidebar-chevron"
+                      size={16}
+                      style={{
+                        transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                        transition: "0.2s ease",
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      isActive ? "sidebar-link active" : "sidebar-link"
+                    }
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Icon size={19} strokeWidth={2} />
+                    <span>{item.name}</span>
+                  </NavLink>
+                )}
 
                 {visibleChildren.length > 0 && isExpanded && (
                   <div className="sidebar-submenu">
@@ -186,9 +209,7 @@ const Sidebar = () => {
 
             <h4>Professional Edition</h4>
 
-            <p>
-              Secure workflow management for Chartered Accountants.
-            </p>
+            <p>Secure workflow management for Chartered Accountants.</p>
 
             <button type="button">Upgrade</button>
           </div>

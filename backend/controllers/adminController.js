@@ -30,6 +30,12 @@ const permissionKeyMap = {
     timeLog: "task:time-log",
     deleteNote: "task:note:delete",
   },
+  service: {
+    create: "service:create",
+    edit: "service:update",
+    view: "service:read",
+    delete: "service:delete",
+  },
   invoice: {
     create: "invoice:create",
     edit: "invoice:update",
@@ -53,11 +59,16 @@ const permissionKeyMap = {
     markPastFuture: "attendance:mark-past-future",
   },
   todo: {
+    create: "todo:create",
+    edit: "todo:update",
+    view: "todo:read",
+    delete: "todo:delete",
     assign: "todo:assign",
   },
   settings: {
     masters: "system:settings",
   },
+
   reports: {
     view: "reports:view",
   },

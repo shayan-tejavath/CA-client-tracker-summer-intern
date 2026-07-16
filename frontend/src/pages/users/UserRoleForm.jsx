@@ -77,11 +77,15 @@ const permissionSections = [
       { key: "mark", label: "Mark attendance", scoped: true },
       { key: "markPastFuture", label: "Mark past/future attendance" },
     ],
-  },
+    },
   {
     key: "todo",
     title: "To-Do",
     actions: [
+      { key: "create", label: "Create to-do" },
+      { key: "view", label: "View to-dos" },
+      { key: "edit", label: "Edit to-dos" },
+      { key: "delete", label: "Delete to-dos" },
       { key: "assign", label: "Assign to-do to other users" },
     ],
   },
@@ -90,6 +94,16 @@ const permissionSections = [
     title: "Settings",
     actions: [
       { key: "masters", label: "Manage Masters" },
+    ],
+  },
+  {
+    key: "service",
+    title: "Services",
+    actions: [
+      { key: "create", label: "Create service" },
+      { key: "view", label: "View services" },
+      { key: "edit", label: "Edit services" },
+      { key: "delete", label: "Delete services" },
     ],
   },
   {
