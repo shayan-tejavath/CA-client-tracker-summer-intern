@@ -65,8 +65,7 @@ export const PERMISSIONS = {
   SERVICE_CREATE: "service:create",
   SERVICE_READ: "service:read",
   SERVICE_UPDATE: "service:update",
-  SERVICE_DELETE: "service:delete",
-  SERVICE_LIST: "service:list",
+
 
   // Invoice Management
   INVOICE_CREATE: "invoice:create",
@@ -83,6 +82,13 @@ export const PERMISSIONS = {
   // System
   SYSTEM_SETTINGS: "system:settings",
   AUDIT_LOG_VIEW: "audit:view",
+
+  //TODO
+  TODO_CREATE: "todo:create",
+  TODO_READ: "todo:read",
+  TODO_UPDATE: "todo:update",
+  TODO_DELETE: "todo:delete",
+
 };
 
 // ============================================================================
@@ -126,11 +132,17 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.SERVICE_READ,
     PERMISSIONS.SERVICE_UPDATE,
     PERMISSIONS.SERVICE_DELETE,
-    PERMISSIONS.SERVICE_LIST,
+
 
     // Dashboard & Reports
     PERMISSIONS.DASHBOARD_VIEW,
     PERMISSIONS.REPORTS_VIEW,
+
+    //TODO
+    PERMISSIONS.TODO_CREATE,
+    PERMISSIONS.TODO_READ,
+    PERMISSIONS.TODO_UPDATE,
+    PERMISSIONS.TODO_DELETE,
   ],
 
   [ROLES.MANAGER]: [
@@ -167,10 +179,17 @@ export const ROLE_PERMISSIONS = {
 
     // Service (read-only)
     PERMISSIONS.SERVICE_READ,
-    PERMISSIONS.SERVICE_LIST,
+
 
     // Dashboard
     PERMISSIONS.DASHBOARD_VIEW,
+
+    //TODO
+    PERMISSIONS.TODO_CREATE,
+    PERMISSIONS.TODO_READ,
+    PERMISSIONS.TODO_UPDATE,
+    PERMISSIONS.TODO_DELETE,
+
   ],
 
   [ROLES.EMPLOYEE]: [
@@ -192,10 +211,16 @@ export const ROLE_PERMISSIONS = {
 
     // Service (read-only)
     PERMISSIONS.SERVICE_READ,
-    PERMISSIONS.SERVICE_LIST,
+
 
     // Dashboard
     PERMISSIONS.DASHBOARD_VIEW,
+
+    //TODO
+    PERMISSIONS.TODO_CREATE,
+    PERMISSIONS.TODO_READ,
+    PERMISSIONS.TODO_UPDATE,
+    PERMISSIONS.TODO_DELETE,
   ],
 
   [ROLES.CLIENT]: [
@@ -205,7 +230,6 @@ export const ROLE_PERMISSIONS = {
 
     // Service (read-only)
     PERMISSIONS.SERVICE_READ,
-    PERMISSIONS.SERVICE_LIST,
 
     // Dashboard (read-only)
     PERMISSIONS.DASHBOARD_VIEW,
@@ -234,11 +258,13 @@ export const ROUTE_PERMISSIONS = {
   "/api/documents/:id": PERMISSIONS.DOCUMENT_READ,
 
   // Service routes
-  "/api/services": PERMISSIONS.SERVICE_LIST,
   "/api/services/:id": PERMISSIONS.SERVICE_READ,
 
   // Dashboard
   "/api/dashboard/summary": PERMISSIONS.DASHBOARD_VIEW,
+
+  //TODO
+  "/api/todos": PERMISSIONS.TODO_READ,
 };
 
 // ============================================================================
@@ -251,6 +277,7 @@ export const FEATURE_ACCESS = {
   REPORTS: [ROLES.SUPER_ADMIN, ROLES.PARTNER],
   ADMIN_PANEL: [ROLES.SUPER_ADMIN],
   USER_MANAGEMENT: [ROLES.SUPER_ADMIN],
+  TODO_MANAGEMENT: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE],
 };
 
 // ============================================================================

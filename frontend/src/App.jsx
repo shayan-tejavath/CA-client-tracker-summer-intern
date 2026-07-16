@@ -91,7 +91,6 @@ import DocumentCollection from "./pages/documents/DocumentCollection.jsx";
 
 // DASHBOARD PAGES
 
-
 import AdminPanel from "./pages/dashboard/AdminPanel.jsx";
 
 import PermissionMatrix from "./pages/dashboard/PermissionMatrix.jsx";
@@ -104,7 +103,7 @@ import UserRolesList from "./pages/users/UserRolesList.jsx";
 
 import UserRoleForm from "./pages/users/UserRoleForm.jsx";
 
-//Reports 
+//Reports
 
 import Reports from "./pages/dashboard/Reports";
 import TaskReports from "./pages/dashboard/reports/TaskReports";
@@ -113,6 +112,8 @@ import ClientReports from "./pages/dashboard/reports/ClientReports";
 import EmployeeReports from "./pages/dashboard/reports/EmployeeReports";
 import ExportCenter from "./pages/dashboard/reports/ExportCenter";
 
+//TODO
+import TodoDashboardPage from "./pages/todos/TodoDashboardPage.jsx";
 
 // ATTENDANCE
 
@@ -153,11 +154,8 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-
         <Routes>
-
           {/* LANDING */}
-
           <Route
             path="/"
             element={
@@ -165,19 +163,13 @@ function App() {
             }
           />
 
-
-
           {/* LOGIN */}
-
           <Route
             path="/login"
             element={<Login />}
           />
 
-
-
           {/* DASHBOARD */}
-
           <Route
             path="/dashboard"
             element={
@@ -197,68 +189,45 @@ function App() {
             }
           />
 
-
-
           {/* CLIENTS */}
-
           <Route
             path="/dashboard/clients"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                ]}
+                requiredPermission={PERMISSIONS.CLIENT_READ}
               >
                 <ClientsList />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/clients/add"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                ]}
+                requiredPermission={PERMISSIONS.CLIENT_CREATE}
               >
                 <AddClient />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/clients/:clientId/edit"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                ]}
+                requiredPermission={PERMISSIONS.CLIENT_UPDATE}
               >
                 <EditClient />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/clients/:clientId"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                ]}
+                requiredPermission={PERMISSIONS.CLIENT_READ}
               >
                 <ClientDetails />
               </ProtectedRoute>
@@ -269,23 +238,14 @@ function App() {
             path="/dashboard/clients/:clientId/documents"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                  "Client",
-                ]}
+                requiredPermission={PERMISSIONS.DOCUMENT_READ}
               >
                 <ClientDocuments />
               </ProtectedRoute>
             }
           />
 
-
-
           {/* SERVICES */}
-
           <Route
             path="/dashboard/services"
             element={
@@ -303,8 +263,6 @@ function App() {
             }
           />
 
-
-
           <Route
             path="/dashboard/services/add"
             element={
@@ -318,8 +276,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-
 
           <Route
             path="/dashboard/services/edit/:id"
@@ -367,17 +323,10 @@ function App() {
           />
 
           {/* INVOICES */}
-
           <Route
             path="/dashboard/invoices"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                ]}
                 requiredPermission={PERMISSIONS.INVOICE_READ}
               >
                 <InvoiceDashboardPage />
@@ -389,12 +338,6 @@ function App() {
             path="/dashboard/invoices/new"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                ]}
                 requiredPermission={PERMISSIONS.INVOICE_CREATE}
               >
                 <InvoiceDashboardPage />
@@ -406,12 +349,6 @@ function App() {
             path="/dashboard/invoices/:invoiceId"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                ]}
                 requiredPermission={PERMISSIONS.INVOICE_READ}
               >
                 <InvoiceDashboardPage />
@@ -419,9 +356,7 @@ function App() {
             }
           />
 
-
           {/* QUOTATIONS */}
-
           <Route
             path="/dashboard/quotations"
             element={
@@ -471,80 +406,51 @@ function App() {
           />
 
           {/* TASKS */}
-
           <Route
             path="/dashboard/tasks"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                ]}
+                requiredPermission={PERMISSIONS.TASK_READ}
               >
                 <TasksList />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/tasks/add"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                ]}
+                requiredPermission={PERMISSIONS.TASK_CREATE}
               >
                 <CreateTask />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/tasks/:taskId/edit"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                ]}
+                requiredPermission={PERMISSIONS.TASK_UPDATE}
               >
                 <EditTask />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/tasks/:taskId"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                ]}
+                requiredPermission={PERMISSIONS.TASK_READ}
               >
                 <TaskDetails />
               </ProtectedRoute>
             }
           />
 
-
-
           {/* DOCUMENTS */}
-
           <Route
             path="/dashboard/documents"
             element={
@@ -556,13 +462,7 @@ function App() {
             path="/dashboard/documents/in-out"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                  "Client",
-                ]}
+                requiredPermission={PERMISSIONS.DOCUMENT_READ}
               >
                 <DocumentsInOutRegister />
               </ProtectedRoute>
@@ -573,13 +473,7 @@ function App() {
             path="/dashboard/documents/dsc"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                  "Client",
-                ]}
+                requiredPermission={PERMISSIONS.DOCUMENT_READ}
               >
                 <DscManagement />
               </ProtectedRoute>
@@ -590,46 +484,29 @@ function App() {
             path="/dashboard/documents/collection"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                  "Client",
-                ]}
+                requiredPermission={PERMISSIONS.DOCUMENT_READ}
               >
                 <DocumentCollection />
               </ProtectedRoute>
             }
           />
 
-
-
           <Route
             path="/dashboard/documents/upload"
             element={
               <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                  "Partner",
-                  "Manager",
-                  "Employee",
-                  "Client",
-                ]}
+                requiredPermission={PERMISSIONS.DOCUMENT_UPLOAD}
               >
                 <UploadDocument />
               </ProtectedRoute>
             }
           />
 
-
-
           {/* REPORTS */}
-
           <Route
             path="/dashboard/reports"
             element={
-              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+              <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_VIEW}>
                 <Reports />
               </ProtectedRoute>
             }
@@ -638,7 +515,7 @@ function App() {
           <Route
             path="/dashboard/reports/tasks"
             element={
-              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+              <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_VIEW}>
                 <TaskReports />
               </ProtectedRoute>
             }
@@ -647,7 +524,7 @@ function App() {
           <Route
             path="/dashboard/reports/services"
             element={
-              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+              <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_VIEW}>
                 <ServiceReports />
               </ProtectedRoute>
             }
@@ -656,7 +533,7 @@ function App() {
           <Route
             path="/dashboard/reports/clients"
             element={
-              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+              <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_VIEW}>
                 <ClientReports />
               </ProtectedRoute>
             }
@@ -665,7 +542,7 @@ function App() {
           <Route
             path="/dashboard/reports/employees"
             element={
-              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+              <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_VIEW}>
                 <EmployeeReports />
               </ProtectedRoute>
             }
@@ -674,15 +551,13 @@ function App() {
           <Route
             path="/dashboard/reports/export"
             element={
-              <ProtectedRoute allowedRoles={["SuperAdmin", "Partner"]}>
+              <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_VIEW}>
                 <ExportCenter />
               </ProtectedRoute>
             }
           />
 
-
           {/* ADMIN */}
-
           <Route
             path="/dashboard/admin"
             element={
@@ -697,7 +572,6 @@ function App() {
           />
 
           {/* USERS */}
-
           <Route
             path="/dashboard/users"
             element={
@@ -750,10 +624,7 @@ function App() {
             }
           />
 
-
-
           {/* PERMISSIONS */}
-
           <Route
             path="/dashboard/permissions"
             element={
@@ -766,6 +637,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           {/* RECEIPTS */}
           <Route
             path="/dashboard/expenses"
@@ -835,10 +707,7 @@ function App() {
             }
           />
 
-
-
           {/* ATTENDANCE */}
-
           <Route
             path="/dashboard/attendance"
             element={
@@ -852,19 +721,24 @@ function App() {
             }
           />
 
-
-
-
+          {/* TODO */}
+          <Route
+            path="/dashboard/todos"
+            element={
+              <ProtectedRoute
+                requiredPermission={PERMISSIONS.TODO_READ}
+              >
+                <TodoDashboardPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* FALLBACK */}
-
           <Route
             path="*"
             element={
               <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-
                 <div className="bg-slate-900 p-10 rounded-2xl border border-slate-700 text-center">
-
                   <h1 className="text-4xl font-bold mb-4">
                     Page Not Found
                   </h1>
@@ -872,15 +746,11 @@ function App() {
                   <p className="text-slate-400">
                     The page you are looking for does not exist.
                   </p>
-
                 </div>
               </div>
             }
           />
-
         </Routes>
-
-
 
         <ToastContainer
           position="bottom-right"
@@ -890,7 +760,6 @@ function App() {
           closeOnClick
           pauseOnHover
         />
-
       </BrowserRouter>
     </AuthProvider>
   );
