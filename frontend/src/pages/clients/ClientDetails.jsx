@@ -8,6 +8,7 @@ import { getClientById } from "../../services/clientService.js";
 import quotationService from "../../services/quotationService.js";
 import { getServices, getWorkflowTemplates } from "../../services/serviceService.js";
 import { getTasks } from "../../services/taskService.js";
+import { sendMessage as sendMessengerMessage } from "../../services/notificationService.js";
 import "./client-details.css";
 
 const tabs = [
@@ -21,6 +22,7 @@ const tabs = [
   "Expenses",
   "DSC",
   "Quotations",
+  "Messaging",
 ];
 
 const ClientDetails = () => {
@@ -37,12 +39,23 @@ const ClientDetails = () => {
   const [activeTab, setActiveTab] = useState("Details");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [messageForm, setMessageForm] = useState({ channel: "EMAIL", to: "", body: "" });
+  const [messageSubmitting, setMessageSubmitting] = useState(false);
   const [settings, setSettings] = useState({
     clientPortal: true,
     documentSharing: false,
     autoReminders: true,
     financeApproval: false,
   });
+
+  useEffect(() => {
+    if (client?.email || client?.mobile) {
+      setMessageForm((prev) => ({
+        ...prev,
+        to: prev.to || client.email || client.mobile || "",
+      }));
+    }
+  }, [client?.email, client?.mobile]);
 
   useEffect(() => {
     const loadClient = async () => {
@@ -253,6 +266,40 @@ const ClientDetails = () => {
 
   const toggleSetting = (key) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleMessageChange = (event) => {
+    const { name, value } = event.target;
+    setMessageForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSendClientMessage = async (event) => {
+    event.preventDefault();
+
+    if (!messageForm.to || !messageForm.body) {
+      toast.error("Please provide a recipient and message body.");
+      return;
+    }
+
+    try {
+      setMessageSubmitting(true);
+      await sendMessengerMessage({
+        channel: messageForm.channel,
+        to: messageForm.to,
+        subject: `Message for ${client?.clientName || "client"}`,
+        body: messageForm.body,
+        metadata: {
+          source: "ca-client-tracker",
+          clientId,
+        },
+      });
+      toast.success("Message queued successfully.");
+      setMessageForm((prev) => ({ ...prev, body: "" }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Message delivery failed.");
+    } finally {
+      setMessageSubmitting(false);
+    }
   };
 
   const renderSummaryCards = () => (
@@ -759,6 +806,40 @@ const ClientDetails = () => {
                 </table>
               </div>
             )}
+          </div>
+        );
+
+      case "Messaging":
+        return (
+          <div className="panel-card">
+            <div className="section-header">
+              <h2>Messaging</h2>
+              <span className="badge badge-info">Messenger delivery</span>
+            </div>
+            <p className="text-slate-300" style={{ marginBottom: 16 }}>
+              Send an outbound message to this client through the existing Messenger backend integration.
+            </p>
+            <form className="message-composer" onSubmit={handleSendClientMessage}>
+              <label className="message-composer__field">
+                <span>Channel</span>
+                <select name="channel" value={messageForm.channel} onChange={handleMessageChange}>
+                  <option value="EMAIL">Email</option>
+                  <option value="SMS">SMS</option>
+                  <option value="WHATSAPP">WhatsApp</option>
+                </select>
+              </label>
+              <label className="message-composer__field">
+                <span>Recipient</span>
+                <input name="to" value={messageForm.to} onChange={handleMessageChange} placeholder="Email or mobile" />
+              </label>
+              <label className="message-composer__field">
+                <span>Message</span>
+                <textarea name="body" rows={5} value={messageForm.body} onChange={handleMessageChange} placeholder="Write your message" />
+              </label>
+              <button type="submit" className="button primary" disabled={messageSubmitting}>
+                {messageSubmitting ? "Sending..." : "Send message"}
+              </button>
+            </form>
           </div>
         );
 

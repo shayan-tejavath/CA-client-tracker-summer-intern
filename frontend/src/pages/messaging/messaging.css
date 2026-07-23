@@ -1,0 +1,240 @@
+.messaging-page {
+  display: grid;
+  gap: 24px;
+  padding: 24px;
+}
+
+.messaging-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.messaging-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #6366f1;
+}
+
+.messaging-title {
+  margin: 0;
+  font-size: 2rem;
+  color: #111827;
+}
+
+.messaging-subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+  max-width: 680px;
+}
+
+.messaging-summary-card {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.messaging-summary-card > div {
+  min-width: 96px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.messaging-summary-card strong {
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.messaging-summary-card span {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.messaging-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1.05fr 0.95fr;
+}
+
+.messaging-panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.messaging-panel h2 {
+  margin: 0 0 20px;
+  font-size: 1.15rem;
+  color: #111827;
+}
+
+.messaging-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.messaging-field span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.messaging-field input,
+.messaging-field select,
+.messaging-field textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #f8fafc;
+}
+
+.messaging-submit {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.messaging-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.messaging-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.messaging-panel-header span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.messaging-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.messaging-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.messaging-item > div {
+  min-width: 0;
+}
+
+.messaging-item-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.messaging-item-meta {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.messaging-item-actions {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  justify-items: end;
+}
+
+.messaging-action-button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.messaging-action-button--cancel {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.messaging-advanced {
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  background: #f8fafc;
+}
+
+.messaging-advanced .messaging-field {
+  margin-bottom: 12px;
+}
+
+.messaging-advanced-toggle {
+  width: 100%;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 12px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 18px;
+}
+
+.messaging-submit {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.messaging-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.messaging-empty {
+  margin: 0;
+  color: #6b7280;
+}
+
+@media (max-width: 900px) {
+  .messaging-grid {
+    grid-template-columns: 1fr;
+  }
+}

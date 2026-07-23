@@ -339,6 +339,33 @@
   }
 }
 
+.message-composer {
+  display: grid;
+  gap: 14px;
+}
+
+.message-composer__field {
+  display: grid;
+  gap: 8px;
+}
+
+.message-composer__field span {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.message-composer__field input,
+.message-composer__field select,
+.message-composer__field textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #f8fafc;
+}
+
 .client-profile {
   display: grid;
   gap: 14px;

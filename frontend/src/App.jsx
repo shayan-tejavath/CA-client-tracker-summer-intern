@@ -114,6 +114,7 @@ import ExportCenter from "./pages/dashboard/reports/ExportCenter";
 
 //TODO
 import TodoDashboardPage from "./pages/todos/TodoDashboardPage.jsx";
+import MessagingPage from "./pages/messaging/MessagingPage.jsx";
 
 // ATTENDANCE
 
@@ -729,6 +730,17 @@ function App() {
                 requiredPermission={PERMISSIONS.TODO_READ}
               >
                 <TodoDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/messages"
+            element={
+              <ProtectedRoute
+                allowedRoles={["SuperAdmin", "Partner", "Manager", "Employee"]}
+              >
+                <MessagingPage />
               </ProtectedRoute>
             }
           />

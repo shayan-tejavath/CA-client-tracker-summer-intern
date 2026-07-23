@@ -32,6 +32,42 @@ export const clearAllNotifications = async () => {
   return response.data;
 };
 
+const unwrapApiResponse = (payload) => {
+  if (payload && typeof payload === "object" && Object.prototype.hasOwnProperty.call(payload, "data")) {
+    return payload.data;
+  }
+  return payload;
+};
+
+export const sendMessage = async (payload) => {
+  const response = await api.post("/messages", payload);
+  return response.data;
+};
+
+export const getMessages = async ({ page = 1, limit = 20 } = {}) => {
+  const response = await api.get("/messages", {
+    params: { page, limit },
+  });
+
+  const messagePayload = unwrapApiResponse(response.data);
+  if (Array.isArray(messagePayload)) {
+    return messagePayload;
+  }
+
+  return messagePayload?.data ?? messagePayload ?? [];
+};
+
+export const getMessageById = async (id) => {
+  const response = await api.get(`/messages/${id}`);
+  const messagePayload = unwrapApiResponse(response.data);
+  return messagePayload?.data ?? messagePayload ?? null;
+};
+
+export const cancelMessage = async (id) => {
+  const response = await api.delete(`/messages/${id}`);
+  return response.data;
+};
+
 export default {
   getNotifications,
   getUnreadNotificationsCount,
@@ -39,4 +75,8 @@ export default {
   markAllNotificationsAsRead,
   deleteNotification,
   clearAllNotifications,
+  sendMessage,
+  getMessages,
+  getMessageById,
+  cancelMessage,
 };

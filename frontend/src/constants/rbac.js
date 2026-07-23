@@ -331,6 +331,12 @@ export const SIDEBAR_MENU = [
     requiredPermission: PERMISSIONS.TASK_LIST,
   },
   {
+    name: "Messages",
+    path: "/dashboard/messages",
+    icon: "admin",
+    requiredRoles: [ROLES.SUPER_ADMIN, ROLES.PARTNER, ROLES.MANAGER, ROLES.EMPLOYEE],
+  },
+  {
     name: "Documents & DSC",
     path: "/dashboard/documents/in-out",
     icon: "documents",

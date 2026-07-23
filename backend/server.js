@@ -16,6 +16,7 @@ import dscRoutes from "./routes/dscRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 import workflowTemplateRoutes from "./routes/workflowTemplateRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import reportRoutes from "./routes/reportRoutes.js";
@@ -104,6 +105,7 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/dsc", dscRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/messages", messageRoutes);
 app.use("/api/workflow", workflowTemplateRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/reports", reportRoutes);
@@ -117,7 +119,23 @@ app.use(errorMiddleware);
 
 initializeTaskReminderScheduler();
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const requestedPort = Number(process.env.PORT || 5000);
+
+const startServer = (port) => {
+  const server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      console.warn(`Port ${port} is busy. Retrying on ${port + 1}...`);
+      startServer(port + 1);
+      return;
+    }
+
+    console.error(error);
+    process.exit(1);
+  });
+};
+
+startServer(requestedPort);

@@ -24,6 +24,7 @@ import { Badge } from "../../components/ui/badge.jsx";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import EditUserModal from "../../components/EditUserModal.jsx";
+import { sendMessage as sendMessengerMessage } from "../../services/notificationService.js";
 import {
   getAdminOverview,
   getAdminUsers,
@@ -66,6 +67,8 @@ const AdminPanel = () => {
     password: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [messageForm, setMessageForm] = useState({ channel: "EMAIL", to: "", body: "" });
+  const [messageSubmitting, setMessageSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -99,6 +102,39 @@ const AdminPanel = () => {
 
   const handleRoleChange = (event) => {
     setForm((prev) => ({ ...prev, role: event.target.value }));
+  };
+
+  const handleMessageChange = (event) => {
+    const { name, value } = event.target;
+    setMessageForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSendBroadcast = async (event) => {
+    event.preventDefault();
+
+    if (!messageForm.to || !messageForm.body) {
+      toast.error("Please provide a recipient and message body.");
+      return;
+    }
+
+    try {
+      setMessageSubmitting(true);
+      await sendMessengerMessage({
+        channel: messageForm.channel,
+        to: messageForm.to,
+        subject: "Admin broadcast",
+        body: messageForm.body,
+        metadata: {
+          source: "ca-admin-panel",
+        },
+      });
+      toast.success("Message queued successfully.");
+      setMessageForm({ channel: "EMAIL", to: "", body: "" });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Message delivery failed.");
+    } finally {
+      setMessageSubmitting(false);
+    }
   };
 
   const handleCreateUser = async (event) => {
@@ -293,6 +329,41 @@ const AdminPanel = () => {
                 </CardContent>
               </Card>
             </section>
+
+            <Card className="admin-card admin-card--soft">
+              <CardHeader className="admin-card-header">
+                <div>
+                  <CardTitle className="admin-card-title">Communications</CardTitle>
+                  <CardDescription className="admin-card-description">
+                    Send a quick outbound message from the admin console.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                <form className="message-composer" onSubmit={handleSendBroadcast}>
+                  <label className="message-composer__field">
+                    <span>Channel</span>
+                    <select name="channel" value={messageForm.channel} onChange={handleMessageChange}>
+                      <option value="EMAIL">Email</option>
+                      <option value="SMS">SMS</option>
+                      <option value="WHATSAPP">WhatsApp</option>
+                    </select>
+                  </label>
+                  <label className="message-composer__field">
+                    <span>Recipient</span>
+                    <input name="to" value={messageForm.to} onChange={handleMessageChange} placeholder="Email or mobile" />
+                  </label>
+                  <label className="message-composer__field">
+                    <span>Message</span>
+                    <textarea name="body" rows={5} value={messageForm.body} onChange={handleMessageChange} placeholder="Write your broadcast message" />
+                  </label>
+                  <button type="submit" className="button primary" disabled={messageSubmitting}>
+                    {messageSubmitting ? "Sending..." : "Send broadcast"}
+                  </button>
+                </form>
+              </CardContent>
+            </Card>
 
             <Card className="admin-card admin-card--table">
               <CardHeader className="admin-card-header admin-card-header--team">
