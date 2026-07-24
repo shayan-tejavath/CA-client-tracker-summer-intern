@@ -8,8 +8,6 @@ import {
   Download,
   Eye,
   FileText,
-  Mail,
-  MessageCircle,
   MoreVertical,
   Plus,
   Printer,
@@ -21,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { sharePage } from "../../utils/share.js";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { getClients } from "../../services/clientService.js";
@@ -1080,7 +1079,6 @@ const TotalsPanel = ({ totals, splitTax }) => (
 );
 
 const InvoiceView = ({ invoices, setInvoices, navigate, invoiceId }) => {
-  const [shareOpen, setShareOpen] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -1111,11 +1109,6 @@ const InvoiceView = ({ invoices, setInvoices, navigate, invoiceId }) => {
       return sum + (taxable * Number(row.gst || 0)) / 100;
     }, 0);
   const total = invoice?.grandTotal ?? subtotal + gst;
-
-  const notify = (message) => {
-    toast.success(message);
-    setShareOpen(false);
-  };
 
   const handleDelete = async () => {
     if (!invoice?._id) return;
@@ -1164,64 +1157,19 @@ const InvoiceView = ({ invoices, setInvoices, navigate, invoiceId }) => {
               onClick={() => {
                 if (!invoice || !invoice.client) return;
 
-                const clientPayload = {
-                  _id: invoice.client._id || invoice.clientId,
-                  name: invoice.client.clientName || invoice.client.name,
-                  email: invoice.client.email,
-                  mobile: invoice.client.mobile,
-                  phone: invoice.client.phone,
-                };
-
-                const invoiceUrl = window.location.href;
-                const subject = `Invoice ${invoice.invoiceNo || invoiceId}`;
-                const body = `Dear ${invoice.client.clientName || invoice.client.name || "Client"},\n\nPlease review your invoice here: ${invoiceUrl}\n\nThank you for your business.`;
-
-                navigate("/dashboard/messages", {
-                  state: {
-                    client: clientPayload,
-                    messageDraft: {
-                      subject,
-                      body,
-                      payload: {
-                        invoiceId: invoiceId,
-                        invoiceNo: invoice.invoiceNo,
-                        invoiceUrl,
-                      },
-                      metadata: {
-                        source: "ca-client-tracker-invoice",
-                        invoiceId: invoiceId,
-                        invoiceNo: invoice.invoiceNo,
-                        invoiceUrl,
-                      },
-                    },
-                  },
+                sharePage({
+                  title: `Invoice ${invoice.invoiceNo || invoiceId}`,
+                  text: `Invoice ${invoice.invoiceNo || invoiceId} for ${
+                    invoice.client.clientName || invoice.client.name || "Client"
+                  }`,
+                  url: window.location.href,
+                  copySuccessMessage: "Invoice link copied.",
                 });
               }}
             >
-              <MessageCircle size={16} />
-              Share via Message
+              <Share2 size={16} />
+              Share
             </button>
-            <div className="invoice-share-wrap">
-              <IconButton label="Share invoice" onClick={() => setShareOpen((current) => !current)}>
-                <Share2 size={18} />
-              </IconButton>
-              {shareOpen && (
-                <div className="invoice-share-menu">
-                  <button type="button" onClick={() => notify("Invoice email queued for the client.")}>
-                    <Mail size={16} />
-                    Send Email
-                  </button>
-                  <button type="button" onClick={() => notify("Invoice WhatsApp message queued for the client.")}>
-                    <MessageCircle size={16} />
-                    Send WhatsApp
-                  </button>
-                  <button type="button" onClick={() => notify("PDF generation is ready for the next integration step.")}>
-                    <Download size={16} />
-                    Download PDF
-                  </button>
-                </div>
-              )}
-            </div>
             <button
               type="button"
               className="invoice-warn-button"

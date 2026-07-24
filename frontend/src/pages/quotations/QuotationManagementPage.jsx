@@ -9,7 +9,6 @@ import {
   Download,
   Eye,
   FileText,
-  MessageCircle,
   Pencil,
   Plus,
   Printer,
@@ -21,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { sharePage } from "../../utils/share.js";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { getClients } from "../../services/clientService.js";
@@ -971,7 +971,6 @@ const QuotationForm = ({ quotations, setQuotations, navigate, location }) => {
 const QuotationView = ({ quotations, setQuotations, navigate, quotationId }) => {
   const [quotation, setQuotation] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     const loadQuotation = async () => {
@@ -1063,7 +1062,6 @@ const QuotationView = ({ quotations, setQuotations, navigate, quotationId }) => 
       setQuotation((current) => (current ? { ...current, status: "Sent" } : current));
       setQuotations((current) => current.map((item) => (item._id === quotation._id ? { ...item, status: "Sent" } : item)));
       toast.success(response?.message || "Quotation shared successfully.");
-      setShareOpen(false);
 
       if (response?.pdfBase64) {
         const binary = atob(response.pdfBase64);
@@ -1149,64 +1147,23 @@ const QuotationView = ({ quotations, setQuotations, navigate, quotationId }) => 
               type="button"
               className="invoice-secondary-button"
               onClick={() => {
-                if (!quotation || !quotation.clientId && !quotation.client) return;
+                if (!quotation || (!quotation.clientId && !quotation.client)) return;
 
-                const clientData = quotation.clientId || quotation.client || {};
-                const clientPayload = {
-                  _id: clientData._id || quotation.clientId || quotation.client?._id || "",
-                  name: clientData.clientName || clientData.name || "",
-                  email: clientData.email || "",
-                  mobile: clientData.mobile || "",
-                  phone: clientData.phone || "",
-                };
-
-                const quotationUrl = window.location.href;
-                const subject = `Quotation ${quotation.quotationNumber || quotationId}`;
-                const body = `Dear ${clientData.clientName || clientData.name || "Client"},\n\nPlease review your quotation here: ${quotationUrl}\n\nThank you for your business.`;
-
-                navigate("/dashboard/messages", {
-                  state: {
-                    client: clientPayload,
-                    messageDraft: {
-                      subject,
-                      body,
-                      payload: {
-                        quotationId: quotationId,
-                        quotationNo: quotation.quotationNumber,
-                        quotationUrl,
-                      },
-                      metadata: {
-                        source: "ca-client-tracker-quotation",
-                        quotationId: quotationId,
-                        quotationNo: quotation.quotationNumber,
-                        quotationUrl,
-                      },
-                    },
-                  },
+                sharePage({
+                  title: `Quotation ${quotation.quotationNumber || quotationId}`,
+                  text: `Quotation ${quotation.quotationNumber || quotationId} for ${
+                    (quotation.clientId || quotation.client)?.clientName ||
+                    (quotation.clientId || quotation.client)?.name ||
+                    "Client"
+                  }`,
+                  url: window.location.href,
+                  copySuccessMessage: "Quotation link copied.",
                 });
               }}
             >
-              <MessageCircle size={16} />
-              Share via Message
+              <Share2 size={16} />
+              Share
             </button>
-            <div className="invoice-share-wrap">
-              <button type="button" className="invoice-secondary-button" onClick={() => setShareOpen((current) => !current)}>
-                <Share2 size={16} />
-                Send
-              </button>
-              {shareOpen && (
-                <div className="invoice-share-menu">
-                  <button type="button" onClick={() => handleShareQuotation("email")}>
-                    <Send size={16} />
-                    Email
-                  </button>
-                  <button type="button" onClick={handleDownloadPdf}>
-                    <Download size={16} />
-                    Download PDF
-                  </button>
-                </div>
-              )}
-            </div>
             <button type="button" className="invoice-secondary-button" onClick={handleDownloadPdf}>
               <Download size={16} />
               Download PDF

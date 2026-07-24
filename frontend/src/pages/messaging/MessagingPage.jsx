@@ -64,6 +64,34 @@ const MessagingPage = () => {
     return date.toISOString().slice(0, 16);
   };
 
+  const getMessageError = (error) => {
+    if (!error) return "Message delivery failed.";
+
+    if (typeof error === "string") {
+      return error;
+    }
+
+    const responseData = error.response?.data;
+    if (responseData?.message && responseData?.error) {
+      const innerError = typeof responseData.error === "string"
+        ? responseData.error
+        : responseData.error?.message;
+      return `${responseData.message}${innerError ? ` ${innerError}` : ""}`.trim();
+    }
+
+    if (responseData?.message) {
+      return responseData.message;
+    }
+
+    if (responseData?.error) {
+      return typeof responseData.error === "string"
+        ? responseData.error
+        : responseData.error?.message || "Message delivery failed.";
+    }
+
+    return error.message || "Message delivery failed.";
+  };
+
   const parseJsonField = (value) => {
     if (!value || !value.trim()) return undefined;
 
@@ -232,7 +260,7 @@ const MessagingPage = () => {
       setForm(initialForm);
       await loadMessages();
     } catch (error) {
-      toast.error(error.message || error.response?.data?.message || "Message delivery failed.");
+      toast.error(getMessageError(error));
     } finally {
       setSubmitting(false);
     }
