@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import {
@@ -7,12 +8,15 @@ import {
   getMessages,
   sendMessage,
 } from "../../services/notificationService.js";
+import { getClients } from "../../services/clientService.js";
 import "./messaging.css";
 
 const initialForm = {
   channel: "EMAIL",
   from: "",
   to: "",
+  recipientName: "",
+  recipientPhone: "",
   subject: "",
   body: "",
   scheduledAt: "",
@@ -35,6 +39,23 @@ const MessagingPage = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState(null);
+
+  const location = useLocation();
+  const passedClient = location.state?.client || location.state?.clientContext || location.state?.selectedClient || null;
+  const passedMessageDraft = location.state?.messageDraft || null;
+
+  const getClientContact = (client, channel = form.channel) => {
+    if (!client) return "";
+
+    if (String(channel || "EMAIL").toUpperCase() === "EMAIL") {
+      return client.email || client.mobile || client.phone || "";
+    }
+
+    return client.mobile || client.phone || client.email || "";
+  };
 
   const formatDateTimeLocal = (value) => {
     if (!value) return "";
@@ -65,9 +86,53 @@ const MessagingPage = () => {
     }
   };
 
+  const loadClients = async () => {
+    try {
+      const data = await getClients({ search: clientSearch, limit: 100 });
+      const clientList =
+        Array.isArray(data) ? data : data?.clients ?? [];
+      setClients(clientList);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Unable to load clients.");
+    }
+  };
+
   useEffect(() => {
     loadMessages();
+    loadClients();
   }, []);
+
+  useEffect(() => {
+    loadClients();
+  }, [clientSearch]);
+
+  useEffect(() => {
+    if (!passedClient && !passedMessageDraft) return;
+
+    if (passedClient) {
+      setSelectedClientId(passedClient._id ?? null);
+      setForm((prev) => ({
+        ...prev,
+        to: getClientContact(passedClient),
+        recipientName: passedClient.name || prev.recipientName,
+        recipientPhone: passedClient.mobile || passedClient.phone || prev.recipientPhone,
+      }));
+    }
+
+    if (passedMessageDraft) {
+      setForm((prev) => ({
+        ...prev,
+        subject: passedMessageDraft.subject || prev.subject,
+        body: passedMessageDraft.body || prev.body,
+        payload: passedMessageDraft.payload
+          ? JSON.stringify(passedMessageDraft.payload, null, 2)
+          : prev.payload,
+        metadata: passedMessageDraft.metadata
+          ? JSON.stringify(passedMessageDraft.metadata, null, 2)
+          : prev.metadata,
+      }));
+    }
+  }, [passedClient, passedMessageDraft]);
 
   const refreshSelectedMessage = async (messageId) => {
     if (!messageId) return;
@@ -89,6 +154,26 @@ const MessagingPage = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  const handleClientSearchChange = (event) => {
+    setClientSearch(event.target.value);
+  };
+
+  const handleClientSelect = (client) => {
+    const alreadySelected = selectedClientId === client._id;
+    const nextSelectedId = alreadySelected ? null : client._id;
+
+    setSelectedClientId(nextSelectedId);
+
+    if (nextSelectedId) {
+      setForm((prev) => ({
+        ...prev,
+        to: getClientContact(client) || prev.to,
+        recipientName: client.name || prev.recipientName,
+        recipientPhone: client.mobile || client.phone || prev.recipientPhone,
+      }));
+    }
   };
 
   const handleAdvancedToggle = () => {
@@ -222,8 +307,49 @@ const MessagingPage = () => {
               <input name="from" value={form.from} onChange={handleChange} placeholder="Sender address" />
             </label>
             <label className="messaging-field">
+              <span>Search clients</span>
+              <input
+                value={clientSearch}
+                onChange={handleClientSearchChange}
+                placeholder="Search by name, email, or phone"
+              />
+            </label>
+            <div className="messaging-client-list">
+              {clients.length === 0 ? (
+                <p className="messaging-client-empty">No clients found.</p>
+              ) : (
+                <ul className="messaging-client-list-items">
+                  {clients.map((client) => (
+                    <li
+                      key={client._id}
+                      className={`messaging-client-list-item ${selectedClientId === client._id ? "selected" : ""}`}
+                      onClick={() => handleClientSelect(client)}
+                    >
+                      <div>
+                        <strong>{client.name}</strong>
+                        <p>{client.email || client.mobile || client.phone}</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={selectedClientId === client._id}
+                        readOnly
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <label className="messaging-field">
               <span>Recipient</span>
               <input name="to" value={form.to} onChange={handleChange} placeholder="name@example.com or +91..." />
+            </label>
+            <label className="messaging-field">
+              <span>Client name</span>
+              <input name="recipientName" value={form.recipientName} onChange={handleChange} placeholder="Optional client name" />
+            </label>
+            <label className="messaging-field">
+              <span>Client phone</span>
+              <input name="recipientPhone" value={form.recipientPhone} onChange={handleChange} placeholder="Optional client phone" />
             </label>
             <label className="messaging-field">
               <span>Subject</span>

@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   FileText,
+  MessageCircle,
   Pencil,
   Plus,
   Printer,
@@ -1144,6 +1145,50 @@ const QuotationView = ({ quotations, setQuotations, navigate, quotationId }) => 
           </div>
 
           <div className="invoice-view-actions">
+            <button
+              type="button"
+              className="invoice-secondary-button"
+              onClick={() => {
+                if (!quotation || !quotation.clientId && !quotation.client) return;
+
+                const clientData = quotation.clientId || quotation.client || {};
+                const clientPayload = {
+                  _id: clientData._id || quotation.clientId || quotation.client?._id || "",
+                  name: clientData.clientName || clientData.name || "",
+                  email: clientData.email || "",
+                  mobile: clientData.mobile || "",
+                  phone: clientData.phone || "",
+                };
+
+                const quotationUrl = window.location.href;
+                const subject = `Quotation ${quotation.quotationNumber || quotationId}`;
+                const body = `Dear ${clientData.clientName || clientData.name || "Client"},\n\nPlease review your quotation here: ${quotationUrl}\n\nThank you for your business.`;
+
+                navigate("/dashboard/messages", {
+                  state: {
+                    client: clientPayload,
+                    messageDraft: {
+                      subject,
+                      body,
+                      payload: {
+                        quotationId: quotationId,
+                        quotationNo: quotation.quotationNumber,
+                        quotationUrl,
+                      },
+                      metadata: {
+                        source: "ca-client-tracker-quotation",
+                        quotationId: quotationId,
+                        quotationNo: quotation.quotationNumber,
+                        quotationUrl,
+                      },
+                    },
+                  },
+                });
+              }}
+            >
+              <MessageCircle size={16} />
+              Share via Message
+            </button>
             <div className="invoice-share-wrap">
               <button type="button" className="invoice-secondary-button" onClick={() => setShareOpen((current) => !current)}>
                 <Share2 size={16} />

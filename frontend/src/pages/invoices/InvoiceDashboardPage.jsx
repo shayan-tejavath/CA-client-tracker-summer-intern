@@ -1158,6 +1158,49 @@ const InvoiceView = ({ invoices, setInvoices, navigate, invoiceId }) => {
           </div>
 
           <div className="invoice-view-actions">
+            <button
+              type="button"
+              className="invoice-secondary-button"
+              onClick={() => {
+                if (!invoice || !invoice.client) return;
+
+                const clientPayload = {
+                  _id: invoice.client._id || invoice.clientId,
+                  name: invoice.client.clientName || invoice.client.name,
+                  email: invoice.client.email,
+                  mobile: invoice.client.mobile,
+                  phone: invoice.client.phone,
+                };
+
+                const invoiceUrl = window.location.href;
+                const subject = `Invoice ${invoice.invoiceNo || invoiceId}`;
+                const body = `Dear ${invoice.client.clientName || invoice.client.name || "Client"},\n\nPlease review your invoice here: ${invoiceUrl}\n\nThank you for your business.`;
+
+                navigate("/dashboard/messages", {
+                  state: {
+                    client: clientPayload,
+                    messageDraft: {
+                      subject,
+                      body,
+                      payload: {
+                        invoiceId: invoiceId,
+                        invoiceNo: invoice.invoiceNo,
+                        invoiceUrl,
+                      },
+                      metadata: {
+                        source: "ca-client-tracker-invoice",
+                        invoiceId: invoiceId,
+                        invoiceNo: invoice.invoiceNo,
+                        invoiceUrl,
+                      },
+                    },
+                  },
+                });
+              }}
+            >
+              <MessageCircle size={16} />
+              Share via Message
+            </button>
             <div className="invoice-share-wrap">
               <IconButton label="Share invoice" onClick={() => setShareOpen((current) => !current)}>
                 <Share2 size={18} />

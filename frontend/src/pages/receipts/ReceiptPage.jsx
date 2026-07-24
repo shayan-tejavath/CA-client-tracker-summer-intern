@@ -298,6 +298,43 @@ const ReceiptPage = () => {
     }
   };
 
+  const handleOpenMessaging = () => {
+    if (!currentReceipt || !currentReceipt.client) return;
+
+    const clientPayload = {
+      _id: currentReceipt.client._id || currentReceipt.clientId,
+      name: currentReceipt.client.clientName || currentReceipt.client.name,
+      email: currentReceipt.client.email,
+      mobile: currentReceipt.client.mobile,
+      phone: currentReceipt.client.phone,
+    };
+
+    const receiptUrl = window.location.href;
+    const subject = `Receipt ${currentReceipt.receiptNo || receiptId}`;
+    const body = `Dear ${currentReceipt.client.clientName || currentReceipt.client.name || "Client"},\n\nPlease find your receipt here: ${receiptUrl}\n\nThank you for your payment.`;
+
+    navigate("/dashboard/messages", {
+      state: {
+        client: clientPayload,
+        messageDraft: {
+          subject,
+          body,
+          payload: {
+            receiptId: receiptId,
+            receiptNo: currentReceipt.receiptNo,
+            receiptUrl,
+          },
+          metadata: {
+            source: "ca-client-tracker-receipt",
+            receiptId: receiptId,
+            receiptNo: currentReceipt.receiptNo,
+            receiptUrl,
+          },
+        },
+      },
+    });
+  };
+
   const renderView = () => {
     const receiptData = currentReceipt;
     const settlements = receiptData?.settlements || [];
@@ -720,6 +757,10 @@ const ReceiptPage = () => {
 
           {!isCreateMode && !isEditing ? (
             <div className="invoice-view-actions">
+              <button type="button" className="invoice-secondary-button" onClick={handleOpenMessaging}>
+                <MessageCircle size={16} />
+                Send Receipt
+              </button>
               <button type="button" className="invoice-secondary-button" onClick={handleShare}>
                 <Share2 size={16} />
                 Share

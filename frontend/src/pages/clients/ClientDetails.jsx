@@ -848,6 +848,20 @@ const ClientDetails = () => {
     }
   };
 
+  const handleOpenMessaging = () => {
+    if (!client) return;
+
+    const payload = {
+      _id: client._id,
+      name: client.name,
+      email: client.email,
+      mobile: client.mobile,
+      phone: client.phone,
+    };
+
+    navigate("/dashboard/messages", { state: { client: payload } });
+  };
+
   return (
     <DashboardLayout>
       <section className="client-details-page">
@@ -861,6 +875,14 @@ const ClientDetails = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={handleOpenMessaging}
+              disabled={!client}
+            >
+              Send Message
+            </button>
             {hasRole(["SuperAdmin", "Partner"]) && (
               <Link className="button primary" to={`/dashboard/clients/${clientId}/edit`}>
                 Edit Client

@@ -102,6 +102,58 @@
   background: #f8fafc;
 }
 
+.messaging-client-list {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.messaging-client-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.messaging-client-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.messaging-client-list-item:last-child {
+  border-bottom: none;
+}
+
+.messaging-client-list-item:hover,
+.messaging-client-list-item.selected {
+  background: #eff6ff;
+}
+
+.messaging-client-list-item strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.messaging-client-list-item p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #6b7280;
+}
+
+.messaging-client-empty {
+  margin: 0;
+  color: #6b7280;
+  padding: 12px 14px;
+}
+
 .messaging-submit {
   width: 100%;
   border: none;
