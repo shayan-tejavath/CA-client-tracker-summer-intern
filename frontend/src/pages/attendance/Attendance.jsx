@@ -16,7 +16,7 @@ import AttendanceDailyView from "../../components/attendance/AttendanceDailyView
 import AttendanceMonthlyView from "../../components/attendance/AttendanceMonthlyView.jsx";
 import AttendanceModal from "../../components/attendance/AttendanceModal.jsx";
 import BulkAttendanceModal from "../../components/attendance/BulkAttendanceModal.jsx";
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import "../../styles/attendance.css";
 
 const Attendance = () => {
   const navigate = useNavigate();
@@ -180,42 +180,52 @@ const Attendance = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-6">
+      <div className="attendance-page">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <button onClick={() => navigate(-1)} className="text-blue-600 mb-2">
+        <div className="attendance-hero">
+          <div className="attendance-hero-copy">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="attendance-back-button"
+            >
               ← Attendance
             </button>
-            <h1 className="text-3xl font-bold">Attendance</h1>
+            <h1 className="attendance-title">Attendance</h1>
+            <p className="attendance-subtitle">
+              Track daily status, review monthly records, and manage self-attendance access.
+            </p>
           </div>
           <button
+            type="button"
             onClick={() => setShowBulkModal(true)}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="attendance-primary-action"
           >
             Bulk Attendance
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-6 border-b">
+        <div className="attendance-tabs">
           <button
+            type="button"
             onClick={() => setActiveTab("Daily")}
-            className={`px-6 py-2 font-semibold transition-colors ${
+            className={
               activeTab === "Daily"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600"
-            }`}
+                ? "attendance-tab attendance-tab--active"
+                : "attendance-tab"
+            }
           >
             Daily
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("Monthly")}
-            className={`px-6 py-2 font-semibold transition-colors ${
+            className={
               activeTab === "Monthly"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600"
-            }`}
+                ? "attendance-tab attendance-tab--active"
+                : "attendance-tab"
+            }
           >
             Monthly
           </button>

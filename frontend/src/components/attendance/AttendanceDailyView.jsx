@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaArrowLeft, FaArrowRight, FaEllipsisV } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 const AttendanceDailyView = ({
   selectedDate,
@@ -32,20 +32,38 @@ const AttendanceDailyView = ({
     "Paid Leave": 0,
   };
 
+  const statusClassNames = {
+    Present: "attendance-status-badge--present",
+    "Half Day": "attendance-status-badge--half-day",
+    Overtime: "attendance-status-badge--overtime",
+    Absent: "attendance-status-badge--absent",
+    Leave: "attendance-status-badge--leave",
+    "Paid Leave": "attendance-status-badge--paid-leave",
+  };
+
+  const summaryItems = [
+    { label: "Present", className: "attendance-summary-card--present" },
+    { label: "Half Day", className: "attendance-summary-card--half-day" },
+    { label: "Overtime", className: "attendance-summary-card--overtime" },
+    { label: "Absent", className: "attendance-summary-card--absent" },
+    { label: "Leave", className: "attendance-summary-card--leave" },
+    { label: "Paid Leave", className: "attendance-summary-card--paid-leave" },
+  ];
+
   attendanceRecords.forEach((record) => {
     statusCounts[record.status] = (statusCounts[record.status] || 0) + 1;
   });
 
   // Get attendance for a user
   const getAttendanceForUser = (userId) => {
-    return attendanceRecords.find((r) => r.userId._id === userId);
+    return attendanceRecords.find((r) => (r.userId?._id || r.userId) === userId);
   };
 
   // Handle right-click context menu
   const handleContextMenu = (e, user) => {
     e.preventDefault();
     setSelectedUserMenu(user._id);
-    setContextMenu({ x: e.pageX, y: e.pageY, user });
+    setContextMenu({ x: e.clientX, y: e.clientY, user });
   };
 
   // Close context menu when clicking elsewhere
@@ -57,81 +75,60 @@ const AttendanceDailyView = ({
   return (
     <div onClick={handleClickOutside}>
       {/* Date Navigation */}
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex gap-3 items-center">
+      <div className="attendance-controls">
+        <div className="attendance-control-group">
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-4 py-2.5 border-2 border-gray-300 rounded-lg font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            className="attendance-date-input"
           />
           <button
+            type="button"
             onClick={onPrevDate}
-            className="p-2.5 hover:bg-blue-100 rounded-lg text-gray-600 hover:text-blue-600 transition-colors"
+            className="attendance-icon-button"
+            aria-label="Previous date"
           >
             <FaArrowLeft size={18} />
           </button>
           <button
+            type="button"
             onClick={onNextDate}
-            className="p-2.5 hover:bg-blue-100 rounded-lg text-gray-600 hover:text-blue-600 transition-colors"
+            className="attendance-icon-button"
+            aria-label="Next date"
           >
             <FaArrowRight size={18} />
           </button>
         </div>
 
-        <div className="text-right">
-          <div className="text-blue-600 font-bold text-lg">{dayName}</div>
-          <div className="text-sm text-gray-600 font-medium">{selectedDate}</div>
+        <div className="attendance-date-display">
+          <div className="attendance-date-day">{dayName}</div>
+          <div className="attendance-date-value">{selectedDate}</div>
         </div>
       </div>
 
       {/* Status Summary Cards */}
-      <div className="grid grid-cols-6 gap-3 mb-8">
-        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border-2 border-green-300 shadow-sm">
-          <div className="text-3xl font-bold text-green-700">
-            {statusCounts["Present"]}
+      <div className="attendance-summary-grid">
+        {summaryItems.map((item) => (
+          <div
+            key={item.label}
+            className={`attendance-summary-card ${item.className}`}
+          >
+            <div className="attendance-summary-value">
+              {statusCounts[item.label]}
+            </div>
+            <div className="attendance-summary-label">{item.label}</div>
           </div>
-          <div className="text-xs font-bold text-green-800 uppercase tracking-wide">Present</div>
-        </div>
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-300 shadow-sm">
-          <div className="text-3xl font-bold text-blue-700">
-            {statusCounts["Half Day"]}
-          </div>
-          <div className="text-xs font-bold text-blue-800 uppercase tracking-wide">Half Day</div>
-        </div>
-        <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border-2 border-purple-300 shadow-sm">
-          <div className="text-3xl font-bold text-purple-700">
-            {statusCounts["Overtime"]}
-          </div>
-          <div className="text-xs font-bold text-purple-800 uppercase tracking-wide">Overtime</div>
-        </div>
-        <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border-2 border-red-300 shadow-sm">
-          <div className="text-3xl font-bold text-red-700">
-            {statusCounts["Absent"]}
-          </div>
-          <div className="text-xs font-bold text-red-800 uppercase tracking-wide">Absent</div>
-        </div>
-        <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-orange-300 shadow-sm">
-          <div className="text-3xl font-bold text-orange-700">
-            {statusCounts["Leave"]}
-          </div>
-          <div className="text-xs font-bold text-orange-800 uppercase tracking-wide">Leave</div>
-        </div>
-        <div className="p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl border-2 border-pink-300 shadow-sm">
-          <div className="text-3xl font-bold text-pink-700">
-            {statusCounts["Paid Leave"]}
-          </div>
-          <div className="text-xs font-bold text-pink-800 uppercase tracking-wide">Paid Leave</div>
-        </div>
+        ))}
       </div>
 
       {/* Employees List */}
-      <div className="bg-white rounded-xl border-2 border-gray-200 shadow-md overflow-hidden">
-        <div className="overflow-y-auto max-h-96">
+      <div className="attendance-panel">
+        <div className="attendance-list">
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading...</div>
+            <div className="attendance-empty-state">Loading...</div>
           ) : users.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="attendance-empty-state">
               No employees found
             </div>
           ) : (
@@ -143,19 +140,19 @@ const AttendanceDailyView = ({
                 return (
                   <div
                     key={user._id}
-                    className="flex items-center justify-between p-4 border-b border-gray-200 hover:bg-blue-50 transition-colors relative"
+                    className="attendance-employee-row"
                     onContextMenu={(e) => handleContextMenu(e, user)}
                   >
                     {/* User Info */}
-                    <div className="flex items-center gap-3 flex-1">
+                    <div className="attendance-user-info">
                       <img
                         src={user.photo || "https://via.placeholder.com/40"}
                         alt={user.name}
-                        className="w-11 h-11 rounded-full shadow-md border-2 border-gray-200"
+                        className="attendance-avatar"
                       />
-                      <div className="flex-1">
-                        <div className="font-bold text-sm text-gray-800">{user.name}</div>
-                        <div className="text-xs text-gray-600 font-medium flex gap-2">
+                      <div className="attendance-user-copy">
+                        <div className="attendance-user-name">{user.name}</div>
+                        <div className="attendance-user-meta">
                           {attendance ? (
                             <>
                               <span>
@@ -169,7 +166,7 @@ const AttendanceDailyView = ({
                             <span>No attendance marked</span>
                           )}
                           {hasSelfPermission && (
-                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">
+                            <span className="attendance-chip attendance-chip--self">
                               Self
                             </span>
                           )}
@@ -178,33 +175,21 @@ const AttendanceDailyView = ({
                     </div>
 
                     {/* Status and Actions */}
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        {attendance && (
-                          <div className="text-sm font-bold">
-                            <span
-                              className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
-                                attendance.status === "Present"
-                                  ? "bg-green-100 text-green-700"
-                                  : attendance.status === "Half Day"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : attendance.status === "Overtime"
-                                  ? "bg-purple-100 text-purple-700"
-                                  : attendance.status === "Absent"
-                                  ? "bg-red-100 text-red-700"
-                                  : attendance.status === "Leave"
-                                  ? "bg-orange-100 text-orange-700"
-                                  : "bg-pink-100 text-pink-700"
-                              }`}
-                            >
-                              {attendance.status}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                    <div className="attendance-row-actions">
+                      {attendance && (
+                        <span
+                          className={`attendance-status-badge ${
+                            statusClassNames[attendance.status] ||
+                            "attendance-status-badge--paid-leave"
+                          }`}
+                        >
+                          {attendance.status}
+                        </span>
+                      )}
                       <button
+                        type="button"
                         onClick={() => onMarkAttendance(user)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-bold shadow-md hover:shadow-lg transition-all"
+                        className="attendance-primary-action"
                       >
                         Mark Attendance
                       </button>
@@ -213,28 +198,30 @@ const AttendanceDailyView = ({
                     {/* Context Menu */}
                     {selectedUserMenu === user._id && contextMenu && (
                       <div
-                        className="absolute bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                        className="attendance-context-menu"
                         style={{ top: contextMenu.y + "px", left: contextMenu.x + "px" }}
                       >
                         {hasSelfPermission ? (
                           <button
+                            type="button"
                             onClick={() => {
                               onRevokePermission(user._id);
                               setContextMenu(null);
                               setSelectedUserMenu(null);
                             }}
-                            className="block w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
+                            className="attendance-context-action attendance-context-action--danger"
                           >
                             Disassign Self
                           </button>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => {
                               onGrantPermission(user._id);
                               setContextMenu(null);
                               setSelectedUserMenu(null);
                             }}
-                            className="block w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-600"
+                            className="attendance-context-action"
                           >
                             Assign Self
                           </button>
