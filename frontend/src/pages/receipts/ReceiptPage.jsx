@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { sharePage } from "../../utils/share.js";
 
 import DashboardLayout from "../../layouts/DashboardLayout.jsx";
 import { getClients } from "../../services/clientService.js";
@@ -278,24 +279,14 @@ const ReceiptPage = () => {
   };
 
   const handleShare = async () => {
-    const shareData = {
+    await sharePage({
       title: `Receipt ${currentReceipt?.receiptNo || receiptId}`,
       text: `Receipt ${currentReceipt?.receiptNo || receiptId} for ${
         currentReceipt?.client?.clientName || "client"
       }`,
       url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Receipt link copied.");
-      }
-    } catch {
-      toast.info("Share cancelled.");
-    }
+      copySuccessMessage: "Receipt link copied.",
+    });
   };
 
   const handleOpenMessaging = () => {
