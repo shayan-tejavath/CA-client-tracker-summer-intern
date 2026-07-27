@@ -8,6 +8,13 @@ import Document from "../models/Document.js";
 import Permission from "../models/Permission.js";
 
 const systemRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
+const blockedDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"];
+
+const isOfficialCompanyEmail = (email) => {
+  const domain = String(email || "").split("@")[1];
+  if (!domain) return false;
+  return !blockedDomains.includes(domain.toLowerCase());
+};
 
 const permissionKeyMap = {
   client: {
@@ -178,12 +185,17 @@ export const createUser = async (req, res, next) => {
       return res.status(400).json({ message: "Name, email, password and role are required." });
     }
 
+    const normalizedRole = role.trim();
+    if (["SuperAdmin", "Partner", "Manager", "Employee"].includes(normalizedRole) && !isOfficialCompanyEmail(email.trim())) {
+      return res.status(400).json({ message: "Internal users must use official company email addresses." });
+    }
+
     const roleNames = await getRoleNames();
     if (!roleNames.includes(role)) {
       return res.status(400).json({ message: "Invalid role provided." });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.trim() });
     if (existingUser) {
       return res.status(400).json({ message: "Email is already registered." });
     }
@@ -197,12 +209,12 @@ export const createUser = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
-      name,
-      username,
-      mobile,
-      email,
+      name: name.trim(),
+      username: username ? username.trim() : undefined,
+      mobile: mobile ? mobile.trim() : undefined,
+      email: email.trim(),
       password: hashedPassword,
-      role,
+      role: normalizedRole,
       photo: req.file ? `/uploads/${req.file.filename}` : req.body.photo,
       isActive: toBoolean(isActive, true),
     });

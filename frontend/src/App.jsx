@@ -24,6 +24,7 @@ import { PERMISSIONS } from "./constants/rbac.js";
 import LandingPage from "./pages/LandingPage.jsx";
 
 import Login from "./pages/Login.jsx";
+import SuperAdminSignup from "./pages/superadmin/SuperAdminSignup.jsx";
 
 
 
@@ -168,6 +169,18 @@ function App() {
           <Route
             path="/login"
             element={<Login />}
+          />
+
+          {/* SUPERADMIN SIGNUP */}
+          <Route
+            path="/superadmin/signup"
+            element={<SuperAdminSignup />}
+          />
+
+          {/* PUBLIC SIGNUP (friendly path) */}
+          <Route
+            path="/signup"
+            element={<SuperAdminSignup />}
           />
 
           {/* DASHBOARD */}
