@@ -266,6 +266,13 @@ const Login = () => {
 
             </form>
 
+            <div className="login-company-prompt">
+              <span>Don&apos;t have an account?</span>
+              <Link to="/signup" className="login-company-link" style={{ textDecoration: 'none' }}>
+                Sign Up
+              </Link>
+            </div>
+
             <div className="login-footer">
               Secure enterprise authentication powered by QwikCA
             </div>

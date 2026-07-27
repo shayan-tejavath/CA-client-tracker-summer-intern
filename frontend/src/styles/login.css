@@ -664,9 +664,30 @@ transform:translate(0,0);
    FOOTER
 =========================================================== */
 
+.login-company-prompt{
+    margin-top:14px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    color:#475569;
+    font-size:14px;
+    flex-wrap:wrap;
+}
+
+.login-company-link{
+    color:#2563eb;
+    font-weight:700;
+    transition:.2s;
+}
+
+.login-company-link:hover{
+    color:#1d4ed8;
+}
+
 .login-footer{
 
-    margin-top:28px;
+    margin-top:20px;
 
     text-align:center;
 
@@ -1111,4 +1132,10 @@ box-shadow:
 background:#2563eb;
 
 color:white;
+}
+
+/* Create Company button variant on login page */
+.login-create-company{
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 12px 28px rgba(6,95,70,0.12);
 }
