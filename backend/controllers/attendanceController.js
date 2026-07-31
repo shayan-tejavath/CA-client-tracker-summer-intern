@@ -1,11 +1,14 @@
 import Attendance from "../models/Attendance.js";
 import SelfAttendancePermission from "../models/SelfAttendancePermission.js";
 import User from "../models/User.js";
+import { getCompanyFilter } from "../utils/companyScope.js";
 
 // Get all users for attendance management
 export const getAllUsersForAttendance = async (req, res, next) => {
   try {
+    const companyFilter = getCompanyFilter(req);
     const users = await User.find({
+      ...(companyFilter || {}),
       role: { $in: ["Employee", "Partner", "Manager"] },
       isActive: true,
     })
@@ -45,7 +48,15 @@ export const getAttendanceByDate = async (req, res, next) => {
     const endDate = new Date(date);
     endDate.setHours(23, 59, 59, 999);
 
+    const companyFilter = getCompanyFilter(req);
+    const companyUsers = await User.find({
+      ...(companyFilter || {}),
+      role: { $in: ["Employee", "Partner", "Manager"] },
+    }).select("_id").lean();
+    const companyUserIds = companyUsers.map((user) => user._id);
+
     const attendanceRecords = await Attendance.find({
+      userId: { $in: companyUserIds },
       date: { $gte: startDate, $lte: endDate },
     })
       .populate("userId", "name email photo role")

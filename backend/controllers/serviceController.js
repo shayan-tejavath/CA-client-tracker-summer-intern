@@ -31,6 +31,12 @@ const toPlainObject = (item) => {
   return item;
 };
 
+const getCompanyFilter = (req) => {
+  const companyId = req.user?.companyId || req.user?.company?.id || null;
+  if (!companyId) return null;
+  return { companyId };
+};
+
 const attachAssignmentStats = async (services = []) => {
   const safeServices = services.map(toPlainObject).filter(Boolean);
   if (safeServices.length === 0) return [];
@@ -117,7 +123,8 @@ const buildServiceUpdateMessage = (serviceName, updates = {}) => {
 
 export const getServices = async (req, res, next) => {
   try {
-    const services = await Service.find().sort({ createdAt: -1 }).lean();
+    const companyFilter = getCompanyFilter(req) || {};
+    const services = await Service.find(companyFilter).sort({ createdAt: -1 }).lean();
     const enriched = await attachAssignmentStats(services);
     res.json(enriched);
   } catch (error) {
@@ -132,7 +139,8 @@ export const getServiceById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const service = await Service.findById(id).lean();
+    const companyFilter = getCompanyFilter(req) || {};
+    const service = await Service.findOne({ _id: id, ...companyFilter }).lean();
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
@@ -151,7 +159,9 @@ export const createService = async (req, res, next) => {
       return res.status(400).json({ message: validationError });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const service = await Service.create({
+      companyId: companyFilter?.companyId || null,
       serviceCategory: req.body.serviceCategory,
       subService: req.body.subService,
       frequency: req.body.frequency,
@@ -176,8 +186,9 @@ export const updateService = async (req, res, next) => {
       return res.status(400).json({ message: validationError });
     }
 
-    const service = await Service.findByIdAndUpdate(
-      id,
+    const companyFilter = getCompanyFilter(req) || {};
+    const service = await Service.findOneAndUpdate(
+      { _id: id, ...companyFilter },
       {
         serviceCategory: req.body.serviceCategory,
         subService: req.body.subService,
@@ -209,7 +220,8 @@ export const deleteService = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const service = await Service.findById(id);
+    const companyFilter = getCompanyFilter(req) || {};
+    const service = await Service.findOne({ _id: id, ...companyFilter });
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }

@@ -4,42 +4,44 @@ import Service from "../models/Service.js";
 import User from "../models/User.js";
 import ExcelJS from "exceljs";
 import { Parser } from "json2csv";
+import { getCompanyFilter } from "../utils/companyScope.js";
 
 /**
  * GET /api/reports/analytics
  */
 export const getAnalytics = async (req, res) => {
   try {
-    const totalClients = await Client.countDocuments();
+    const companyFilter = getCompanyFilter(req) || {};
+    const totalClients = await Client.countDocuments(companyFilter);
 
-    const activeClients = await Client.countDocuments({
-      status: "Active",
-    });
+    const activeClients = await Client.countDocuments({ ...companyFilter, status: "Active" });
 
-    const totalTasks = await Task.countDocuments();
+    const totalTasks = await Task.countDocuments(companyFilter);
 
-    const completedTasks = await Task.countDocuments({
-      status: "Completed",
-    });
+    const completedTasks = await Task.countDocuments({ ...companyFilter, status: "Completed" });
 
     const pendingTasks = await Task.countDocuments({
+      ...companyFilter,
       status: {
         $in: ["Pending", "In Progress"],
       },
     });
 
     const overdueTasks = await Task.countDocuments({
+      ...companyFilter,
       dueDate: { $lt: new Date() },
       status: { $ne: "Completed" },
     });
 
     const totalEmployees = await User.countDocuments({
+      ...companyFilter,
       role: {
         $in: ["Employee", "Manager", "Partner"],
       },
     });
 
     const taskStatusAgg = await Task.aggregate([
+      { $match: companyFilter },
       {
         $group: {
           _id: "$status",
@@ -57,6 +59,7 @@ export const getAnalytics = async (req, res) => {
     }));
 
     const taskPriorityAgg = await Task.aggregate([
+      { $match: companyFilter },
       {
         $group: {
           _id: "$priority",
@@ -81,6 +84,7 @@ export const getAnalytics = async (req, res) => {
     const clientGrowthAgg = await Client.aggregate([
       {
         $match: {
+          ...companyFilter,
           createdAt: { $gte: sixMonthsAgo },
         },
       },
@@ -109,6 +113,7 @@ export const getAnalytics = async (req, res) => {
     const monthlyTasksAgg = await Task.aggregate([
       {
         $match: {
+          ...companyFilter,
           createdAt: { $gte: sixMonthsAgo },
         },
       },
@@ -163,7 +168,8 @@ export const getAnalytics = async (req, res) => {
  */
 export const getTaskReports = async (req, res) => {
   try {
-    const tasks = await Task.find()
+    const companyFilter = getCompanyFilter(req) || {};
+    const tasks = await Task.find(companyFilter)
       .populate("client", "clientName")
       .populate("assignedTo", "name role")
       .sort({ createdAt: -1 });
@@ -204,7 +210,8 @@ export const getTaskReports = async (req, res) => {
  */
 export const getClientReports = async (req, res) => {
   try {
-    const clients = await Client.find()
+    const companyFilter = getCompanyFilter(req) || {};
+    const clients = await Client.find(companyFilter)
       .populate("assignedManager", "name email role")
       .populate("assignedServices", "serviceCategory subService")
       .sort({ createdAt: -1 });
@@ -248,7 +255,8 @@ export const getClientReports = async (req, res) => {
  */
 export const getServiceReports = async (req, res) => {
   try {
-    const services = await Service.find().sort({
+    const companyFilter = getCompanyFilter(req) || {};
+    const services = await Service.find(companyFilter).sort({
       serviceCategory: 1,
       subService: 1,
     });
@@ -256,6 +264,7 @@ export const getServiceReports = async (req, res) => {
     const formattedServices = await Promise.all(
       services.map(async (service) => {
         const clientCount = await Client.countDocuments({
+          ...companyFilter,
           assignedServices: service._id,
         });
 
@@ -292,7 +301,9 @@ export const getServiceReports = async (req, res) => {
  */
 export const getEmployeeReports = async (req, res) => {
   try {
+    const companyFilter = getCompanyFilter(req) || {};
     const employees = await User.find({
+      ...companyFilter,
       role: {
         $in: ["Employee", "Manager", "Partner"],
       },
@@ -301,15 +312,18 @@ export const getEmployeeReports = async (req, res) => {
     const employeeReports = await Promise.all(
       employees.map(async (employee) => {
         const assignedTasks = await Task.countDocuments({
+          ...companyFilter,
           assignedTo: employee._id,
         });
 
         const completedTasks = await Task.countDocuments({
+          ...companyFilter,
           assignedTo: employee._id,
           status: "Completed",
         });
 
         const pendingTasks = await Task.countDocuments({
+          ...companyFilter,
           assignedTo: employee._id,
           status: {
             $in: ["Pending", "In Progress"],
@@ -317,6 +331,7 @@ export const getEmployeeReports = async (req, res) => {
         });
 
         const overdueTasks = await Task.countDocuments({
+          ...companyFilter,
           assignedTo: employee._id,
           dueDate: { $lt: new Date() },
           status: { $ne: "Completed" },
@@ -371,7 +386,8 @@ export const exportReport = async (req, res) => {
     switch (type) {
       case "tasks":
         {
-          const tasks = await Task.find()
+          const companyFilter = getCompanyFilter(req) || {};
+          const tasks = await Task.find(companyFilter)
             .populate("client", "clientName")
             .populate("assignedTo", "name");
 
@@ -388,7 +404,8 @@ export const exportReport = async (req, res) => {
 
       case "clients":
         {
-          const clients = await Client.find();
+          const companyFilter = getCompanyFilter(req) || {};
+          const clients = await Client.find(companyFilter);
 
           data = clients.map((client) => ({
             Client: client.clientName,
@@ -402,7 +419,8 @@ export const exportReport = async (req, res) => {
 
       case "services":
         {
-          const services = await Service.find();
+          const companyFilter = getCompanyFilter(req) || {};
+          const services = await Service.find(companyFilter);
 
           data = services.map((service) => ({
             ServiceCategory: service.serviceCategory,
@@ -415,7 +433,9 @@ export const exportReport = async (req, res) => {
 
       case "employees":
         {
+          const companyFilter = getCompanyFilter(req) || {};
           const employees = await User.find({
+            ...companyFilter,
             role: {
               $in: ["Employee", "Manager", "Partner"],
             },

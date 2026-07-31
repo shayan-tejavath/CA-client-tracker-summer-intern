@@ -2,6 +2,13 @@
 
 const clientSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     // BASIC CLIENT INFO
     clientName: {
       type: String,
@@ -174,7 +181,6 @@ const clientSchema = new mongoose.Schema(
       required: [true, "PAN is required"],
       uppercase: true,
       trim: true,
-      unique: true,
       match: [
         /^[A-Z]{5}[0-9]{4}[A-Z]$/,
         "PAN must be a valid format",
@@ -186,7 +192,6 @@ const clientSchema = new mongoose.Schema(
       required: [true, "GSTIN is required"],
       uppercase: true,
       trim: true,
-      unique: true,
       match: [
         /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
         "GSTIN must be a valid format",

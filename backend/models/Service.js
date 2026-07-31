@@ -2,6 +2,12 @@
 
 const serviceSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
     serviceCategory: {
       type: String,
       required: [true, "Service category is required"],

@@ -7,6 +7,7 @@ import Task from "../models/Task.js";
 
 import { ROLES } from "../middleware/roleMiddleware.js";
 import { notifyClientDocumentUploaded } from "../services/notificationService.js";
+import { getCompanyFilter } from "../utils/companyScope.js";
 
 
 
@@ -31,6 +32,16 @@ const validateDocumentPayload = (data) => {
 
 
 // POPULATION
+
+const getScopedClientIds = async (req) => {
+  const companyFilter = getCompanyFilter(req);
+  if (!companyFilter) {
+    return [];
+  }
+
+  const clients = await Client.find(companyFilter).select("_id").lean();
+  return clients.map((client) => client._id);
+};
 
 const documentPopulate = (query) =>
   query
@@ -89,6 +100,11 @@ export const uploadDocument = async (
           message:
             "Clients may only upload documents for their own account.",
         });
+      }
+    } else {
+      const scopedClientIds = await getScopedClientIds(req);
+      if (scopedClientIds.length > 0 && !scopedClientIds.some((clientId) => clientId.toString() === req.body.client)) {
+        return res.status(403).json({ message: "Forbidden" });
       }
     }
 
@@ -287,6 +303,7 @@ export const getDocuments = async (
     } = req.query;
 
     const filter = {};
+    const scopedClientIds = await getScopedClientIds(req);
 
     // ARCHIVE FILTER
     if (
@@ -317,6 +334,12 @@ export const getDocuments = async (
         )
       ) {
         filter.client = clientId;
+      }
+
+      if (scopedClientIds.length > 0) {
+        filter.client = {
+          $in: scopedClientIds,
+        };
       }
     }
 
@@ -433,6 +456,7 @@ export const getDocumentById =
         });
       }
 
+      const scopedClientIds = await getScopedClientIds(req);
       const document =
         await documentPopulate(
           Document.findById(id)
@@ -443,6 +467,10 @@ export const getDocumentById =
           message:
             "Document not found",
         });
+      }
+
+      if (scopedClientIds.length > 0 && !scopedClientIds.some((clientId) => clientId.toString() === document.client?._id?.toString() || clientId.toString() === document.client?.toString())) {
+        return res.status(403).json({ message: "Forbidden" });
       }
 
       // CLIENT ACCESS CHECK
