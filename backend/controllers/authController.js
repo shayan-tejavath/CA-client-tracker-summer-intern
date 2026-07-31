@@ -176,7 +176,61 @@ export const register = async (
     const hashedPassword =
       await bcrypt.hash(password, salt);
 
-    // Create user
+    if (normalizedRole === "SuperAdmin") {
+      const company = await Company.create({
+        companyName: companyName.trim(),
+        name: companyName.trim(),
+        ownerName: ownerName?.trim() || name?.trim() || "Super Admin",
+        email: email.trim(),
+        mobile: mobile?.trim() || "",
+        owner: null,
+      });
+
+      const user = await User.create({
+        name: ownerName?.trim() || name?.trim() || "Super Admin",
+        username: username?.trim(),
+        mobile: mobile?.trim(),
+        email: email.trim(),
+        password: hashedPassword,
+        role: normalizedRole,
+        companyId: company._id,
+      });
+
+      await Company.findByIdAndUpdate(company._id, {
+        owner: user._id,
+        ownerName: ownerName?.trim() || name?.trim() || "Super Admin",
+      });
+
+      if (internalRoles.includes(user.role)) {
+        try {
+          await notifyEmployeeWelcome({
+            user,
+          });
+        } catch (err) {
+          console.error(
+            "Welcome email failed:",
+            err.message
+          );
+        }
+      }
+
+      const permissions = await resolveRolePermissions(user.role);
+
+      res.status(201).json({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: {
+          id: company._id,
+          name: company.companyName || company.name,
+        },
+        token: generateToken(user),
+        permissions,
+      });
+      return;
+    }
+
     const user = await User.create({
       name: ownerName?.trim() || name?.trim() || "Super Admin",
       username: username?.trim(),
@@ -185,14 +239,6 @@ export const register = async (
       password: hashedPassword,
       role: normalizedRole,
     });
-
-    if (normalizedRole === "SuperAdmin") {
-      await Company.create({
-        name: companyName.trim(),
-        ownerName: ownerName.trim(),
-        owner: user._id,
-      });
-    }
 
     if (internalRoles.includes(user.role)) {
       try {
@@ -292,6 +338,15 @@ export const signup = async (req, res, next) => {
     // Force role as SuperAdmin
     const role = "SuperAdmin";
 
+    const company = await Company.create({
+      companyName: companyName.trim(),
+      name: companyName.trim(),
+      ownerName: ownerName.trim(),
+      email: email.trim(),
+      mobile: mobile.trim(),
+      owner: null,
+    });
+
     // Create user record (owner)
     const user = await User.create({
       name: ownerName.trim(),
@@ -300,13 +355,12 @@ export const signup = async (req, res, next) => {
       email: email.trim(),
       password: hashedPassword,
       role,
+      companyId: company._id,
     });
 
-    // Create company record
-    const company = await Company.create({
-      name: companyName.trim(),
-      ownerName: ownerName.trim(),
+    await Company.findByIdAndUpdate(company._id, {
       owner: user._id,
+      ownerName: ownerName.trim(),
     });
 
     // Notify welcome for internal roles
@@ -329,8 +383,9 @@ export const signup = async (req, res, next) => {
       role: user.role,
       company: {
         id: company._id,
-        name: company.name,
+        name: company.companyName || company.name,
       },
+      companyId: company._id,
       token: generateToken(user),
       permissions,
     });

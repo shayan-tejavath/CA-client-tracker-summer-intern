@@ -46,6 +46,16 @@ const validateClientData = (data) => {
   return null;
 };
 
+const getCompanyFilter = (req) => {
+  const companyId = req.user?.companyId || req.user?.company?.id || null;
+
+  if (!companyId) {
+    return null;
+  }
+
+  return { companyId };
+};
+
 const createServiceAssignmentWithTasks = async ({
   clientId,
   serviceId,
@@ -88,10 +98,14 @@ export const getClients = async (req, res, next) => {
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const query = getCompanyFilter(req) || {};
 
     if (req.user?.role === ROLES.Client) {
-      const client = await Client.findOne({ email: req.user.email });
+      const companyFilter = getCompanyFilter(req);
+      const client = await Client.findOne({
+        email: req.user.email,
+        ...(companyFilter || {}),
+      });
       if (!client) {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -159,7 +173,11 @@ export const getClientById = async (req, res, next) => {
       });
     }
 
-    const client = await Client.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const client = await Client.findOne({
+      _id: id,
+      ...(companyFilter || {}),
+    });
 
     if (!client) {
       return res.status(404).json({
@@ -168,7 +186,11 @@ export const getClientById = async (req, res, next) => {
     }
 
     if (req.user?.role === ROLES.Client) {
-      const currentClient = await Client.findOne({ email: req.user.email });
+      const companyFilter = getCompanyFilter(req);
+      const currentClient = await Client.findOne({
+        email: req.user.email,
+        ...(companyFilter || {}),
+      });
       if (
         !currentClient ||
         currentClient._id.toString() !== client._id.toString()
@@ -194,7 +216,9 @@ export const createClient = async (req, res, next) => {
       });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const existingClient = await Client.findOne({
+      ...(companyFilter || {}),
       $or: [
         {
           pan: req.body.pan.toUpperCase(),
@@ -216,6 +240,7 @@ export const createClient = async (req, res, next) => {
 
     const client = await Client.create({
       ...req.body,
+      companyId: companyFilter?.companyId || null,
       assignedServices,
       assignedEmployees,
       profileImage: req.file
@@ -274,7 +299,11 @@ export const updateClient = async (req, res, next) => {
       });
     }
 
-    const client = await Client.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const client = await Client.findOne({
+      _id: id,
+      ...(companyFilter || {}),
+    });
 
     if (!client) {
       return res.status(404).json({
@@ -299,6 +328,7 @@ export const updateClient = async (req, res, next) => {
 
       const duplicateClient = await Client.findOne({
         _id: { $ne: id },
+        ...(companyFilter || {}),
         $or: [{ pan: normalizedPan }, { gstin: normalizedGstin }],
       });
 
@@ -319,8 +349,11 @@ export const updateClient = async (req, res, next) => {
         ? normalizeArrayField(req.body.assignedEmployees)
         : normalizeArrayField(client.assignedEmployees);
 
-    const updatedClient = await Client.findByIdAndUpdate(
-      id,
+    const updatedClient = await Client.findOneAndUpdate(
+      {
+        _id: id,
+        ...(companyFilter || {}),
+      },
       {
         ...req.body,
         assignedServices,
@@ -387,7 +420,11 @@ export const updateClientProfileImage = async (req, res, next) => {
       });
     }
 
-    const client = await Client.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const client = await Client.findOne({
+      _id: id,
+      ...(companyFilter || {}),
+    });
 
     if (!client) {
       return res.status(404).json({
@@ -421,7 +458,11 @@ export const archiveClient = async (req, res, next) => {
       });
     }
 
-    const client = await Client.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const client = await Client.findOne({
+      _id: id,
+      ...(companyFilter || {}),
+    });
 
     if (!client) {
       return res.status(404).json({
@@ -453,7 +494,11 @@ export const restoreClient = async (req, res, next) => {
       });
     }
 
-    const client = await Client.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const client = await Client.findOne({
+      _id: id,
+      ...(companyFilter || {}),
+    });
 
     if (!client) {
       return res.status(404).json({
@@ -485,7 +530,11 @@ export const deleteClient = async (req, res, next) => {
       });
     }
 
-    const client = await Client.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const client = await Client.findOne({
+      _id: id,
+      ...(companyFilter || {}),
+    });
 
     if (!client) {
       return res.status(404).json({

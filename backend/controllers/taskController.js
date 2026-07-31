@@ -110,6 +110,12 @@ const getNextDueDate = (dueDate, recurrenceType) => {
   return nextDate;
 };
 
+const getCompanyFilter = (req) => {
+  const companyId = req.user?.companyId || req.user?.company?.id || null;
+  if (!companyId) return null;
+  return { companyId };
+};
+
 const createRecurringChildTask = async (parentTask, userId) => {
   if (!parentTask || !parentTask.recurrence) return null;
   if (parentTask.status !== "Completed") return null;
@@ -119,6 +125,7 @@ const createRecurringChildTask = async (parentTask, userId) => {
   if (!nextDueDate) return null;
 
   const childTask = await Task.create({
+    companyId: parentTask.companyId || null,
     title: parentTask.title,
     client: parentTask.client,
     service: parentTask.service,
@@ -151,7 +158,8 @@ const createRecurringChildTask = async (parentTask, userId) => {
 export const getTasks = async (req, res, next) => {
   try {
     const { status, dueDate, dueBefore, dueAfter } = req.query;
-    const query = {};
+    const companyFilter = getCompanyFilter(req);
+    const query = companyFilter ? { ...companyFilter } : {};
 
     if (status) {
       query.status = status;
@@ -208,7 +216,8 @@ export const getTaskById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await taskPopulate(Task.findById(id));
+    const companyFilter = getCompanyFilter(req);
+    const task = await taskPopulate(Task.findOne({ _id: id, ...(companyFilter || {}) }));
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -240,7 +249,9 @@ export const createTask = async (req, res, next) => {
       return res.status(400).json({ message: validationError });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const task = await Task.create({
+      companyId: companyFilter?.companyId || null,
       title: req.body.title,
       client: req.body.client,
       service: req.body.service,
@@ -294,7 +305,8 @@ export const updateTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const task = await Task.findOne({ _id: id, ...(companyFilter || {}) });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -328,7 +340,7 @@ export const updateTask = async (req, res, next) => {
       ...req.body,
     };
 
-    const updatedTask = await Task.findByIdAndUpdate(id, updatePayload, {
+    const updatedTask = await Task.findOneAndUpdate({ _id: id, ...(companyFilter || {}) }, updatePayload, {
       new: true,
       runValidators: true,
     });
@@ -444,7 +456,8 @@ export const deleteTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const task = await Task.findOne({ _id: id, ...(companyFilter || {}) });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }

@@ -6,6 +6,7 @@ import Client from "../models/Client.js";
 import Task from "../models/Task.js";
 import Document from "../models/Document.js";
 import Permission from "../models/Permission.js";
+import { getCompanyFilter } from "../utils/companyScope.js";
 
 const systemRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
 const blockedDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"];
@@ -133,12 +134,17 @@ const syncRolePermissions = async (roleName, permissions = {}) => {
 
 export const getAdminOverview = async (req, res, next) => {
   try {
+    const companyFilter = getCompanyFilter(req) || {};
+    const scopedClientIds = await Client.find(companyFilter).select("_id").lean();
+    const scopedClientIdList = scopedClientIds.map((client) => client._id);
+    const documentFilter = scopedClientIdList.length > 0 ? { client: { $in: scopedClientIdList } } : { client: { $in: [] } };
+
     const [totalUsers, clientCount, taskCount, documentCount, roleCountsResult] = await Promise.all([
-      User.countDocuments(),
-      Client.countDocuments(),
-      Task.countDocuments(),
-      Document.countDocuments(),
-      User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
+      User.countDocuments(companyFilter),
+      Client.countDocuments(companyFilter),
+      Task.countDocuments(companyFilter),
+      Document.countDocuments(documentFilter),
+      User.aggregate([{ $match: companyFilter }, { $group: { _id: "$role", count: { $sum: 1 } } }]),
     ]);
 
     const roleNames = await getRoleNames();
@@ -162,7 +168,9 @@ export const getAdminOverview = async (req, res, next) => {
 
 export const getUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select("-password").sort({ role: 1, name: 1 });
+    const companyFilter = getCompanyFilter(req);
+    const query = companyFilter ? { ...companyFilter } : {};
+    const users = await User.find(query).select("-password").sort({ role: 1, name: 1 });
     res.json(users);
   } catch (error) {
     next(error);
@@ -186,7 +194,9 @@ export const createUser = async (req, res, next) => {
     }
 
     const normalizedRole = role.trim();
-    if (["SuperAdmin", "Partner", "Manager", "Employee"].includes(normalizedRole) && !isOfficialCompanyEmail(email.trim())) {
+    const internalRoles = ["SuperAdmin", "Partner", "Manager", "Employee"];
+
+    if (internalRoles.includes(normalizedRole) && !isOfficialCompanyEmail(email.trim())) {
       return res.status(400).json({ message: "Internal users must use official company email addresses." });
     }
 
@@ -208,6 +218,16 @@ export const createUser = async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    let companyId = null;
+
+    if (internalRoles.includes(normalizedRole)) {
+      companyId = req.user?.companyId || req.user?.company?.id || null;
+
+      if (!companyId) {
+        return res.status(400).json({ message: "Unable to determine the current company for this user." });
+      }
+    }
+
     const user = await User.create({
       name: name.trim(),
       username: username ? username.trim() : undefined,
@@ -215,6 +235,7 @@ export const createUser = async (req, res, next) => {
       email: email.trim(),
       password: hashedPassword,
       role: normalizedRole,
+      companyId,
       photo: req.file ? `/uploads/${req.file.filename}` : req.body.photo,
       isActive: toBoolean(isActive, true),
     });
@@ -242,6 +263,7 @@ export const updateUser = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid user ID." });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const { name, username, mobile, email, role, password, isActive } = req.body;
 
     if (!name && !username && !mobile && !email && !role && !password && typeof isActive === "undefined" && !req.file) {
@@ -257,7 +279,7 @@ export const updateUser = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid email format." });
     }
 
-    const user = await User.findById(id);
+    const user = await User.findOne({ _id: id, ...(companyFilter || {}) });
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -318,7 +340,8 @@ export const deleteUser = async (req, res, next) => {
       return res.status(400).json({ message: "You cannot delete your own account." });
     }
 
-    const user = await User.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const user = await User.findOne({ _id: id, ...(companyFilter || {}) });
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -333,9 +356,10 @@ export const deleteUser = async (req, res, next) => {
 export const getUserRoles = async (req, res, next) => {
   try {
     await ensureSystemRoles();
+    const companyFilter = getCompanyFilter(req);
     const [roles, users] = await Promise.all([
       UserRole.find().sort({ name: 1 }).lean(),
-      User.find().select("name role photo").lean(),
+      User.find(companyFilter ? { ...companyFilter } : {}).select("name role photo").lean(),
     ]);
 
     res.json(

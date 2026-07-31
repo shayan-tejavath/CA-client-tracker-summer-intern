@@ -10,6 +10,12 @@ const commentSchema = new mongoose.Schema(
 
 const taskSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
     title: {
       type: String,
       required: [true, "Task title is required"],

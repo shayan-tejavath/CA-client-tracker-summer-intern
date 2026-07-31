@@ -11,8 +11,14 @@ const toNumber = (value) => {
 
 const isValidStatus = (value) => INVOICE_STATUSES.includes(value);
 
-const formatInvoiceNo = async () => {
-  const count = await Invoice.countDocuments();
+const getCompanyFilter = (req) => {
+  const companyId = req.user?.companyId || req.user?.company?.id || null;
+  if (!companyId) return null;
+  return { companyId };
+};
+
+const formatInvoiceNo = async (companyId = null) => {
+  const count = await Invoice.countDocuments(companyId ? { companyId } : {});
   return `INV-${String(count + 1).padStart(4, "0")}`;
 };
 
@@ -113,7 +119,8 @@ export const getInvoices = async (req, res, next) => {
       limit = 20,
     } = req.query;
 
-    let query = {};
+    const companyFilter = getCompanyFilter(req);
+    let query = companyFilter ? { ...companyFilter } : {};
 
     if (clientId && mongoose.Types.ObjectId.isValid(clientId)) {
       query.client = clientId;
@@ -181,7 +188,8 @@ export const getInvoiceById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid invoice ID" });
     }
 
-    const invoice = await Invoice.findById(id).populate(
+    const companyFilter = getCompanyFilter(req);
+    const invoice = await Invoice.findOne({ _id: id, ...(companyFilter || {}) }).populate(
       "client",
       "clientName clientCode email mobile gstin address status"
     );
@@ -205,7 +213,8 @@ export const getInvoicesByClient = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid client ID" });
     }
 
-    const invoices = await Invoice.find({ client: clientId })
+    const companyFilter = getCompanyFilter(req);
+    const invoices = await Invoice.find({ ...(companyFilter || {}), client: clientId })
       .sort({ invoiceDate: -1, createdAt: -1 })
       .lean();
 
@@ -285,7 +294,8 @@ export const createInvoice = async (req, res, next) => {
       return res.status(404).json({ message: "Client not found" });
     }
 
-    const normalizedInvoiceNo = String(invoiceNo || "").trim() || (await formatInvoiceNo());
+    const companyFilter = getCompanyFilter(req);
+    const normalizedInvoiceNo = String(invoiceNo || "").trim() || (await formatInvoiceNo(companyFilter?.companyId || null));
     const { items: normalizedItems, subtotal, discountAmount, taxAmount, grandTotal } =
       calculateTotals(items);
 
@@ -299,6 +309,7 @@ export const createInvoice = async (req, res, next) => {
     });
 
     const invoice = await Invoice.create({
+      companyId: companyFilter?.companyId || null,
       invoiceNo: normalizedInvoiceNo,
       billingEntity: billingEntity.trim(),
       client,
@@ -340,7 +351,8 @@ export const updateInvoice = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid invoice ID" });
     }
 
-    const invoice = await Invoice.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const invoice = await Invoice.findOne({ _id: id, ...(companyFilter || {}) });
     if (!invoice) {
       return res.status(404).json({ message: "Invoice not found" });
     }
@@ -434,7 +446,8 @@ export const deleteInvoice = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid invoice ID" });
     }
 
-    const invoice = await Invoice.findById(id);
+    const companyFilter = getCompanyFilter(req);
+    const invoice = await Invoice.findOne({ _id: id, ...(companyFilter || {}) });
     if (!invoice) {
       return res.status(404).json({ message: "Invoice not found" });
     }
