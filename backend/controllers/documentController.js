@@ -7,7 +7,7 @@ import Task from "../models/Task.js";
 
 import { ROLES } from "../middleware/roleMiddleware.js";
 import { notifyClientDocumentUploaded } from "../services/notificationService.js";
-import { getCompanyFilter } from "../utils/companyScope.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 
 
@@ -88,6 +88,7 @@ export const uploadDocument = async (
     if (req.user?.role === ROLES.Client) {
       const client =
         await Client.findOne({
+          ...getCompanyFilter(req),
           email: req.user.email,
         });
 
@@ -110,6 +111,8 @@ export const uploadDocument = async (
 
     const document =
       await Document.create({
+        companyId: getCompanyId(req),
+
         fileName: req.file.filename,
 
         originalFileName:
@@ -177,7 +180,10 @@ export const uploadDocument = async (
     ) {
       try {
         const relatedTask =
-          await Task.findById(req.body.task)
+          await Task.findOne({
+            _id: req.body.task,
+            ...getCompanyFilter(req),
+          })
             .populate("assignedTo", "name email role")
             .populate("client", "clientName");
 
@@ -227,6 +233,7 @@ export const createDocumentRegisterEntry = async (
 
     const document =
       await Document.create({
+        companyId: getCompanyId(req),
         fileName:
           req.body.fileName ||
           req.body.originalFileName ||
@@ -302,7 +309,7 @@ export const getDocuments = async (
       dateTo,
     } = req.query;
 
-    const filter = {};
+    const filter = { ...getCompanyFilter(req) };
     const scopedClientIds = await getScopedClientIds(req);
 
     // ARCHIVE FILTER
@@ -316,6 +323,7 @@ export const getDocuments = async (
     if (req.user?.role === ROLES.Client) {
       const client =
         await Client.findOne({
+          ...getCompanyFilter(req),
           email: req.user.email,
         });
 
@@ -459,7 +467,10 @@ export const getDocumentById =
       const scopedClientIds = await getScopedClientIds(req);
       const document =
         await documentPopulate(
-          Document.findById(id)
+          Document.findOne({
+            _id: id,
+            ...getCompanyFilter(req),
+          })
         );
 
       if (!document) {
@@ -522,9 +533,10 @@ export const updateDocument =
       }
 
       const document =
-        await Document.findById(
-          id
-        );
+        await Document.findOne({
+          _id: id,
+          ...getCompanyFilter(req),
+        });
 
       if (!document) {
         return res.status(404).json({
@@ -589,8 +601,8 @@ export const updateDocument =
       };
 
       const updatedDocument =
-        await Document.findByIdAndUpdate(
-          id,
+        await Document.findOneAndUpdate(
+          { _id: id, ...getCompanyFilter(req) },
           updatePayload,
           {
             new: true,
@@ -626,9 +638,10 @@ export const archiveDocument =
         req.params;
 
       const document =
-        await Document.findById(
-          id
-        );
+        await Document.findOne({
+          _id: id,
+          ...getCompanyFilter(req),
+        });
 
       if (!document) {
         return res.status(404).json({
@@ -665,9 +678,10 @@ export const restoreDocument =
         req.params;
 
       const document =
-        await Document.findById(
-          id
-        );
+        await Document.findOne({
+          _id: id,
+          ...getCompanyFilter(req),
+        });
 
       if (!document) {
         return res.status(404).json({
@@ -715,9 +729,10 @@ export const deleteDocument =
       }
 
       const document =
-        await Document.findById(
-          id
-        );
+        await Document.findOne({
+          _id: id,
+          ...getCompanyFilter(req),
+        });
 
       if (!document) {
         return res.status(404).json({

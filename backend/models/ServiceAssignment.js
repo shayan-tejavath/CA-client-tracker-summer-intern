@@ -2,6 +2,13 @@ import mongoose from "mongoose";
 
 const serviceAssignmentSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     serviceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Service",

@@ -137,7 +137,8 @@ const serviceMatchesName = (service, serviceName) => {
 };
 
 const findServices = async (
-  serviceNames = []
+  serviceNames = [],
+  companyId = null
 ) => {
   const foundServices = [];
   const seenIds = new Set();
@@ -147,12 +148,15 @@ const findServices = async (
     .map((name) => String(name || "").trim())
     .filter(Boolean);
 
-  const allServices = await Service.find().lean();
+  const companyFilter = companyId ? { companyId } : {};
+
+  const allServices = await Service.find(companyFilter).lean();
 
   for (const serviceName of normalizedServiceNames) {
     const escapedName = escapeRegExp(serviceName);
 
     const exactMatch = await Service.findOne({
+      ...companyFilter,
       $or: [
         {
           subService: {
@@ -170,6 +174,7 @@ const findServices = async (
     const service =
       exactMatch ||
       (await Service.findOne({
+        ...companyFilter,
         $or: [
           {
             subService: {
@@ -204,13 +209,18 @@ const findServices = async (
   };
 };
 
-const findServicesByCategory = async (serviceCategory) => {
+const findServicesByCategory = async (
+  serviceCategory,
+  companyId = null
+) => {
   const normalizedCategory = String(serviceCategory || "").trim();
   if (!normalizedCategory) return [];
 
   const escapedCategory = escapeRegExp(normalizedCategory);
+  const companyFilter = companyId ? { companyId } : {};
 
   return Service.find({
+    ...companyFilter,
     serviceCategory: {
       $regex: new RegExp(`^${escapedCategory}$`, "i"),
     },
@@ -283,7 +293,8 @@ const normalizeClientIdentifiers = (client) => {
 };
 
 const checkDuplicate = async (
-  client
+  client,
+  companyId = null
 ) => {
   const criteria = [];
 
@@ -305,7 +316,10 @@ const checkDuplicate = async (
     return null;
   }
 
+  const companyFilter = companyId ? { companyId } : {};
+
   const existing = await Client.findOne({
+    ...companyFilter,
     $or: criteria,
     isArchived: false,
   });
@@ -314,7 +328,8 @@ const checkDuplicate = async (
 };
 
 const findArchivedDuplicate = async (
-  client
+  client,
+  companyId = null
 ) => {
   const criteria = [];
 
@@ -336,7 +351,10 @@ const findArchivedDuplicate = async (
     return null;
   }
 
+  const companyFilter = companyId ? { companyId } : {};
+
   return Client.findOne({
+    ...companyFilter,
     $or: criteria,
     isArchived: true,
   });
@@ -349,15 +367,19 @@ const findArchivedDuplicate = async (
 const assignServices = async (
   clientId,
   services,
-  assignedBy = "Bulk Import"
+  assignedBy = "Bulk Import",
+  companyId = null
 ) => {
   let assignmentCount = 0;
+
+  const companyFilter = companyId ? { companyId } : {};
 
   for (const service of services) {
     if (!service || !service._id) continue;
 
     const alreadyAssigned =
       await ServiceAssignment.findOne({
+        ...companyFilter,
         clientId,
         serviceId: service._id,
       });
@@ -365,6 +387,7 @@ const assignServices = async (
     if (alreadyAssigned) continue;
 
     await ServiceAssignment.create({
+      ...companyFilter,
       clientId,
       serviceId: service._id,
       package: "Standard",
@@ -384,7 +407,7 @@ const assignServices = async (
 ------------------------------------------------------- */
 
 export const importClientsFromExcel =
-  async (filePath, assignedBy = "Bulk Import") => {
+  async (filePath, assignedBy = "Bulk Import", companyId = null) => {
     const rows =
       parseClientExcel(filePath);
 
@@ -438,7 +461,8 @@ export const importClientsFromExcel =
 
         const duplicate =
           await checkDuplicate(
-            client
+            client,
+            companyId
           );
 
         if (duplicate) {
@@ -488,7 +512,7 @@ export const importClientsFromExcel =
             foundServices: fallbackServices,
             matchedNames,
             normalizedServiceNames,
-          } = await findServices(client.assignedServices);
+          } = await findServices(client.assignedServices, companyId);
 
           foundServices.push(...fallbackServices);
 
@@ -510,7 +534,8 @@ export const importClientsFromExcel =
 
         if (!foundServices.length && client.serviceCategory) {
           const categoryServices = await findServicesByCategory(
-            client.serviceCategory
+            client.serviceCategory,
+            companyId
           );
 
           if (categoryServices.length) {
@@ -536,11 +561,13 @@ export const importClientsFromExcel =
         let restoredFromArchive = false;
 
         const archivedClient = await findArchivedDuplicate(
-          client
+          client,
+          companyId
         );
 
         if (archivedClient) {
           restoredFromArchive = true;
+          archivedClient.companyId = companyId;
           archivedClient.isArchived = false;
           archivedClient.status =
             client.status || "Active";
@@ -606,6 +633,8 @@ export const importClientsFromExcel =
         } else {
           try {
             newClient = await Client.create({
+              companyId,
+
               clientName:
                 client.clientName,
 
@@ -700,7 +729,8 @@ export const importClientsFromExcel =
         const createdAssignmentCount = await assignServices(
           newClient._id,
           foundServices,
-          assignedBy
+          assignedBy,
+          companyId
         );
                   /* -----------------------------
             SEND CLIENT WELCOME MESSAGE

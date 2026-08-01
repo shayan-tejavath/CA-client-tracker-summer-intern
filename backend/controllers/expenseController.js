@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import { Parser } from "json2csv";
 import Expense from "../models/Expense.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const SORTABLE_FIELDS = new Set([
   "expenseNumber",
@@ -272,8 +273,9 @@ export const exportExpenses = async (req, res, next) => {
     const result = buildExpenseFilter(req.query);
     if (result.error) return res.status(400).json({ message: result.error });
 
+    const companyFilter = getCompanyFilter(req);
     const expenses = await populateExpense(
-      Expense.find(result.filter).sort({ expenseDate: -1, _id: -1 })
+      Expense.find({ ...companyFilter, ...result.filter }).sort({ expenseDate: -1, _id: -1 })
     );
 
     const rows = expenses.map(mapExpenseForExport);
@@ -359,6 +361,7 @@ export const createExpense = async (req, res, next) => {
     const expenseData = Object.fromEntries(
       EXPENSE_FIELDS.filter((field) => req.body[field] !== undefined).map((field) => [field, req.body[field]])
     );
+    expenseData.companyId = getCompanyId(req);
     expenseData.createdBy = req.user?._id || null;
     expenseData.updatedBy = req.user?._id || null;
     expenseData.activityHistory = [{
@@ -390,11 +393,14 @@ export const getExpenses = async (req, res, next) => {
     const sortOrder = String(req.query.sortOrder).toLowerCase() === "asc" ? 1 : -1;
     const sort = { [sortBy]: sortOrder, _id: -1 };
 
+    const companyFilter = getCompanyFilter(req);
+    const scopedFilter = { ...companyFilter, ...result.filter };
+
     const [expenses, total, summaryResult] = await Promise.all([
-      populateExpense(Expense.find(result.filter).sort(sort).skip((page - 1) * limit).limit(limit)),
-      Expense.countDocuments(result.filter),
+      populateExpense(Expense.find(scopedFilter).sort(sort).skip((page - 1) * limit).limit(limit)),
+      Expense.countDocuments(scopedFilter),
       Expense.aggregate([
-        { $match: result.filter },
+        { $match: scopedFilter },
         {
           $group: {
             _id: null,
@@ -428,7 +434,10 @@ export const getExpenseDashboard = async (req, res, next) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const trendStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
+    const companyFilter = getCompanyFilter(req);
+
     const [dashboard] = await Expense.aggregate([
+      { $match: companyFilter },
       {
         $facet: {
           summary: [
@@ -510,7 +519,9 @@ export const getExpenseById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid expense ID" });
     }
 
-    const expense = await populateExpense(Expense.findById(req.params.id));
+    const expense = await populateExpense(
+      Expense.findOne({ _id: req.params.id, ...getCompanyFilter(req) })
+    );
     if (!expense) return res.status(404).json({ message: "Expense not found" });
     return res.json(expense);
   } catch (error) {
@@ -527,7 +538,10 @@ export const updateExpense = async (req, res, next) => {
     const validationError = validateExpenseInput(req.body);
     if (validationError) return res.status(400).json({ message: validationError });
 
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    });
     if (!expense) return res.status(404).json({ message: "Expense not found" });
 
     const updatedFields = [];
@@ -564,7 +578,10 @@ export const deleteExpense = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid expense ID" });
     }
 
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    });
     if (!expense) return res.status(404).json({ message: "Expense not found" });
 
     const receipt = expense.receipt;
@@ -589,7 +606,10 @@ export const uploadExpenseReceipt = async (req, res, next) => {
       return res.status(400).json({ message: fileError });
     }
 
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    });
     if (!expense) {
       removeReceiptFile(req.file.path);
       return res.status(404).json({ message: "Expense not found" });
@@ -623,7 +643,10 @@ export const previewExpenseReceipt = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid expense ID" });
     }
 
-    const expense = await Expense.findById(req.params.id).select("receipt");
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    }).select("receipt");
     if (!expense) return res.status(404).json({ message: "Expense not found" });
 
     const receiptPath = getReceiptPath(expense.receipt);
@@ -643,7 +666,10 @@ export const downloadExpenseReceipt = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid expense ID" });
     }
 
-    const expense = await Expense.findById(req.params.id).select("receipt expenseNumber");
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    }).select("receipt expenseNumber");
     if (!expense) return res.status(404).json({ message: "Expense not found" });
 
     const receiptPath = getReceiptPath(expense.receipt);
@@ -664,7 +690,10 @@ export const deleteExpenseReceipt = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid expense ID" });
     }
 
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    });
     if (!expense) return res.status(404).json({ message: "Expense not found" });
     if (!expense.receipt) return res.status(404).json({ message: "Receipt not found" });
 
@@ -685,13 +714,16 @@ export const deleteExpenseReceipt = async (req, res, next) => {
   }
 };
 
-const findExpenseForWorkflow = async (expenseId, res) => {
+const findExpenseForWorkflow = async (expenseId, req, res) => {
   if (!mongoose.Types.ObjectId.isValid(expenseId)) {
     res.status(400).json({ message: "Invalid expense ID" });
     return null;
   }
 
-  const expense = await Expense.findById(expenseId);
+  const expense = await Expense.findOne({
+    _id: expenseId,
+    ...getCompanyFilter(req),
+  });
   if (!expense) {
     res.status(404).json({ message: "Expense not found" });
     return null;
@@ -706,7 +738,7 @@ const workflowResponse = async (expense, res, message) => {
 
 export const approveExpense = async (req, res, next) => {
   try {
-    const expense = await findExpenseForWorkflow(req.params.id, res);
+    const expense = await findExpenseForWorkflow(req.params.id, req, res);
     if (!expense) return;
     if (expense.status !== "Pending") {
       return res.status(400).json({ message: "Only pending expenses can be approved" });
@@ -734,7 +766,7 @@ export const rejectExpense = async (req, res, next) => {
     const reason = String(req.body?.rejectionReason || "").trim();
     if (!reason) return res.status(400).json({ message: "Rejection reason is required" });
 
-    const expense = await findExpenseForWorkflow(req.params.id, res);
+    const expense = await findExpenseForWorkflow(req.params.id, req, res);
     if (!expense) return;
     if (expense.status !== "Pending") {
       return res.status(400).json({ message: "Only pending expenses can be rejected" });
@@ -759,7 +791,7 @@ export const rejectExpense = async (req, res, next) => {
 
 export const markExpensePaid = async (req, res, next) => {
   try {
-    const expense = await findExpenseForWorkflow(req.params.id, res);
+    const expense = await findExpenseForWorkflow(req.params.id, req, res);
     if (!expense) return;
     if (expense.status !== "Approved") {
       return res.status(400).json({ message: "Only approved expenses can be marked as paid" });

@@ -425,13 +425,6 @@ export const SIDEBAR_MENU = [
     ],
   },
   {
-    name: "Admin",
-    path: "/dashboard/admin",
-    icon: "admin",
-    requiredRoles: [ROLES.SUPER_ADMIN],
-    requiredPermission: PERMISSIONS.ADMIN_PANEL_ACCESS,
-  },
-  {
     name: "Users",
     path: "/dashboard/users",
     icon: "users",
@@ -442,13 +435,6 @@ export const SIDEBAR_MENU = [
     name: "User Roles",
     path: "/dashboard/user-roles",
     icon: "userRoles",
-    requiredRoles: [ROLES.SUPER_ADMIN],
-    requiredPermission: PERMISSIONS.ADMIN_SETTINGS,
-  },
-  {
-    name: "Permissions",
-    path: "/dashboard/permissions",
-    icon: "admin",
     requiredRoles: [ROLES.SUPER_ADMIN],
     requiredPermission: PERMISSIONS.ADMIN_SETTINGS,
   },

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Checklist from "../models/Checklist.js";
 import Task from "../models/Task.js";
 import TaskActivity from "../models/TaskActivity.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const checklistPopulate = (query) =>
   query
@@ -16,13 +17,16 @@ export const getChecklistsByTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({
+      _id: taskId,
+      ...getCompanyFilter(req),
+    });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
 
     const checklists = await checklistPopulate(
-      Checklist.find({ task: taskId }).sort({ createdAt: 1 })
+      Checklist.find({ task: taskId, ...getCompanyFilter(req) }).sort({ createdAt: 1 })
     );
 
     res.json(checklists);
@@ -44,12 +48,16 @@ export const createChecklist = async (req, res, next) => {
       return res.status(400).json({ message: "Checklist title is required" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({
+      _id: taskId,
+      ...getCompanyFilter(req),
+    });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
 
     const checklist = new Checklist({
+      companyId: getCompanyId(req),
       task: taskId,
       title: String(title).trim(),
       description: description ? String(description).trim() : "",
@@ -59,6 +67,7 @@ export const createChecklist = async (req, res, next) => {
 
     await checklist.save();
     await TaskActivity.create({
+      companyId: getCompanyId(req),
       task: taskId,
       activity: "Checklist Updated",
       user: req.user._id,
@@ -82,7 +91,10 @@ export const updateChecklist = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid checklist ID" });
     }
 
-    const checklist = await Checklist.findById(id);
+    const checklist = await Checklist.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!checklist) {
       return res.status(404).json({ message: "Checklist item not found" });
     }
@@ -101,6 +113,7 @@ export const updateChecklist = async (req, res, next) => {
 
     await checklist.save();
     await TaskActivity.create({
+      companyId: getCompanyId(req),
       task: checklist.task,
       activity: "Checklist Updated",
       user: req.user._id,
@@ -122,12 +135,16 @@ export const deleteChecklist = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid checklist ID" });
     }
 
-    const checklist = await Checklist.findByIdAndDelete(id);
+    const checklist = await Checklist.findOneAndDelete({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!checklist) {
       return res.status(404).json({ message: "Checklist item not found" });
     }
 
     await TaskActivity.create({
+      companyId: getCompanyId(req),
       task: checklist.task,
       activity: "Checklist Updated",
       user: req.user._id,

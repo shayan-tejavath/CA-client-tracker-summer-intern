@@ -14,6 +14,13 @@ const expenseActivitySchema = new mongoose.Schema(
 
 const expenseSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     expenseNumber: {
       type: String,
       unique: true,

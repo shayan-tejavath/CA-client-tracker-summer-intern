@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Todo from "../models/Todo.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const TODO_STATUSES = ["Pending", "Hold", "In Progress", "Completed"];
 const TODO_PRIORITIES = ["Low", "Medium", "High"];
@@ -111,7 +112,7 @@ const applyFilters = (todos, filters = {}) => {
 
 export const getTodos = async (req, res, next) => {
   try {
-    const allTodos = await Todo.find()
+    const allTodos = await Todo.find(getCompanyFilter(req))
       .populate("assignedTo", "name email role photo")
       .populate("createdBy", "name email role photo")
       .sort({ dueDate: 1, createdAt: -1 })
@@ -137,7 +138,7 @@ export const getTodos = async (req, res, next) => {
 
 export const getTodoSummary = async (req, res, next) => {
   try {
-    const allTodos = await Todo.find()
+    const allTodos = await Todo.find(getCompanyFilter(req))
       .populate("assignedTo", "name email role photo")
       .populate("createdBy", "name email role photo")
       .sort({ dueDate: 1, createdAt: -1 })
@@ -157,7 +158,10 @@ export const getTodoById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid To-Do ID" });
     }
 
-    const todo = await Todo.findById(id)
+    const todo = await Todo.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    })
       .populate("assignedTo", "name email role photo")
       .populate("createdBy", "name email role photo");
 
@@ -199,6 +203,7 @@ export const createTodo = async (req, res, next) => {
     }
 
     const todo = await Todo.create({
+      companyId: getCompanyId(req),
       title: title.trim(),
       details: String(details || "").trim(),
       dueDate: dueDate ? new Date(dueDate) : null,
@@ -224,7 +229,10 @@ export const updateTodo = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid To-Do ID" });
     }
 
-    const todo = await Todo.findById(id);
+    const todo = await Todo.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!todo) {
       return res.status(404).json({ message: "To-Do not found" });
     }
@@ -296,7 +304,10 @@ export const toggleTodoStatus = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid To-Do ID" });
     }
 
-    const todo = await Todo.findById(id);
+    const todo = await Todo.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!todo) {
       return res.status(404).json({ message: "To-Do not found" });
     }
@@ -321,7 +332,10 @@ export const deleteTodo = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid To-Do ID" });
     }
 
-    const todo = await Todo.findById(id);
+    const todo = await Todo.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!todo) {
       return res.status(404).json({ message: "To-Do not found" });
     }

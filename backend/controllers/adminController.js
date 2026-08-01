@@ -6,7 +6,7 @@ import Client from "../models/Client.js";
 import Task from "../models/Task.js";
 import Document from "../models/Document.js";
 import Permission from "../models/Permission.js";
-import { getCompanyFilter } from "../utils/companyScope.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const systemRoles = ["SuperAdmin", "Partner", "Manager", "Employee", "Client"];
 const blockedDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"];
@@ -85,21 +85,21 @@ const permissionKeyMap = {
   },
 };
 
-const ensureSystemRoles = async () => {
+const ensureSystemRoles = async (companyId) => {
   await Promise.all(
     systemRoles.map((name) =>
       UserRole.findOneAndUpdate(
-        { name },
-        { $setOnInsert: { name, permissions: {}, isSystem: true } },
+        { name, companyId },
+        { $setOnInsert: { name, companyId, permissions: {}, isSystem: true } },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       )
     )
   );
 };
 
-const getRoleNames = async () => {
-  await ensureSystemRoles();
-  const roles = await UserRole.find().select("name").lean();
+const getRoleNames = async (companyId) => {
+  await ensureSystemRoles(companyId);
+  const roles = await UserRole.find({ companyId }).select("name").lean();
   return roles.map((role) => role.name);
 };
 
@@ -124,17 +124,17 @@ const buildPermissionKeys = (permissions = {}) => {
   return Array.from(keys);
 };
 
-const syncRolePermissions = async (roleName, permissions = {}) => {
+const syncRolePermissions = async (roleName, permissions = {}, companyId) => {
   await Permission.findOneAndUpdate(
-    { role: roleName },
-    { $set: { permissions: buildPermissionKeys(permissions) } },
+    { role: roleName, companyId },
+    { $set: { permissions: buildPermissionKeys(permissions), companyId } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 };
 
 export const getAdminOverview = async (req, res, next) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const scopedClientIds = await Client.find(companyFilter).select("_id").lean();
     const scopedClientIdList = scopedClientIds.map((client) => client._id);
     const documentFilter = scopedClientIdList.length > 0 ? { client: { $in: scopedClientIdList } } : { client: { $in: [] } };
@@ -147,7 +147,7 @@ export const getAdminOverview = async (req, res, next) => {
       User.aggregate([{ $match: companyFilter }, { $group: { _id: "$role", count: { $sum: 1 } } }]),
     ]);
 
-    const roleNames = await getRoleNames();
+    const roleNames = await getRoleNames(companyFilter.companyId);
     const roleCounts = roleNames.reduce((acc, role) => {
       const match = roleCountsResult.find((item) => item._id === role);
       acc[role] = match ? match.count : 0;
@@ -169,7 +169,7 @@ export const getAdminOverview = async (req, res, next) => {
 export const getUsers = async (req, res, next) => {
   try {
     const companyFilter = getCompanyFilter(req);
-    const query = companyFilter ? { ...companyFilter } : {};
+    const query = { ...companyFilter };
     const users = await User.find(query).select("-password").sort({ role: 1, name: 1 });
     res.json(users);
   } catch (error) {
@@ -200,7 +200,7 @@ export const createUser = async (req, res, next) => {
       return res.status(400).json({ message: "Internal users must use official company email addresses." });
     }
 
-    const roleNames = await getRoleNames();
+    const roleNames = await getRoleNames(getCompanyId(req));
     if (!roleNames.includes(role)) {
       return res.status(400).json({ message: "Invalid role provided." });
     }
@@ -218,14 +218,10 @@ export const createUser = async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    let companyId = null;
+    const companyId = getCompanyId(req);
 
-    if (internalRoles.includes(normalizedRole)) {
-      companyId = req.user?.companyId || req.user?.company?.id || null;
-
-      if (!companyId) {
-        return res.status(400).json({ message: "Unable to determine the current company for this user." });
-      }
+    if (!companyId) {
+      return res.status(400).json({ message: "Unable to determine the current company for this user." });
     }
 
     const user = await User.create({
@@ -270,7 +266,7 @@ export const updateUser = async (req, res, next) => {
       return res.status(400).json({ message: "At least one field is required to update." });
     }
 
-    const roleNames = await getRoleNames();
+    const roleNames = await getRoleNames(getCompanyId(req));
     if (role && !roleNames.includes(role)) {
       return res.status(400).json({ message: "Invalid role provided." });
     }
@@ -279,7 +275,7 @@ export const updateUser = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid email format." });
     }
 
-    const user = await User.findOne({ _id: id, ...(companyFilter || {}) });
+    const user = await User.findOne({ _id: id, ...companyFilter });
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -341,7 +337,7 @@ export const deleteUser = async (req, res, next) => {
     }
 
     const companyFilter = getCompanyFilter(req);
-    const user = await User.findOne({ _id: id, ...(companyFilter || {}) });
+    const user = await User.findOne({ _id: id, ...companyFilter });
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -355,11 +351,11 @@ export const deleteUser = async (req, res, next) => {
 
 export const getUserRoles = async (req, res, next) => {
   try {
-    await ensureSystemRoles();
-    const companyFilter = getCompanyFilter(req);
+    const companyId = getCompanyId(req);
+    await ensureSystemRoles(companyId);
     const [roles, users] = await Promise.all([
-      UserRole.find().sort({ name: 1 }).lean(),
-      User.find(companyFilter ? { ...companyFilter } : {}).select("name role photo").lean(),
+      UserRole.find({ companyId }).sort({ name: 1 }).lean(),
+      User.find({ companyId }).select("name role photo").lean(),
     ]);
 
     res.json(
@@ -375,8 +371,8 @@ export const getUserRoles = async (req, res, next) => {
 
 export const getUserRole = async (req, res, next) => {
   try {
-    await ensureSystemRoles();
-    const role = await UserRole.findById(req.params.id).lean();
+    await ensureSystemRoles(getCompanyId(req));
+    const role = await UserRole.findOne({ _id: req.params.id, companyId: getCompanyId(req) }).lean();
     if (!role) {
       return res.status(404).json({ message: "User role not found." });
     }
@@ -393,13 +389,15 @@ export const createUserRole = async (req, res, next) => {
       return res.status(400).json({ message: "Role name is required." });
     }
 
+    const companyId = getCompanyId(req);
     const role = await UserRole.create({
       name: name.trim(),
       permissions,
       isSystem: false,
+      companyId,
     });
 
-    await syncRolePermissions(role.name, role.permissions);
+    await syncRolePermissions(role.name, role.permissions, companyId);
     res.status(201).json(role);
   } catch (error) {
     if (error.code === 11000) {
@@ -411,7 +409,8 @@ export const createUserRole = async (req, res, next) => {
 
 export const updateUserRole = async (req, res, next) => {
   try {
-    const role = await UserRole.findById(req.params.id);
+    const companyId = getCompanyId(req);
+    const role = await UserRole.findOne({ _id: req.params.id, companyId });
     if (!role) {
       return res.status(404).json({ message: "User role not found." });
     }
@@ -426,10 +425,10 @@ export const updateUserRole = async (req, res, next) => {
 
     await role.save();
     if (oldName !== role.name) {
-      await User.updateMany({ role: oldName }, { $set: { role: role.name } });
-      await Permission.deleteOne({ role: oldName });
+      await User.updateMany({ role: oldName, companyId }, { $set: { role: role.name } });
+      await Permission.deleteOne({ role: oldName, companyId });
     }
-    await syncRolePermissions(role.name, role.permissions);
+    await syncRolePermissions(role.name, role.permissions, companyId);
     res.json(role);
   } catch (error) {
     if (error.code === 11000) {
@@ -441,7 +440,8 @@ export const updateUserRole = async (req, res, next) => {
 
 export const deleteUserRole = async (req, res, next) => {
   try {
-    const role = await UserRole.findById(req.params.id);
+    const companyId = getCompanyId(req);
+    const role = await UserRole.findOne({ _id: req.params.id, companyId });
     if (!role) {
       return res.status(404).json({ message: "User role not found." });
     }
@@ -449,12 +449,12 @@ export const deleteUserRole = async (req, res, next) => {
       return res.status(400).json({ message: "System roles cannot be deleted." });
     }
 
-    const assignedUsers = await User.countDocuments({ role: role.name });
+    const assignedUsers = await User.countDocuments({ role: role.name, companyId });
     if (assignedUsers > 0) {
       return res.status(400).json({ message: "Cannot delete a role assigned to users." });
     }
 
-    await Permission.deleteOne({ role: role.name });
+    await Permission.deleteOne({ role: role.name, companyId });
     await role.deleteOne();
     res.json({ message: "User role deleted successfully." });
   } catch (error) {
@@ -464,8 +464,9 @@ export const deleteUserRole = async (req, res, next) => {
 
 export const getPermissions = async (req, res, next) => {
   try {
-    const roleNames = await getRoleNames();
-    const permissions = await Permission.find({ role: { $in: roleNames } }).lean();
+    const companyId = getCompanyId(req);
+    const roleNames = await getRoleNames(companyId);
+    const permissions = await Permission.find({ role: { $in: roleNames }, companyId }).lean();
     const response = roleNames.map((role) => {
       const record = permissions.find((item) => item.role === role);
       return {
@@ -488,12 +489,13 @@ export const updatePermissions = async (req, res, next) => {
     }
 
     const updatedRecords = [];
-    const roleNames = await getRoleNames();
+    const companyId = getCompanyId(req);
+    const roleNames = await getRoleNames(companyId);
     for (const role of roleNames) {
       const rolePermissions = Array.isArray(permissionsByRole[role]) ? permissionsByRole[role] : [];
       const record = await Permission.findOneAndUpdate(
-        { role },
-        { $set: { permissions: rolePermissions } },
+        { role, companyId },
+        { $set: { permissions: rolePermissions, companyId } },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       ).lean();
       updatedRecords.push({ role, permissions: record.permissions, updatedAt: record.updatedAt });

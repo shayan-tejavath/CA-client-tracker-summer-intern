@@ -157,10 +157,15 @@ export const createNotification = async ({
   try {
     if (!recipient) return null;
 
+    const recipientUser = await User.findById(recipient).select(
+      "name email mobile companyId"
+    );
+
     const notification = await Notification.create({
       title,
       message,
       recipient,
+      companyId: recipientUser?.companyId || null,
       recipientRole,
       sender,
       type,
@@ -172,10 +177,6 @@ export const createNotification = async ({
       channels,
       metadata,
     });
-
-    const recipientUser = await User.findById(recipient).select(
-      "name email mobile"
-    );
 
     await deliverInternalChannels({
       recipientUser,

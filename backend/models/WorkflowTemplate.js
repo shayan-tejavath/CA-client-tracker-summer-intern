@@ -32,6 +32,13 @@ const workflowStepSchema = new mongoose.Schema(
 
 const workflowTemplateSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     name: {
       type: String,
       required: [true, "Workflow template name is required"],

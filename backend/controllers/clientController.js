@@ -1,6 +1,7 @@
 ﻿import mongoose from "mongoose";
 import Client from "../models/Client.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
 import {
   notifyClientCreated,
@@ -46,16 +47,6 @@ const validateClientData = (data) => {
   return null;
 };
 
-const getCompanyFilter = (req) => {
-  const companyId = req.user?.companyId || req.user?.company?.id || null;
-
-  if (!companyId) {
-    return null;
-  }
-
-  return { companyId };
-};
-
 const createServiceAssignmentWithTasks = async ({
   clientId,
   serviceId,
@@ -63,8 +54,10 @@ const createServiceAssignmentWithTasks = async ({
   assignedBy,
   assignedTo,
   templateId,
+  companyId = null,
 }) => {
   const assignment = await ServiceAssignment.create({
+    companyId,
     serviceId,
     clientId,
     assignedUsers,
@@ -79,6 +72,7 @@ const createServiceAssignmentWithTasks = async ({
       assignedTo,
       assignedUsers,
       templateId,
+      companyId,
     });
   } catch (taskError) {
     console.error("Task generation failed for assigned service:", taskError.message);
@@ -98,13 +92,13 @@ export const getClients = async (req, res, next) => {
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const query = getCompanyFilter(req) || {};
+    const query = getCompanyFilter(req);
 
     if (req.user?.role === ROLES.Client) {
       const companyFilter = getCompanyFilter(req);
       const client = await Client.findOne({
         email: req.user.email,
-        ...(companyFilter || {}),
+        ...companyFilter,
       });
       if (!client) {
         return res.status(403).json({ message: "Forbidden" });
@@ -176,7 +170,7 @@ export const getClientById = async (req, res, next) => {
     const companyFilter = getCompanyFilter(req);
     const client = await Client.findOne({
       _id: id,
-      ...(companyFilter || {}),
+      ...companyFilter,
     });
 
     if (!client) {
@@ -189,7 +183,7 @@ export const getClientById = async (req, res, next) => {
       const companyFilter = getCompanyFilter(req);
       const currentClient = await Client.findOne({
         email: req.user.email,
-        ...(companyFilter || {}),
+        ...companyFilter,
       });
       if (
         !currentClient ||
@@ -218,7 +212,7 @@ export const createClient = async (req, res, next) => {
 
     const companyFilter = getCompanyFilter(req);
     const existingClient = await Client.findOne({
-      ...(companyFilter || {}),
+      ...companyFilter,
       $or: [
         {
           pan: req.body.pan.toUpperCase(),
@@ -240,7 +234,7 @@ export const createClient = async (req, res, next) => {
 
     const client = await Client.create({
       ...req.body,
-      companyId: companyFilter?.companyId || null,
+      companyId: getCompanyId(req),
       assignedServices,
       assignedEmployees,
       profileImage: req.file
@@ -265,6 +259,7 @@ export const createClient = async (req, res, next) => {
               assignedUsers,
               assignedBy,
               assignedTo,
+              companyId: getCompanyId(req),
             })
           )
         );
@@ -302,7 +297,7 @@ export const updateClient = async (req, res, next) => {
     const companyFilter = getCompanyFilter(req);
     const client = await Client.findOne({
       _id: id,
-      ...(companyFilter || {}),
+      ...companyFilter,
     });
 
     if (!client) {
@@ -328,7 +323,7 @@ export const updateClient = async (req, res, next) => {
 
       const duplicateClient = await Client.findOne({
         _id: { $ne: id },
-        ...(companyFilter || {}),
+        ...companyFilter,
         $or: [{ pan: normalizedPan }, { gstin: normalizedGstin }],
       });
 
@@ -352,7 +347,7 @@ export const updateClient = async (req, res, next) => {
     const updatedClient = await Client.findOneAndUpdate(
       {
         _id: id,
-        ...(companyFilter || {}),
+        ...companyFilter,
       },
       {
         ...req.body,
@@ -372,7 +367,7 @@ export const updateClient = async (req, res, next) => {
 
     // Sync service assignments: remove existing and recreate from payload
     try {
-      await ServiceAssignment.deleteMany({ clientId: id });
+      await ServiceAssignment.deleteMany({ clientId: id, companyId: getCompanyId(req) });
 
       if (assignedServices.length > 0) {
         const assignedBy = req.user?.name || req.user?.email || "System";
@@ -386,6 +381,7 @@ export const updateClient = async (req, res, next) => {
               assignedUsers: assignedEmployees,
               assignedBy,
               assignedTo,
+              companyId: getCompanyId(req),
             })
           )
         );
@@ -423,7 +419,7 @@ export const updateClientProfileImage = async (req, res, next) => {
     const companyFilter = getCompanyFilter(req);
     const client = await Client.findOne({
       _id: id,
-      ...(companyFilter || {}),
+      ...companyFilter,
     });
 
     if (!client) {
@@ -461,7 +457,7 @@ export const archiveClient = async (req, res, next) => {
     const companyFilter = getCompanyFilter(req);
     const client = await Client.findOne({
       _id: id,
-      ...(companyFilter || {}),
+      ...companyFilter,
     });
 
     if (!client) {
@@ -497,7 +493,7 @@ export const restoreClient = async (req, res, next) => {
     const companyFilter = getCompanyFilter(req);
     const client = await Client.findOne({
       _id: id,
-      ...(companyFilter || {}),
+      ...companyFilter,
     });
 
     if (!client) {
@@ -533,7 +529,7 @@ export const deleteClient = async (req, res, next) => {
     const companyFilter = getCompanyFilter(req);
     const client = await Client.findOne({
       _id: id,
-      ...(companyFilter || {}),
+      ...companyFilter,
     });
 
     if (!client) {
@@ -542,7 +538,7 @@ export const deleteClient = async (req, res, next) => {
       });
     }
 
-    await ServiceAssignment.deleteMany({ clientId: id });
+    await ServiceAssignment.deleteMany({ clientId: id, companyId: getCompanyId(req) });
     await client.deleteOne();
 
     res.json({

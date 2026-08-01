@@ -38,6 +38,7 @@ export const logReminderForTask = async (task) => {
       title: "Overdue task reminder",
       message,
       user: task.assignedTo._id,
+      companyId: task.companyId || null,
     });
   }
 };

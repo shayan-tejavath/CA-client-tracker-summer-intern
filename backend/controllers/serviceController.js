@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Service from "../models/Service.js";
 import Client from "../models/Client.js";
 import ServiceAssignment from "../models/ServiceAssignment.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 import {
   notifyServiceAssigned,
   notifyClient,
@@ -31,19 +32,13 @@ const toPlainObject = (item) => {
   return item;
 };
 
-const getCompanyFilter = (req) => {
-  const companyId = req.user?.companyId || req.user?.company?.id || null;
-  if (!companyId) return null;
-  return { companyId };
-};
-
-const attachAssignmentStats = async (services = []) => {
+const attachAssignmentStats = async (services = [], companyFilter = null) => {
   const safeServices = services.map(toPlainObject).filter(Boolean);
   if (safeServices.length === 0) return [];
 
   const serviceIds = safeServices.map((service) => service._id);
 
-  const assignments = await ServiceAssignment.find({ serviceId: { $in: serviceIds } })
+  const assignments = await ServiceAssignment.find({ serviceId: { $in: serviceIds }, ...companyFilter })
     .populate(
       {
         path: "clientId",
@@ -123,9 +118,9 @@ const buildServiceUpdateMessage = (serviceName, updates = {}) => {
 
 export const getServices = async (req, res, next) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const services = await Service.find(companyFilter).sort({ createdAt: -1 }).lean();
-    const enriched = await attachAssignmentStats(services);
+    const enriched = await attachAssignmentStats(services, companyFilter);
     res.json(enriched);
   } catch (error) {
     next(error);
@@ -139,13 +134,13 @@ export const getServiceById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const service = await Service.findOne({ _id: id, ...companyFilter }).lean();
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
 
-    const [enriched] = await attachAssignmentStats([service]);
+    const [enriched] = await attachAssignmentStats([service], companyFilter);
     res.json(enriched);
   } catch (error) {
     next(error);
@@ -161,7 +156,7 @@ export const createService = async (req, res, next) => {
 
     const companyFilter = getCompanyFilter(req);
     const service = await Service.create({
-      companyId: companyFilter?.companyId || null,
+      companyId: getCompanyId(req),
       serviceCategory: req.body.serviceCategory,
       subService: req.body.subService,
       frequency: req.body.frequency,
@@ -186,7 +181,7 @@ export const updateService = async (req, res, next) => {
       return res.status(400).json({ message: validationError });
     }
 
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const service = await Service.findOneAndUpdate(
       { _id: id, ...companyFilter },
       {
@@ -220,13 +215,13 @@ export const deleteService = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const service = await Service.findOne({ _id: id, ...companyFilter });
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
 
-    await ServiceAssignment.deleteMany({ serviceId: id });
+    await ServiceAssignment.deleteMany({ serviceId: id, ...companyFilter });
     await service.deleteOne();
 
     res.json({ message: "Service deleted successfully" });
@@ -244,7 +239,8 @@ export const getAvailableClients = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const assignedAssignments = await ServiceAssignment.find({ serviceId });
+    const companyFilter = getCompanyFilter(req);
+    const assignedAssignments = await ServiceAssignment.find({ serviceId, ...companyFilter });
     const assignedClientIds = assignedAssignments.map((a) =>
       a.clientId.toString()
     );
@@ -252,6 +248,7 @@ export const getAvailableClients = async (req, res, next) => {
     const availableClients = await Client.find({
       _id: { $nin: assignedClientIds },
       isArchived: false,
+      ...companyFilter,
     }).select("_id clientName clientCode email mobile status");
 
     res.json(availableClients);
@@ -269,7 +266,8 @@ export const getAssignedClients = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const allAssignments = await ServiceAssignment.find({ serviceId })
+    const companyFilter = getCompanyFilter(req);
+    const allAssignments = await ServiceAssignment.find({ serviceId, ...companyFilter })
       .populate({
         path: "clientId",
         select: "clientName clientCode email mobile profileImage status isArchived",
@@ -345,7 +343,10 @@ export const assignClientsToService = async (req, res, next) => {
         .json({ message: "At least one client must be selected" });
     }
 
-    const service = await Service.findById(serviceId);
+    const companyFilter = getCompanyFilter(req);
+    const companyId = getCompanyId(req);
+
+    const service = await Service.findOne({ _id: serviceId, ...companyFilter });
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
@@ -354,15 +355,20 @@ export const assignClientsToService = async (req, res, next) => {
     for (const clientId of clientIds) {
       if (!mongoose.Types.ObjectId.isValid(clientId)) continue;
 
-      const client = await Client.findById(clientId);
+      const client = await Client.findOne({ _id: clientId, ...companyFilter });
       if (!client) continue;
 
-      const existing = await ServiceAssignment.findOne({ serviceId, clientId });
+      const existing = await ServiceAssignment.findOne({
+        serviceId,
+        clientId,
+        companyId,
+      });
       if (existing) continue;
 
       const assignment = await ServiceAssignment.create({
         serviceId,
         clientId,
+        companyId,
         package: packageType || "Standard",
         customPrice: customPrice || null,
         assignedUsers: assignedUsers || [],
@@ -380,6 +386,7 @@ export const assignClientsToService = async (req, res, next) => {
           templateId: workflowTemplateId,
           assignedTo: req.user?._id,
           assignedUsers: assignedUsers || [],
+          companyId,
         });
       } catch (templateError) {
         console.error("Workflow template generation failed:", templateError.message);
@@ -422,9 +429,11 @@ export const updateServiceAssignment = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const assignment = await ServiceAssignment.findOne({
       _id: assignmentId,
       serviceId,
+      ...companyFilter,
     });
     if (!assignment) {
       return res.status(404).json({ message: "Assignment not found" });
@@ -440,8 +449,8 @@ export const updateServiceAssignment = async (req, res, next) => {
     const populated = await assignment.populate("clientId");
 
     try {
-      const client = await Client.findById(assignment.clientId);
-      const service = await Service.findById(assignment.serviceId);
+      const client = await Client.findOne({ _id: assignment.clientId, ...companyFilter });
+      const service = await Service.findOne({ _id: assignment.serviceId, ...companyFilter });
 
       if (client && service) {
         await notifyClient({
@@ -487,9 +496,12 @@ export const bulkUpdateAssignments = async (req, res, next) => {
 
     const safeUpdates = updates || {};
 
+    const companyFilter = getCompanyFilter(req);
+
     const assignmentsToNotify = await ServiceAssignment.find({
       _id: { $in: assignmentIds },
       serviceId,
+      ...companyFilter,
     }).populate("clientId", "clientName email mobile status");
 
     const updateFields = {};
@@ -499,11 +511,11 @@ export const bulkUpdateAssignments = async (req, res, next) => {
     if (typeof safeUpdates.status !== "undefined") updateFields.status = safeUpdates.status;
 
     const result = await ServiceAssignment.updateMany(
-      { _id: { $in: assignmentIds }, serviceId },
+      { _id: { $in: assignmentIds }, serviceId, ...companyFilter },
       { $set: updateFields }
     );
 
-    const service = await Service.findById(serviceId);
+    const service = await Service.findOne({ _id: serviceId, ...companyFilter });
 
     if (service && assignmentsToNotify.length > 0) {
       for (const assignment of assignmentsToNotify) {
@@ -552,17 +564,19 @@ export const removeClientFromService = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const assignment = await ServiceAssignment.findOne({
       _id: assignmentId,
       serviceId,
+      ...companyFilter,
     });
 
     if (!assignment) {
       return res.status(404).json({ message: "Assignment not found" });
     }
 
-    const client = await Client.findById(assignment.clientId);
-    const service = await Service.findById(assignment.serviceId);
+    const client = await Client.findOne({ _id: assignment.clientId, ...companyFilter });
+    const service = await Service.findOne({ _id: assignment.serviceId, ...companyFilter });
 
     await assignment.deleteOne();
 
@@ -609,16 +623,19 @@ export const bulkRemoveClientsFromService = async (req, res, next) => {
         .json({ message: "At least one assignment must be selected" });
     }
 
+    const companyFilter = getCompanyFilter(req);
     const assignmentsToNotify = await ServiceAssignment.find({
       _id: { $in: assignmentIds },
       serviceId,
+      ...companyFilter,
     }).populate("clientId", "clientName email mobile status");
 
-    const service = await Service.findById(serviceId);
+    const service = await Service.findOne({ _id: serviceId, ...companyFilter });
 
     const result = await ServiceAssignment.deleteMany({
       _id: { $in: assignmentIds },
       serviceId,
+      ...companyFilter,
     });
 
     if (service && assignmentsToNotify.length > 0) {

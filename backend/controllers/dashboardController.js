@@ -3,12 +3,7 @@ import Invoice from "../models/Invoice.js";
 import Service from "../models/Service.js";
 import Task from "../models/Task.js";
 import User from "../models/User.js";
-
-const getCompanyFilter = (req) => {
-  const companyId = req.user?.companyId || req.user?.company?.id || null;
-  if (!companyId) return null;
-  return { companyId };
-};
+import { getCompanyFilter } from "../utils/companyScope.js";
 
 const formatCurrency = (value) => {
   const safeValue = Number(value) || 0;
@@ -21,8 +16,7 @@ const formatCurrency = (value) => {
 
 export const getDashboardSummary = async (req, res, next) => {
   try {
-    const companyFilter = getCompanyFilter(req);
-    const companyMatch = companyFilter ? { companyId: companyFilter.companyId } : {};
+    const companyMatch = getCompanyFilter(req);
 
     const [
       totalClients,

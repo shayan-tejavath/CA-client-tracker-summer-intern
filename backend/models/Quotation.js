@@ -43,6 +43,13 @@ const quotationItemSchema = new mongoose.Schema(
 
 const quotationSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     quotationNumber: {
       type: String,
       required: [true, "Quotation number is required"],

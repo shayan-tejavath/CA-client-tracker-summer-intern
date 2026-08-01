@@ -1,14 +1,14 @@
 import Attendance from "../models/Attendance.js";
 import SelfAttendancePermission from "../models/SelfAttendancePermission.js";
 import User from "../models/User.js";
-import { getCompanyFilter } from "../utils/companyScope.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 // Get all users for attendance management
 export const getAllUsersForAttendance = async (req, res, next) => {
   try {
     const companyFilter = getCompanyFilter(req);
     const users = await User.find({
-      ...(companyFilter || {}),
+      ...companyFilter,
       role: { $in: ["Employee", "Partner", "Manager"] },
       isActive: true,
     })
@@ -20,6 +20,7 @@ export const getAllUsersForAttendance = async (req, res, next) => {
       users.map(async (user) => {
         const permission = await SelfAttendancePermission.findOne({
           userId: user._id,
+          companyId: getCompanyId(req),
         }).lean();
         return {
           ...user,
@@ -50,12 +51,13 @@ export const getAttendanceByDate = async (req, res, next) => {
 
     const companyFilter = getCompanyFilter(req);
     const companyUsers = await User.find({
-      ...(companyFilter || {}),
+      ...companyFilter,
       role: { $in: ["Employee", "Partner", "Manager"] },
     }).select("_id").lean();
     const companyUserIds = companyUsers.map((user) => user._id);
 
     const attendanceRecords = await Attendance.find({
+      companyId: getCompanyId(req),
       userId: { $in: companyUserIds },
       date: { $gte: startDate, $lte: endDate },
     })
@@ -84,7 +86,7 @@ export const markAttendance = async (req, res, next) => {
     attendanceDate.setHours(0, 0, 0, 0);
 
     const attendance = await Attendance.findOneAndUpdate(
-      { userId, date: attendanceDate },
+      { companyId: getCompanyId(req), userId, date: attendanceDate },
       {
         status,
         checkInTime,
@@ -115,7 +117,7 @@ export const grantSelfPermission = async (req, res, next) => {
     }
 
     const permission = await SelfAttendancePermission.findOneAndUpdate(
-      { userId },
+      { userId, companyId: getCompanyId(req) },
       {
         hasSelfPermission: true,
         grantedBy: req.user._id,
@@ -145,7 +147,7 @@ export const revokeSelfPermission = async (req, res, next) => {
     }
 
     const permission = await SelfAttendancePermission.findOneAndUpdate(
-      { userId },
+      { userId, companyId: getCompanyId(req) },
       {
         hasSelfPermission: false,
         revokedBy: req.user._id,
@@ -170,7 +172,10 @@ export const selfCheckIn = async (req, res, next) => {
     const { date } = req.body;
 
     // Check if user has self-permission
-    const permission = await SelfAttendancePermission.findOne({ userId });
+    const permission = await SelfAttendancePermission.findOne({
+      userId,
+      companyId: getCompanyId(req),
+    });
     if (!permission?.hasSelfPermission) {
       return res
         .status(403)
@@ -186,7 +191,7 @@ export const selfCheckIn = async (req, res, next) => {
     ).padStart(2, "0")}`;
 
     const attendance = await Attendance.findOneAndUpdate(
-      { userId, date: attendanceDate },
+      { companyId: getCompanyId(req), userId, date: attendanceDate },
       {
         $set: {
           checkInTime,
@@ -215,7 +220,10 @@ export const selfCheckOut = async (req, res, next) => {
     const { date } = req.body;
 
     // Check if user has self-permission
-    const permission = await SelfAttendancePermission.findOne({ userId });
+    const permission = await SelfAttendancePermission.findOne({
+      userId,
+      companyId: getCompanyId(req),
+    });
     if (!permission?.hasSelfPermission) {
       return res
         .status(403)
@@ -231,7 +239,7 @@ export const selfCheckOut = async (req, res, next) => {
     ).padStart(2, "0")}`;
 
     const attendance = await Attendance.findOneAndUpdate(
-      { userId, date: attendanceDate },
+      { companyId: getCompanyId(req), userId, date: attendanceDate },
       {
         $set: {
           checkOutTime,
@@ -272,6 +280,7 @@ export const getMonthlyReport = async (req, res, next) => {
     const endDate = new Date(yearNum, monthNum + 1, 0);
 
     let query = {
+      companyId: getCompanyId(req),
       date: { $gte: startDate, $lte: endDate },
     };
 
@@ -331,7 +340,7 @@ export const bulkMarkAttendance = async (req, res, next) => {
         attendanceDate.setHours(0, 0, 0, 0);
 
         return Attendance.findOneAndUpdate(
-          { userId: data.userId, date: attendanceDate },
+          { companyId: getCompanyId(req), userId: data.userId, date: attendanceDate },
           {
             status: data.status,
             checkInTime: data.checkInTime,
@@ -363,7 +372,7 @@ export const getUserAttendance = async (req, res, next) => {
     const userId = req.user._id;
     const { startDate, endDate } = req.query;
 
-    const query = { userId };
+    const query = { userId, companyId: getCompanyId(req) };
 
     if (startDate || endDate) {
       query.date = {};
@@ -394,7 +403,10 @@ export const getSelfPermissionStatus = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
-    const permission = await SelfAttendancePermission.findOne({ userId }).lean();
+    const permission = await SelfAttendancePermission.findOne({
+      userId,
+      companyId: getCompanyId(req),
+    }).lean();
 
     res.json({
       hasSelfPermission: permission?.hasSelfPermission || false,

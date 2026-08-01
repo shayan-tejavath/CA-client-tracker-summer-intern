@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Client from "../models/Client.js";
 import DscRecord from "../models/DscRecord.js";
 import { ROLES } from "../middleware/roleMiddleware.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const dscPopulate = (query) =>
   query
@@ -15,12 +16,13 @@ const getRenewalWindowDays = () =>
     : 30;
 
 const buildAccessFilter = async (req) => {
-  if (req.user?.role !== ROLES.Client) return {};
+  const companyId = getCompanyId(req);
+  if (req.user?.role !== ROLES.Client) return { companyId };
 
-  const client = await Client.findOne({ email: req.user.email });
+  const client = await Client.findOne({ email: req.user.email, companyId });
   if (!client) return null;
 
-  return { client: client._id };
+  return { companyId, client: client._id };
 };
 
 export const getDscRecords = async (req, res, next) => {
@@ -108,6 +110,7 @@ export const createDscRecord = async (req, res, next) => {
     }
 
     const record = await DscRecord.create({
+      companyId: getCompanyId(req),
       client,
       dscClass,
       password: password || "",
@@ -133,8 +136,8 @@ export const updateDscRecord = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid DSC record ID" });
     }
 
-    const record = await DscRecord.findByIdAndUpdate(
-      id,
+    const record = await DscRecord.findOneAndUpdate(
+      { _id: id, ...getCompanyFilter(req) },
       {
         dscClass: req.body.dscClass,
         password: req.body.password,

@@ -2,6 +2,13 @@
 
 const documentSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     fileName: {
       type: String,
       trim: true,

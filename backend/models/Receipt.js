@@ -34,6 +34,13 @@ const settlementSchema = new mongoose.Schema(
 
 const receiptSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     receiptNo: {
       type: String,
       required: [true, "Receipt number is required"],

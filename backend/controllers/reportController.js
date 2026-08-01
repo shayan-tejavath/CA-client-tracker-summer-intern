@@ -11,7 +11,7 @@ import { getCompanyFilter } from "../utils/companyScope.js";
  */
 export const getAnalytics = async (req, res) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const totalClients = await Client.countDocuments(companyFilter);
 
     const activeClients = await Client.countDocuments({ ...companyFilter, status: "Active" });
@@ -168,7 +168,7 @@ export const getAnalytics = async (req, res) => {
  */
 export const getTaskReports = async (req, res) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const tasks = await Task.find(companyFilter)
       .populate("client", "clientName")
       .populate("assignedTo", "name role")
@@ -210,7 +210,7 @@ export const getTaskReports = async (req, res) => {
  */
 export const getClientReports = async (req, res) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const clients = await Client.find(companyFilter)
       .populate("assignedManager", "name email role")
       .populate("assignedServices", "serviceCategory subService")
@@ -255,7 +255,7 @@ export const getClientReports = async (req, res) => {
  */
 export const getServiceReports = async (req, res) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const services = await Service.find(companyFilter).sort({
       serviceCategory: 1,
       subService: 1,
@@ -301,7 +301,7 @@ export const getServiceReports = async (req, res) => {
  */
 export const getEmployeeReports = async (req, res) => {
   try {
-    const companyFilter = getCompanyFilter(req) || {};
+    const companyFilter = getCompanyFilter(req);
     const employees = await User.find({
       ...companyFilter,
       role: {
@@ -386,7 +386,7 @@ export const exportReport = async (req, res) => {
     switch (type) {
       case "tasks":
         {
-          const companyFilter = getCompanyFilter(req) || {};
+          const companyFilter = getCompanyFilter(req);
           const tasks = await Task.find(companyFilter)
             .populate("client", "clientName")
             .populate("assignedTo", "name");
@@ -404,7 +404,7 @@ export const exportReport = async (req, res) => {
 
       case "clients":
         {
-          const companyFilter = getCompanyFilter(req) || {};
+          const companyFilter = getCompanyFilter(req);
           const clients = await Client.find(companyFilter);
 
           data = clients.map((client) => ({
@@ -419,7 +419,7 @@ export const exportReport = async (req, res) => {
 
       case "services":
         {
-          const companyFilter = getCompanyFilter(req) || {};
+          const companyFilter = getCompanyFilter(req);
           const services = await Service.find(companyFilter);
 
           data = services.map((service) => ({
@@ -433,7 +433,7 @@ export const exportReport = async (req, res) => {
 
       case "employees":
         {
-          const companyFilter = getCompanyFilter(req) || {};
+          const companyFilter = getCompanyFilter(req);
           const employees = await User.find({
             ...companyFilter,
             role: {
