@@ -3,6 +3,7 @@ import PDFDocument from "pdfkit";
 import Quotation from "../models/Quotation.js";
 import Client from "../models/Client.js";
 import { sendEmailViaUMS } from "../services/umsService.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const QUOTATION_STATUSES = ["Draft", "Sent", "Accepted", "Rejected"];
 
@@ -13,8 +14,8 @@ const toNumber = (value) => {
 
 const isValidStatus = (value) => QUOTATION_STATUSES.includes(value);
 
-const formatQuotationNumber = async () => {
-  const count = await Quotation.countDocuments();
+const formatQuotationNumber = async (companyId) => {
+  const count = await Quotation.countDocuments({ companyId });
   return `QTN-${String(count + 1).padStart(4, "0")}`;
 };
 
@@ -215,7 +216,10 @@ export const downloadQuotationPdf = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid quotation ID" });
     }
 
-    const quotation = await Quotation.findById(id).populate(
+    const quotation = await Quotation.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    }).populate(
       "clientId",
       "clientName clientCode email mobile gstin address status"
     );
@@ -247,7 +251,7 @@ export const getQuotations = async (req, res, next) => {
       limit = 20,
     } = req.query;
 
-    const query = {};
+    const query = { ...getCompanyFilter(req) };
 
     if (clientId && mongoose.Types.ObjectId.isValid(clientId)) {
       query.clientId = clientId;
@@ -314,7 +318,10 @@ export const getQuotationById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid quotation ID" });
     }
 
-    const quotation = await Quotation.findById(id).populate(
+    const quotation = await Quotation.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    }).populate(
       "clientId",
       "clientName clientCode email mobile gstin address status"
     );
@@ -355,7 +362,10 @@ export const createQuotation = async (req, res, next) => {
       return res.status(400).json({ message: "Valid client ID is required" });
     }
 
-    const clientExists = await Client.findById(clientId);
+    const clientExists = await Client.findOne({
+      _id: clientId,
+      ...getCompanyFilter(req),
+    });
     if (!clientExists) {
       return res.status(404).json({ message: "Client not found" });
     }
@@ -372,7 +382,8 @@ export const createQuotation = async (req, res, next) => {
     const calculated = calculateTotals(items);
 
     const quotation = await Quotation.create({
-      quotationNumber: quotationNumber || (await formatQuotationNumber()),
+      companyId: getCompanyId(req),
+      quotationNumber: quotationNumber || (await formatQuotationNumber(getCompanyId(req))),
       billingEntity,
       clientId,
       quotationDate,
@@ -401,7 +412,10 @@ export const updateQuotation = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid quotation ID" });
     }
 
-    const quotation = await Quotation.findById(id);
+    const quotation = await Quotation.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!quotation) {
       return res.status(404).json({ message: "Quotation not found" });
     }
@@ -431,7 +445,10 @@ export const updateQuotation = async (req, res, next) => {
     }
 
     if (clientId) {
-      const clientExists = await Client.findById(clientId);
+      const clientExists = await Client.findOne({
+        _id: clientId,
+        ...getCompanyFilter(req),
+      });
       if (!clientExists) {
         return res.status(404).json({ message: "Client not found" });
       }
@@ -456,10 +473,14 @@ export const updateQuotation = async (req, res, next) => {
       termsAndConditions,
     };
 
-    const updatedQuotation = await Quotation.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    }).populate("clientId", "clientName clientCode email mobile gstin address status");
+    const updatedQuotation = await Quotation.findOneAndUpdate(
+      { _id: id, ...getCompanyFilter(req) },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).populate("clientId", "clientName clientCode email mobile gstin address status");
 
     return res.json(updatedQuotation);
   } catch (error) {
@@ -476,7 +497,10 @@ export const shareQuotation = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid quotation ID" });
     }
 
-    const quotation = await Quotation.findById(id).populate(
+    const quotation = await Quotation.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    }).populate(
       "clientId",
       "clientName clientCode email mobile gstin address status"
     );
@@ -508,8 +532,8 @@ export const shareQuotation = async (req, res, next) => {
       },
     });
 
-    const updatedQuotation = await Quotation.findByIdAndUpdate(
-      id,
+    const updatedQuotation = await Quotation.findOneAndUpdate(
+      { _id: id, ...getCompanyFilter(req) },
       { status: "Sent" },
       { new: true, runValidators: true }
     ).populate("clientId", "clientName clientCode email mobile gstin address status");
@@ -533,7 +557,10 @@ export const deleteQuotation = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid quotation ID" });
     }
 
-    const quotation = await Quotation.findByIdAndDelete(id);
+    const quotation = await Quotation.findOneAndDelete({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!quotation) {
       return res.status(404).json({ message: "Quotation not found" });
     }

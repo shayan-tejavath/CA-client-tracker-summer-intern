@@ -2,6 +2,13 @@ import mongoose from "mongoose";
 
 const subTaskSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     task: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Task",

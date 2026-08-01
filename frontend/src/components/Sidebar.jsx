@@ -10,7 +10,6 @@ import {
   Shield,
   UserCog,
   FileText,
-  Sparkles,
   Menu,
   X,
   ChevronRight,
@@ -60,10 +59,8 @@ const MENU_ACCESS = {
   "/dashboard/reports/export": ["reports:view"],
 
   "/dashboard/attendance": ["admin:settings"],
-  "/dashboard/admin": ["admin:access"],
   "/dashboard/users": ["user:list"],
   "/dashboard/user-roles": ["admin:settings"],
-  "/dashboard/permissions": ["admin:settings"],
 };
 
 const Sidebar = () => {
@@ -200,20 +197,6 @@ const Sidebar = () => {
             );
           })}
         </nav>
-
-        <div className="sidebar-footer">
-          <div className="sidebar-card">
-            <div className="card-icon">
-              <Sparkles size={18} />
-            </div>
-
-            <h4>Professional Edition</h4>
-
-            <p>Secure workflow management for Chartered Accountants.</p>
-
-            <button type="button">Upgrade</button>
-          </div>
-        </div>
       </aside>
     </>
   );

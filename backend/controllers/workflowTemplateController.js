@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import WorkflowTemplate from "../models/WorkflowTemplate.js";
 import Service from "../models/Service.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const normalizeTaskDefinitions = (definitions = []) => {
   if (!Array.isArray(definitions)) {
@@ -47,7 +48,7 @@ export const getWorkflowTemplates = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const templates = await WorkflowTemplate.find({ service: serviceId })
+    const templates = await WorkflowTemplate.find({ service: serviceId, ...getCompanyFilter(req) })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -65,7 +66,7 @@ export const createWorkflowTemplate = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid service ID" });
     }
 
-    const service = await Service.findById(serviceId);
+    const service = await Service.findOne({ _id: serviceId, ...getCompanyFilter(req) });
     if (!service) {
       return res.status(404).json({ message: "Service not found" });
     }
@@ -78,6 +79,7 @@ export const createWorkflowTemplate = async (req, res, next) => {
     const template = await WorkflowTemplate.create({
       name: String(req.body.name).trim(),
       service: serviceId,
+      companyId: getCompanyId(req),
       taskDefinitions: normalizeTaskDefinitions(req.body.steps || req.body.taskDefinitions),
       isActive: req.body.isActive !== false,
     });
@@ -101,7 +103,7 @@ export const updateWorkflowTemplate = async (req, res, next) => {
       return res.status(400).json({ message: validationErrors[0] });
     }
 
-    const template = await WorkflowTemplate.findOne({ _id: templateId, service: serviceId });
+    const template = await WorkflowTemplate.findOne({ _id: templateId, service: serviceId, ...getCompanyFilter(req) });
     if (!template) {
       return res.status(404).json({ message: "Workflow template not found" });
     }
@@ -125,7 +127,7 @@ export const deleteWorkflowTemplate = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    const template = await WorkflowTemplate.findOne({ _id: templateId, service: serviceId });
+    const template = await WorkflowTemplate.findOne({ _id: templateId, service: serviceId, ...getCompanyFilter(req) });
     if (!template) {
       return res.status(404).json({ message: "Workflow template not found" });
     }

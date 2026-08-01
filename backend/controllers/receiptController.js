@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Receipt from "../models/Receipt.js";
 import Invoice from "../models/Invoice.js";
 import Client from "../models/Client.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const toNumber = (value) => {
   const n = Number(value);
@@ -39,14 +40,14 @@ const computeInvoiceStatus = (invoice, newPaidAmount) => {
   return "Unpaid";
 };
 
-const applyReceiptToInvoices = async ({ settlements = [] }) => {
+const applyReceiptToInvoices = async ({ settlements = [], companyId }) => {
   const updatedSettlements = [];
 
   for (const settlement of settlements) {
     const invoiceId = settlement.invoice;
     if (!invoiceId) continue;
 
-    const invoice = await Invoice.findById(invoiceId);
+    const invoice = await Invoice.findOne({ _id: invoiceId, companyId });
     if (!invoice) continue;
 
     const currentPaid = getInvoicePaid(invoice);
@@ -80,10 +81,11 @@ const applyReceiptToInvoices = async ({ settlements = [] }) => {
   return updatedSettlements;
 };
 
-const autoAllocateSettlements = async (remainingAmount, clientId, skipInvoiceIds = []) => {
+const autoAllocateSettlements = async (remainingAmount, clientId, skipInvoiceIds = [], companyId) => {
   if (remainingAmount <= 0) return [];
 
   const openInvoices = await Invoice.find({
+    companyId,
     client: clientId,
     _id: { $nin: skipInvoiceIds.filter(Boolean) },
   })
@@ -117,7 +119,7 @@ const autoAllocateSettlements = async (remainingAmount, clientId, skipInvoiceIds
 
 export const getReceipts = async (req, res, next) => {
   try {
-    const receipts = await Receipt.find()
+    const receipts = await Receipt.find(getCompanyFilter(req))
       .populate("client", "clientName clientCode email mobile gstin")
       .populate("settlements.invoice", "invoiceNo invoiceNumber invoiceDate grandTotal amount paidAmount balanceAmount status dueDate")
       .sort({ receiptDate: -1, createdAt: -1 });
@@ -130,7 +132,10 @@ export const getReceipts = async (req, res, next) => {
 
 export const getReceiptById = async (req, res, next) => {
   try {
-    const receipt = await Receipt.findById(req.params.id)
+    const receipt = await Receipt.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    })
       .populate("client", "clientName clientCode email mobile gstin address")
       .populate("settlements.invoice", "invoiceNo invoiceNumber invoiceDate grandTotal amount paidAmount balanceAmount status dueDate");
 
@@ -153,6 +158,7 @@ export const getOpenInvoicesByClient = async (req, res, next) => {
     }
 
     const invoices = await Invoice.find({
+      ...getCompanyFilter(req),
       client: clientId,
     })
       .sort({ invoiceDate: 1, createdAt: 1 })
@@ -208,7 +214,10 @@ export const createReceipt = async (req, res, next) => {
       return res.status(400).json({ message: "Client is required" });
     }
 
-    const clientExists = await Client.findById(client).lean();
+    const clientExists = await Client.findOne({
+      _id: client,
+      ...getCompanyFilter(req),
+    }).lean();
     if (!clientExists) {
       return res.status(404).json({ message: "Client not found" });
     }
@@ -225,7 +234,7 @@ export const createReceipt = async (req, res, next) => {
           settledAmount: toNumber(item.settledAmount),
         }));
 
-      const updated = await applyReceiptToInvoices({ settlements: normalized });
+      const updated = await applyReceiptToInvoices({ settlements: normalized, companyId: getCompanyId(req) });
       preparedSettlements = updated;
 
       const allocated = updated.reduce((sum, item) => sum + toNumber(item.settledAmount), 0);
@@ -233,20 +242,22 @@ export const createReceipt = async (req, res, next) => {
         const remainingSettlements = await autoAllocateSettlements(
           totalAmount - allocated,
           client,
-          updated.map((item) => item.invoice)
+          updated.map((item) => item.invoice),
+          getCompanyId(req)
         );
-        const moreUpdated = await applyReceiptToInvoices({ settlements: remainingSettlements });
+        const moreUpdated = await applyReceiptToInvoices({ settlements: remainingSettlements, companyId: getCompanyId(req) });
         preparedSettlements = [...updated, ...moreUpdated];
       }
     } else {
-      const autoSettlements = await autoAllocateSettlements(totalAmount, client);
-      preparedSettlements = await applyReceiptToInvoices({ settlements: autoSettlements });
+      const autoSettlements = await autoAllocateSettlements(totalAmount, client, [], getCompanyId(req));
+      preparedSettlements = await applyReceiptToInvoices({ settlements: autoSettlements, companyId: getCompanyId(req) });
     }
 
     const appliedAmount = preparedSettlements.reduce((sum, item) => sum + toNumber(item.settledAmount), 0);
     const unappliedAmount = Math.max(totalAmount - appliedAmount, 0);
 
     const receipt = await Receipt.create({
+      companyId: getCompanyId(req),
       receiptNo: receiptNo.trim(),
       billingEntity,
       client,
@@ -279,7 +290,10 @@ export const createReceipt = async (req, res, next) => {
 
 export const updateReceipt = async (req, res, next) => {
   try {
-    const receipt = await Receipt.findById(req.params.id);
+    const receipt = await Receipt.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    });
     if (!receipt) {
       return res.status(404).json({ message: "Receipt not found" });
     }
@@ -289,7 +303,7 @@ export const updateReceipt = async (req, res, next) => {
       for (const settlement of receipt.settlements) {
         if (!settlement.invoice) continue;
 
-        const invoice = await Invoice.findById(settlement.invoice);
+        const invoice = await Invoice.findOne({ _id: settlement.invoice, companyId: receipt.companyId });
         if (!invoice) continue;
 
         const currentPaid = getInvoicePaid(invoice);
@@ -344,10 +358,11 @@ export const updateReceipt = async (req, res, next) => {
           invoice: item.invoice,
           settledAmount: toNumber(item.settledAmount),
         }));
-      preparedSettlements = await applyReceiptToInvoices({ settlements: normalized });
+      preparedSettlements = await applyReceiptToInvoices({ settlements: normalized, companyId: receipt.companyId });
     } else {
       preparedSettlements = await applyReceiptToInvoices({
-        settlements: await autoAllocateSettlements(totalAmount, receipt.client),
+        settlements: await autoAllocateSettlements(totalAmount, receipt.client, [], receipt.companyId),
+        companyId: receipt.companyId,
       });
     }
 
@@ -373,7 +388,10 @@ export const updateReceipt = async (req, res, next) => {
 
 export const deleteReceipt = async (req, res, next) => {
   try {
-    const receipt = await Receipt.findById(req.params.id);
+    const receipt = await Receipt.findOne({
+      _id: req.params.id,
+      ...getCompanyFilter(req),
+    });
     if (!receipt) {
       return res.status(404).json({ message: "Receipt not found" });
     }
@@ -383,7 +401,7 @@ export const deleteReceipt = async (req, res, next) => {
       for (const settlement of receipt.settlements) {
         if (!settlement.invoice) continue;
 
-        const invoice = await Invoice.findById(settlement.invoice);
+        const invoice = await Invoice.findOne({ _id: settlement.invoice, companyId: receipt.companyId });
         if (!invoice) continue;
 
         const currentPaid = getInvoicePaid(invoice);

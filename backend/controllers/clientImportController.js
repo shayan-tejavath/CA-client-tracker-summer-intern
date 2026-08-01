@@ -6,6 +6,7 @@ import {
   previewImport,
   getClientImportTemplate,
 } from "../services/clientImportService.js";
+import { getCompanyId } from "../utils/companyScope.js";
 
 /* ===========================================================
    IMPORT CLIENTS
@@ -29,10 +30,13 @@ export const bulkImportClients = async (
       req.user?.email ||
       "Bulk Import";
 
+    const companyId = getCompanyId(req);
+
     const result =
       await importClientsFromExcel(
         req.file.path,
-        assignedBy
+        assignedBy,
+        companyId
       );
 
     return res.status(200).json({

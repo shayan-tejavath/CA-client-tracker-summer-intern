@@ -2,6 +2,13 @@ import mongoose from "mongoose";
 
 const dscRecordSchema = new mongoose.Schema(
   {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+      index: true,
+    },
+
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",

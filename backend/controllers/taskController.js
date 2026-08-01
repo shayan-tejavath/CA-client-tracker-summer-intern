@@ -15,6 +15,7 @@ import {
   notifyTaskCommentAdded,
   notifyClientDocumentUploaded,
 } from "../services/notificationService.js";
+import { getCompanyFilter, getCompanyId } from "../utils/companyScope.js";
 
 const allowedStatuses = ["Pending", "In Progress", "Completed", "Overdue"];
 const allowedPriorities = ["Low", "Medium", "High", "Critical"];
@@ -68,10 +69,11 @@ const getAssignedToId = (taskDoc) => {
     : String(taskDoc.assignedTo);
 };
 
-const createTaskActivity = async ({ taskId, activity, userId, details = "" }) => {
+const createTaskActivity = async ({ taskId, activity, userId, companyId, details = "" }) => {
   if (!taskId || !userId) return null;
 
   return TaskActivity.create({
+    companyId,
     task: taskId,
     activity,
     user: userId,
@@ -110,12 +112,6 @@ const getNextDueDate = (dueDate, recurrenceType) => {
   return nextDate;
 };
 
-const getCompanyFilter = (req) => {
-  const companyId = req.user?.companyId || req.user?.company?.id || null;
-  if (!companyId) return null;
-  return { companyId };
-};
-
 const createRecurringChildTask = async (parentTask, userId) => {
   if (!parentTask || !parentTask.recurrence) return null;
   if (parentTask.status !== "Completed") return null;
@@ -146,6 +142,7 @@ const createRecurringChildTask = async (parentTask, userId) => {
       taskId: childTask._id,
       activity: "Recurring Task Created",
       userId,
+      companyId: parentTask.companyId || null,
       details: parentTask.title,
     });
   } catch (activityError) {
@@ -158,8 +155,7 @@ const createRecurringChildTask = async (parentTask, userId) => {
 export const getTasks = async (req, res, next) => {
   try {
     const { status, dueDate, dueBefore, dueAfter } = req.query;
-    const companyFilter = getCompanyFilter(req);
-    const query = companyFilter ? { ...companyFilter } : {};
+    const query = { ...getCompanyFilter(req) };
 
     if (status) {
       query.status = status;
@@ -193,7 +189,7 @@ export const getTasks = async (req, res, next) => {
     }
 
     if (req.user?.role === ROLES.Client) {
-      const client = await Client.findOne({ email: req.user.email });
+      const client = await Client.findOne({ ...getCompanyFilter(req), email: req.user.email });
       if (!client) {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -217,7 +213,7 @@ export const getTaskById = async (req, res, next) => {
     }
 
     const companyFilter = getCompanyFilter(req);
-    const task = await taskPopulate(Task.findOne({ _id: id, ...(companyFilter || {}) }));
+    const task = await taskPopulate(Task.findOne({ _id: id, ...companyFilter }));
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -230,7 +226,7 @@ export const getTaskById = async (req, res, next) => {
     }
 
     if (req.user?.role === ROLES.Client) {
-      const client = await Client.findOne({ email: req.user.email });
+      const client = await Client.findOne({ ...getCompanyFilter(req), email: req.user.email });
       if (!client || task.client?.toString() !== client._id.toString()) {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -249,9 +245,8 @@ export const createTask = async (req, res, next) => {
       return res.status(400).json({ message: validationError });
     }
 
-    const companyFilter = getCompanyFilter(req);
     const task = await Task.create({
-      companyId: companyFilter?.companyId || null,
+      companyId: getCompanyId(req),
       title: req.body.title,
       client: req.body.client,
       service: req.body.service,
@@ -273,6 +268,7 @@ export const createTask = async (req, res, next) => {
         taskId: createdTask._id,
         activity: "Task Created",
         userId: req.user?._id,
+        companyId: getCompanyId(req),
         details: createdTask.title,
       });
     } catch (activityError) {
@@ -306,7 +302,7 @@ export const updateTask = async (req, res, next) => {
     }
 
     const companyFilter = getCompanyFilter(req);
-    const task = await Task.findOne({ _id: id, ...(companyFilter || {}) });
+    const task = await Task.findOne({ _id: id, ...companyFilter });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -340,7 +336,7 @@ export const updateTask = async (req, res, next) => {
       ...req.body,
     };
 
-    const updatedTask = await Task.findOneAndUpdate({ _id: id, ...(companyFilter || {}) }, updatePayload, {
+    const updatedTask = await Task.findOneAndUpdate({ _id: id, ...companyFilter }, updatePayload, {
       new: true,
       runValidators: true,
     });
@@ -383,6 +379,7 @@ export const updateTask = async (req, res, next) => {
           taskId: populatedUpdatedTask._id,
           activity: "Employee Assigned",
           userId: req.user?._id,
+          companyId: getCompanyId(req),
           details: `Assigned to ${populatedUpdatedTask.assignedTo?.name || "employee"}`,
         });
       } catch (activityError) {
@@ -414,6 +411,7 @@ export const updateTask = async (req, res, next) => {
           taskId: populatedUpdatedTask._id,
           activity: "Status Changed",
           userId: req.user?._id,
+          companyId: getCompanyId(req),
           details: `${task.status || "Pending"} → ${req.body.status}`,
         });
       } catch (activityError) {
@@ -457,7 +455,7 @@ export const deleteTask = async (req, res, next) => {
     }
 
     const companyFilter = getCompanyFilter(req);
-    const task = await Task.findOne({ _id: id, ...(companyFilter || {}) });
+    const task = await Task.findOne({ _id: id, ...companyFilter });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -494,7 +492,7 @@ const ensureTaskAccess = async (req, task) => {
   }
 
   if (req.user?.role === ROLES.Client) {
-    const client = await Client.findOne({ email: req.user.email });
+    const client = await Client.findOne({ ...getCompanyFilter(req), email: req.user.email });
     if (!client || task.client?.toString() !== client._id.toString()) {
       return { allowed: false, status: 403, message: "Forbidden" };
     }
@@ -510,13 +508,13 @@ export const listSubTasks = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const subTasks = await SubTask.find({ task: taskId }).sort({ completed: 1, createdAt: 1 });
+    const subTasks = await SubTask.find({ task: taskId, ...getCompanyFilter(req) }).sort({ completed: 1, createdAt: 1 });
     res.json(subTasks);
   } catch (error) {
     next(error);
@@ -530,7 +528,7 @@ export const createSubTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
@@ -542,6 +540,7 @@ export const createSubTask = async (req, res, next) => {
     }
 
     const subTask = await SubTask.create({
+      companyId: getCompanyId(req),
       task: taskId,
       title: String(req.body.title).trim(),
       description: req.body.description ? String(req.body.description).trim() : "",
@@ -561,13 +560,13 @@ export const updateSubTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task or sub-task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const subTask = await SubTask.findOne({ _id: subTaskId, task: taskId });
+    const subTask = await SubTask.findOne({ _id: subTaskId, task: taskId, ...getCompanyFilter(req) });
     if (!subTask) {
       return res.status(404).json({ message: "Sub-task not found" });
     }
@@ -588,7 +587,7 @@ export const updateSubTask = async (req, res, next) => {
       updatePayload.completed = Boolean(req.body.completed);
     }
 
-    const updatedSubTask = await SubTask.findByIdAndUpdate(subTaskId, updatePayload, {
+    const updatedSubTask = await SubTask.findOneAndUpdate({ _id: subTaskId, ...getCompanyFilter(req) }, updatePayload, {
       new: true,
       runValidators: true,
     });
@@ -606,13 +605,13 @@ export const deleteSubTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task or sub-task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const subTask = await SubTask.findOne({ _id: subTaskId, task: taskId });
+    const subTask = await SubTask.findOne({ _id: subTaskId, task: taskId, ...getCompanyFilter(req) });
     if (!subTask) {
       return res.status(404).json({ message: "Sub-task not found" });
     }
@@ -631,13 +630,13 @@ export const listTaskActivities = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const activities = await TaskActivity.find({ task: taskId })
+    const activities = await TaskActivity.find({ task: taskId, ...getCompanyFilter(req) })
       .populate("user", "name email role")
       .sort({ createdAt: -1 });
 
@@ -654,13 +653,13 @@ export const listTaskDocuments = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const documents = await TaskDocument.find({ task: taskId }).sort({ createdAt: -1 });
+    const documents = await TaskDocument.find({ task: taskId, ...getCompanyFilter(req) }).sort({ createdAt: -1 });
     res.json(documents);
   } catch (error) {
     next(error);
@@ -674,7 +673,7 @@ export const uploadTaskDocument = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
@@ -685,6 +684,7 @@ export const uploadTaskDocument = async (req, res, next) => {
     }
 
     const document = await TaskDocument.create({
+      companyId: getCompanyId(req),
       task: taskId,
       fileName: req.file.filename,
       originalName: req.file.originalname,
@@ -693,7 +693,7 @@ export const uploadTaskDocument = async (req, res, next) => {
       path: `/uploads/task-documents/${req.file.filename}`,
     });
 
-    const request = await TaskDocumentRequest.findOne({ task: taskId }).sort({ createdAt: -1 });
+    const request = await TaskDocumentRequest.findOne({ task: taskId, ...getCompanyFilter(req) }).sort({ createdAt: -1 });
     if (request) {
       request.status = "Uploaded";
       request.uploadedBy = req.user?._id || null;
@@ -705,12 +705,16 @@ export const uploadTaskDocument = async (req, res, next) => {
       taskId,
       activity: "Document Uploaded",
       userId: req.user?._id,
+      companyId: getCompanyId(req),
       details: req.file.originalname,
     });
 
     if (req.user?.role === ROLES.Client && task.assignedTo) {
       try {
-        const populatedTask = await Task.findById(taskId)
+        const populatedTask = await Task.findOne({
+          _id: taskId,
+          ...getCompanyFilter(req),
+        })
           .populate("assignedTo", "name email role")
           .populate("client", "clientName");
 
@@ -742,13 +746,13 @@ export const deleteTaskDocument = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task or document ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const document = await TaskDocument.findOne({ _id: documentId, task: taskId });
+    const document = await TaskDocument.findOne({ _id: documentId, task: taskId, ...getCompanyFilter(req) });
     if (!document) {
       return res.status(404).json({ message: "Document not found" });
     }
@@ -775,7 +779,7 @@ export const createTaskDocumentRequest = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -789,8 +793,9 @@ export const createTaskDocumentRequest = async (req, res, next) => {
     }
 
     const request = await TaskDocumentRequest.findOneAndUpdate(
-      { task: taskId },
+      { task: taskId, ...getCompanyFilter(req) },
       {
+        companyId: getCompanyId(req),
         task: taskId,
         requiredDocuments: normalizedDocuments,
         status: "Pending",
@@ -815,13 +820,13 @@ export const listTaskDocumentRequests = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
-    const task = await Task.findById(taskId);
+    const task = await Task.findOne({ _id: taskId, ...getCompanyFilter(req) });
     const access = await ensureTaskAccess(req, task);
     if (!access.allowed) {
       return res.status(access.status).json({ message: access.message });
     }
 
-    const requests = await TaskDocumentRequest.find({ task: taskId }).sort({ createdAt: -1 });
+    const requests = await TaskDocumentRequest.find({ task: taskId, ...getCompanyFilter(req) }).sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
     next(error);
@@ -838,14 +843,14 @@ export const listAllTaskDocumentRequests = async (req, res, next) => {
       limit = 100,
     } = req.query;
 
-    const taskFilter = {};
+    const taskFilter = { ...getCompanyFilter(req) };
 
     if (req.user?.role === ROLES.Employee) {
       taskFilter.assignedTo = req.user._id;
     }
 
     if (req.user?.role === ROLES.Client) {
-      const client = await Client.findOne({ email: req.user.email });
+      const client = await Client.findOne({ ...getCompanyFilter(req), email: req.user.email });
       if (!client) {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -940,7 +945,7 @@ export const updateTaskDocumentRequestStatus = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid IDs" });
     }
 
-    const request = await TaskDocumentRequest.findOne({ _id: requestId, task: taskId });
+    const request = await TaskDocumentRequest.findOne({ _id: requestId, task: taskId, ...getCompanyFilter(req) });
     if (!request) {
       return res.status(404).json({ message: "Document request not found" });
     }
@@ -975,7 +980,10 @@ export const addComment = async (req, res, next) => {
       return res.status(400).json({ message: "Comment text is required" });
     }
 
-    const task = await Task.findById(id);
+    const task = await Task.findOne({
+      _id: id,
+      ...getCompanyFilter(req),
+    });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -988,7 +996,7 @@ export const addComment = async (req, res, next) => {
     }
 
     if (req.user?.role === ROLES.Client) {
-      const client = await Client.findOne({ email: req.user.email });
+      const client = await Client.findOne({ ...getCompanyFilter(req), email: req.user.email });
       if (!client || task.client?.toString() !== client._id.toString()) {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -1003,6 +1011,7 @@ export const addComment = async (req, res, next) => {
         taskId: task._id,
         activity: "Comment Added",
         userId: req.user?._id,
+        companyId: getCompanyId(req),
         details: String(text).trim(),
       });
     } catch (activityError) {

@@ -5,7 +5,7 @@
 
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import Permission from "../models/Permission.js";
+import { findPermissionForRole } from "../utils/companyScope.js";
 import { ROLES } from "../constants/rbac.js";
 
 const getTokenFromHeader = (req) => {
@@ -65,7 +65,7 @@ export const checkPermission = (permissionName) => {
       const user = await verifyJwtUser(req, res);
       if (!user) return;
 
-      const permissionRecord = await Permission.findOne({ role: user.role }).lean();
+      const permissionRecord = await findPermissionForRole(user.role, user.companyId);
       const permissions = permissionRecord?.permissions || [];
 
       const hasPermission = Array.isArray(permissions) && permissions.includes(permissionName);

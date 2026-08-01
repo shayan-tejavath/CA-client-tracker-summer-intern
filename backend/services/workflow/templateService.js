@@ -8,6 +8,7 @@ export const generateTasksFromTemplate = async ({
   templateId,
   assignedTo,
   assignedUsers = [],
+  companyId = null,
 }) => {
   const resolvedAssignedTo = assignedTo || assignedUsers.find(Boolean) || null;
   const fallbackDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -20,17 +21,26 @@ export const generateTasksFromTemplate = async ({
   let template = null;
 
   if (templateId) {
-    template = await WorkflowTemplate.findById(templateId).lean();
+    template = await WorkflowTemplate.findOne({
+      _id: templateId,
+      companyId,
+    }).lean();
   }
 
   // If no explicit templateId provided or the provided template doesn't belong to the service,
   // prefer the service's configured `workflowTemplate` reference. Fall back to the first active
   // template for the service if none is configured.
   if (!template || String(template.service) !== String(serviceId)) {
-    const service = await Service.findById(serviceId).lean();
+    const service = await Service.findOne({
+      _id: serviceId,
+      companyId,
+    }).lean();
 
     if (service && service.workflowTemplate) {
-      const svcTpl = await WorkflowTemplate.findById(service.workflowTemplate).lean();
+      const svcTpl = await WorkflowTemplate.findOne({
+        _id: service.workflowTemplate,
+        companyId,
+      }).lean();
       if (svcTpl && String(svcTpl.service) === String(serviceId) && svcTpl.isActive) {
         template = svcTpl;
       }
@@ -40,6 +50,7 @@ export const generateTasksFromTemplate = async ({
       template = await WorkflowTemplate.findOne({
         service: serviceId,
         isActive: true,
+        companyId,
       }).lean();
     }
   }
@@ -57,6 +68,7 @@ export const generateTasksFromTemplate = async ({
       client: clientId,
       service: serviceId,
       title: definition.title,
+      companyId,
     });
 
     if (existingTask) {
@@ -65,6 +77,7 @@ export const generateTasksFromTemplate = async ({
     }
 
     const task = await Task.create({
+      companyId,
       title: definition.title,
       description: `Auto-generated from workflow template: ${template.name}`,
       client: clientId,

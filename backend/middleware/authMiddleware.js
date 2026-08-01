@@ -31,12 +31,28 @@ const protect = async (req, res, next) => {
     }
 
     if (user.role === ROLES.Client) {
-      const client = await Client.findOne({ email: user.email });
+      const client = await Client.findOne({
+        email: user.email,
+        companyId: user.companyId,
+      });
       if (!client || client.isArchived) {
         return res.status(403).json({ message: "Client access denied. Client account is archived." });
       }
     }
 
+    const companyId = user.companyId || user.company?.id || null;
+
+    if (!companyId) {
+      console.error("[AUTH] User has no company association", {
+        userId: user._id,
+        role: user.role,
+      });
+      return res.status(403).json({
+        message: "No company associated with your account. Please contact your administrator.",
+      });
+    }
+
+    req.companyId = companyId;
     req.user = user;
     next();
   } catch (error) {

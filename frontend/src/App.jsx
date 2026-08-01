@@ -92,10 +92,6 @@ import DocumentCollection from "./pages/documents/DocumentCollection.jsx";
 
 // DASHBOARD PAGES
 
-import AdminPanel from "./pages/dashboard/AdminPanel.jsx";
-
-import PermissionMatrix from "./pages/dashboard/PermissionMatrix.jsx";
-
 import UsersList from "./pages/users/UsersList.jsx";
 
 import CreateUser from "./pages/users/CreateUser.jsx";
@@ -571,20 +567,6 @@ function App() {
             }
           />
 
-          {/* ADMIN */}
-          <Route
-            path="/dashboard/admin"
-            element={
-              <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                ]}
-              >
-                <AdminPanel />
-              </ProtectedRoute>
-            }
-          />
-
           {/* USERS */}
           <Route
             path="/dashboard/users"
@@ -634,20 +616,6 @@ function App() {
                 ]}
               >
                 <UserRoleForm />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* PERMISSIONS */}
-          <Route
-            path="/dashboard/permissions"
-            element={
-              <ProtectedRoute
-                allowedRoles={[
-                  "SuperAdmin",
-                ]}
-              >
-                <PermissionMatrix />
               </ProtectedRoute>
             }
           />
